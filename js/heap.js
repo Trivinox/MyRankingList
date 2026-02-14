@@ -60,9 +60,11 @@ class TournamentHeap {
             return ["", ""]
         }
         let layer = this.maxLayer + 1 - this.round;
-        let firstInLayer = Math.pow(2, layer - 1) + 1;
-        let indexShift = this.matchNumber + 1;
-        return this.heap[firstInLayer + indexShift + Number(isFirst)];
+        let firstInLayer = Math.pow(2, layer) - 1;
+        console.log("layer: " + layer);
+        console.log("firstInLayer: " + firstInLayer);
+        console.log ("returning: " + (firstInLayer + Number(isFirst)) + " because isfirst is " + isFirst);
+        return this.heap[firstInLayer  + Number(isFirst)];
     }
     /**
      * 
@@ -76,10 +78,8 @@ class TournamentHeap {
         let maxRounds = Math.pow(2, layer) / 2;
         for (let i = lastInLayer; i >= firstInLayer; i -= 2) {
             if (this.#getElement(i - 1) == null || this.#getElement(i) == null) {
-                maxRounds -= 2;
-            } else {
-                break;
-            }
+                maxRounds --;
+            } else break;
         }
         return maxRounds;
     }
