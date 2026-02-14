@@ -18,24 +18,14 @@ fruits = rearrange(fruits);
 //Create heap from fruits array
 let heap = new TournamentHeap(fruits);
 
-//Where the index for the initial round is on the list
-let round = 1; //Starting from 1
-let matchNumber = 1; //Starting from 1
-
 //Reference for the buttons
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
 
 //Show two names on the buttons
-function populateButtons() { 
-    if (matchNumber < heap.size && matchNumber <= heap.getMaxMatchesInRound(round)) {
-        leftBtn.textContent = heap.leftContestant(round,matchNumber) || "";
-        rightBtn.textContent = heap.rightContestant(round,matchNumber) || "";
-        matchNumber += 2;
-    } else {
-        leftBtn.textContent = "End";
-        rightBtn.textContent = "End";        
-    }
+function populateButtons() {
+    leftBtn.textContent = heap.leftContestant() || "";
+    rightBtn.textContent = heap.rightContestant() || "";
 }
 
 //Update buttons when clicking

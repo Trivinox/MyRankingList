@@ -9,11 +9,13 @@ class Element {
 
 class TournamentHeap {
     /**
-     * @param {string[]} elements - Array of the elements names
+     * @param {string[]} elements - Array of the elements names (minimum 3)
      */
     constructor(elements = []) {
         this.maxLayer = Math.ceil(Math.log2(elements.length));
         this.#createHeap(elements);
+        this.round = 1;
+        this.matchNumber = 1;
     }
 
     //Get information of the heap
@@ -38,37 +40,37 @@ class TournamentHeap {
      * @param {number} matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the first contestant (left)
      */
-    leftContestant(round, matchNumber) { return this.heap[this.#getContestant(round, matchNumber, 0)].name; }
+    leftContestant() { return this.#getContestant(false).name; }
     /**
      * 
      * @param {number} round Round number (starting on 1)
      * @param {number} matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the second contestant (right)
      */
-    rightContestant(round, matchNumber) { return this.heap[this.#getContestant(round, matchNumber, 1)].name; }
+    rightContestant() { return this.#getContestant(true).name; }
     /**
      * @param {number} round - Round number (starting on 1)
      * @param {number} matchNumber - Match of the round (starting on 1)
      * @param {boolean} isFirst - true for first contestant, false for second
      * @returns Index of the contestant
      */
-    #getContestant(round, matchNumber, isFirst) {
-        if (matchNumber > this.getMaxMatchesInRound(round)) {
+    #getContestant(isFirst) {
+        if (this.matchNumber > this.#getMaxMatchesInRound(this.round)) {
             console.log("Impossible to get the match from this round")
             return ["", ""]
         }
-        let layer = this.maxLayer + 1 - round;
+        let layer = this.maxLayer + 1 - this.round;
         let firstInLayer = Math.pow(2, layer - 1) + 1;
-        let indexShift = matchNumber + 1;
-        return firstInLayer + indexShift + Number(isFirst);
+        let indexShift = this.matchNumber + 1;
+        return this.heap[firstInLayer + indexShift + Number(isFirst)];
     }
     /**
      * 
      * @param {number} round - Number of round (starting in 1)
      * @returns {number} Amount of rounds possible in that round
      */
-    getMaxMatchesInRound(round) {
-        let layer = this.maxLayer + 1 - round;
+    #getMaxMatchesInRound() {
+        let layer = this.maxLayer + 1 - this.round;
         let firstInLayer = Math.pow(2, layer) - 1;
         let lastInLayer = Math.pow(2, layer + 1) - 2;
         let maxRounds = Math.pow(2, layer) / 2;
@@ -81,8 +83,6 @@ class TournamentHeap {
         }
         return maxRounds;
     }
-
-    resolveMatch
 
     //Get index of parent and children
     /**
