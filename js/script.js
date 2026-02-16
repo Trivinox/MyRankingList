@@ -22,15 +22,25 @@ let heap = new TournamentHeap(fruits);
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
 
+//Get the button presess and update the heap accordingly
+leftBtn.addEventListener("click", () => {
+    heap.defineWinner(true);
+    populateButtons();
+});
+rightBtn.addEventListener("click", () => {
+    heap.defineWinner(false);
+    populateButtons();
+});
+
+//Update buttons when clicking
+leftBtn.addEventListener("click", populateButtons);
+rightBtn.addEventListener("click", populateButtons);
+
 //Show two names on the buttons
 function populateButtons() {
     leftBtn.textContent = heap.leftContestant() || "";
     rightBtn.textContent = heap.rightContestant() || "";
 }
 
-//Update buttons when clicking
-leftBtn.addEventListener("click", populateButtons);
-rightBtn.addEventListener("click", populateButtons);
-
-//Show first 2 elements when page loads
-//populateButtons();
+//Populate buttons once the page loads
+populateButtons();
