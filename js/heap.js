@@ -1,15 +1,10 @@
 class Element {
-    /** @type {boolean} */
-    #processed = false;
-    /** @type {string} */
-    #name = "No name";
-
     constructor(name) {
+        /** @type {boolean} */
+        this.processed = false;
         /** @type {string} */
-        this.#name = name;
+        this.name = name;
     }
-
-    getName = this.#name;
 }
 
 class TournamentHeap {
@@ -39,7 +34,7 @@ class TournamentHeap {
             let row = "";
             for (let i = firstInLayer; i <= lastInLayer; i++) {
                 if (this.heap[i]) {
-                    row += this.heap[i].getName + " ";
+                    row += this.heap[i].name + " ";
                 } else {
                     row += "-- ";
                 }
@@ -77,7 +72,7 @@ class TournamentHeap {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(false).getName; 
+        return this.#getContestantElement(false).name; 
     }
     /**
      * 
@@ -89,7 +84,7 @@ class TournamentHeap {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(true).getName; 
+        return this.#getContestantElement(true).name; 
     }
     /**
      * @param {number} round - Round number (starting on 1)
@@ -218,13 +213,13 @@ class TournamentHeap {
             return;
         }
         //We promote to the parent node the loser of the match
-        this.#updateParent(!isLeft); 
+        this.#copyToParent(this.#getContestantIndex(!isLeft)); 
         this.#goToNextMatch();
     }
 
-    #updateParent(isLeft){
-        let element = this.#getContestantElement(isLeft);
-        this.#setElement(this.#getContestantsParentIndex(), element);
+    #copyToParent(childIndex){
+        let element = this.#getElement(childIndex);
+        this.#setElement(this.#getParentIndex(childIndex), element);
     }
 
     /**
@@ -239,9 +234,9 @@ class TournamentHeap {
         } else {
             //If is the last match of the round, we move to the next round
             if (this.#matchNumber >= this.#maxMatches()) {
-                //Declare promotions for null values
-                for (let i = this.#matchNumber; i <= this.#totalMatches; i++) {          
-
+                //Declare promotions next odd value
+                if(this.#maxMatches < this.#totalMatches){
+                    this.#copyToParent(this.#getRightChildIndex + 1);
                 }
                 this.#round++;
                 this.#matchNumber = 1;
