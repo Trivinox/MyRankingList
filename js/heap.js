@@ -1,10 +1,15 @@
 class Element {
+    /** @type {boolean} */
+    #processed = false;
+    /** @type {string} */
+    #name = "No name";
+
     constructor(name) {
         /** @type {string} */
-        this.name = name;
-        /** @type {boolean} */
-        this.processed = false;
+        this.#name = name;
     }
+
+    getName = this.#name;
 }
 
 class TournamentHeap {
@@ -34,7 +39,7 @@ class TournamentHeap {
             let row = "";
             for (let i = firstInLayer; i <= lastInLayer; i++) {
                 if (this.heap[i]) {
-                    row += this.heap[i].name + " ";
+                    row += this.heap[i].getName + " ";
                 } else {
                     row += "-- ";
                 }
@@ -54,47 +59,37 @@ class TournamentHeap {
     #getElement(i) {
         //Verify if index is null
         if (i == null) {
-            return null;
+            return new Element("No element");
         }
         return this.heap[i];
     }
     #setElement(i, element) {this.heap[i] = element;}
     get size() { return this.heap.length; }
-    /**
-     * 
-     * @param {number} i - Index of the Element
-     * @returns {string} Name of the Element
-     */
-    #getName(i) { return this.heap(i).name; }
 
     // Matches
     /**
      * 
-     * @param {number} round Round number (starting on 1)
-     * @param {number} #matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the first contestant (left)
      */
-    leftContestant() { 
+    leftContestant = () => { 
         //Verify if is completed, if it is, we give error and return null
         if (this.#completed) {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(false).name; 
+        return this.#getContestantElement(false).getName; 
     }
     /**
      * 
-     * @param {number} round Round number (starting on 1)
-     * @param {number} #matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the second contestant (right)
      */
-    rightContestant() { 
+    rightContestant = () => { 
         //Verify if is completed, if it is, we give error and return null
         if (this.#completed) {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(true).name; 
+        return this.#getContestantElement(true).getName; 
     }
     /**
      * @param {number} round - Round number (starting on 1)
@@ -103,7 +98,7 @@ class TournamentHeap {
      * @returns {number} Index of the contestant in the heap array
      */
     #getContestantIndex(isLeft) {
-        if (this.#matchNumber > this.#maxMatches) {
+        if (this.#matchNumber > this.#maxMatches()) {
             console.error("Match number is higher than the maximum matches in that round");
             return null;
         }
@@ -243,7 +238,7 @@ class TournamentHeap {
             this.#completeTournament();
         } else {
             //If is the last match of the round, we move to the next round
-            if (this.#matchNumber >= this.#maxMatches) {
+            if (this.#matchNumber >= this.#maxMatches()) {
                 //Declare promotions for null values
                 for (let i = this.#matchNumber; i <= this.#totalMatches; i++) {          
 

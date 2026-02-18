@@ -24,11 +24,11 @@ const rightBtn = document.getElementById("rightBtn");
 
 //Get the button presess and update the heap accordingly
 leftBtn.addEventListener("click", () => {
-    heap.defineWinner(true);
+    heap.userWinnerIs(true);
     populateButtons();
 });
 rightBtn.addEventListener("click", () => {
-    heap.defineWinner(false);
+    heap.userWinnerIs(false);
     populateButtons();
 });
 
