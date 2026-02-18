@@ -8,17 +8,19 @@ class Element {
 }
 
 class TournamentHeap {
+    #elementsAmt = 0;
+    #maxRounds = 0;
+    #matchNumber = 1;
+    #round = 1;
+    #organizedList = [];
+    #completed = false;
     /**
      * @param {string[]} elements - Array of the elements names (minimum 3)
      */
     constructor(elements = []) {
-        this.elementsAmt = elements.length;
-        this.maxRounds = Math.ceil(Math.log2(this.elementsAmt));
+        this.#elementsAmt = elements.length;
+        this.#maxRounds = Math.ceil(Math.log2(this.#elementsAmt));
         this.#createHeap(elements);
-        this.round = 1;
-        this.matchNumber = 1;
-        this.organizedList = [];
-        this.completed = false;
         this.prettyPrintHeap();
     }
     
@@ -69,12 +71,12 @@ class TournamentHeap {
     /**
      * 
      * @param {number} round Round number (starting on 1)
-     * @param {number} matchNumber Match of the round (starting on 1)
+     * @param {number} #matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the first contestant (left)
      */
     leftContestant() { 
         //Verify if is completed, if it is, we give error and return null
-        if (this.completed) {
+        if (this.#completed) {
             console.error("Tournament is already completed");
             return null;
         }
@@ -83,12 +85,12 @@ class TournamentHeap {
     /**
      * 
      * @param {number} round Round number (starting on 1)
-     * @param {number} matchNumber Match of the round (starting on 1)
+     * @param {number} #matchNumber Match of the round (starting on 1)
      * @returns {string} Name of the second contestant (right)
      */
     rightContestant() { 
         //Verify if is completed, if it is, we give error and return null
-        if (this.completed) {
+        if (this.#completed) {
             console.error("Tournament is already completed");
             return null;
         }
@@ -96,18 +98,18 @@ class TournamentHeap {
     }
     /**
      * @param {number} round - Round number (starting on 1)
-     * @param {number} matchNumber - Match of the round (starting on 1)
+     * @param {number} #matchNumber - Match of the round (starting on 1)
      * @param {boolean} isLeft - true for first contestant, false for second
      * @returns {number} Index of the contestant in the heap array
      */
     #getContestantIndex(isLeft) {
-        if (this.matchNumber > this.#getMaxMatchesInRound(this.round)) {
+        if (this.#matchNumber > this.#maxMatches) {
             console.error("Match number is higher than the maximum matches in that round");
             return null;
         }
-        let layer = this.maxRounds + 1 - this.round;
+        let layer = this.#maxRounds + 1 - this.#round;
         let firstInLayer = Math.pow(2, layer) - 1;
-        let shiftIndex = (this.matchNumber - 1) * 2; // Shift to the right according to the match
+        let shiftIndex = (this.#matchNumber - 1) * 2; // Shift to the right according to the match
         return firstInLayer + shiftIndex + Number(isLeft);
     }    
     /**
@@ -124,21 +126,29 @@ class TournamentHeap {
 
     /**
      * 
-     * @param {number} round - Number of round (starting in 1)
-     * @returns {number} Amount of rounds possible in that round
+     * @returns {number} Amount of matches in the round with both contestants
      */
-    #getMaxMatchesInRound() {
-        let layer = this.maxRounds + 1 - this.round;
+    #maxMatches = () => {
+        let layer = this.#maxRounds + 1 - this.#round;
         let firstInLayer = Math.pow(2, layer) - 1;
         let lastInLayer = Math.pow(2, layer + 1) - 2;
-        let maxRounds = Math.pow(2, layer) / 2;
+        let maxMatches = Math.pow(2, layer) / 2;
         for (let i = lastInLayer; i >= firstInLayer; i -= 2) {
             if (this.#getElement(i - 1) == null || this.#getElement(i) == null) {
-                maxRounds --;
+                maxMatches--;
             } else break;
         }
-        return maxRounds;
-    }
+        return maxMatches;
+    };
+
+    /**
+     * 
+     * @returns {number} Amount of matches in the round even with null values
+     */
+    #totalMatches = () => {
+        let layer = this.#maxRounds + 1 - this.#round;
+        return Math.pow(2, layer) / 2;
+    };
 
     //Get index of parent and children
     /**
@@ -173,8 +183,8 @@ class TournamentHeap {
     #createHeap(elements) {        
         this.heap = [];
         let arrayOfElements = elements.map(el => new Element(el));
-        let amtNodes = Math.pow(2, this.maxRounds + 1) - 1;
-        let amtNodesLastLayer = Math.pow(2, this.maxRounds);
+        let amtNodes = Math.pow(2, this.#maxRounds + 1) - 1;
+        let amtNodesLastLayer = Math.pow(2, this.#maxRounds);
         let amtNullValues = amtNodes - amtNodesLastLayer;
 
         // Step 1: push null values
@@ -206,42 +216,43 @@ class TournamentHeap {
     /**
      * @param {boolean} isLeft - true if the left contestant won, false if the right contestant won
      */
-    defineWinner(isLeft) {
+    userWinnerIs(isLeft) {
         //Verify it is not completed
-        if (this.completed) {
+        if (this.#completed) {
             console.error("Tournament is already completed");
             return;
         }
-        //Parent element is the loser of the match, so we promote it to the parent node
-        if (isLeft) {
-            let rightElement = this.#getContestantElement(false);
-            this.#setElement(this.#getContestantsParentIndex(), rightElement);
-        } else {
-            let leftElement = this.#getContestantElement(true);
-            this.#setElement(this.#getContestantsParentIndex(), leftElement);
-        }        
-        this.prettyPrintHeap();
+        //We promote to the parent node the loser of the match
+        this.#updateParent(!isLeft); 
         this.#goToNextMatch();
+    }
 
-        //TODO: Get the next 2 contestants and update the buttons, maybe we can return them from this function and update the buttons in the script.js file
+    #updateParent(isLeft){
+        let element = this.#getContestantElement(isLeft);
+        this.#setElement(this.#getContestantsParentIndex(), element);
     }
 
     /**
      * Move to the next match, and if it's the end of the round, move to the next round
      */
     #goToNextMatch() {
-        console.log("Next match. Round: " + this.round + ", Match: " + this.matchNumber);
+        this.prettyPrintHeap();
+        console.log("Next match. Round: " + this.#round + ", Match: " + this.#matchNumber);
         //If this was the last round, complete the tournament
-        if (this.round == this.maxRounds) {
+        if (this.#round == this.#maxRounds) {
             this.#completeTournament();
         } else {
             //If is the last match of the round, we move to the next round
-            if (this.matchNumber >= this.#getMaxMatchesInRound()) {
-                this.round++;
-                this.matchNumber = 1;
+            if (this.#matchNumber >= this.#maxMatches) {
+                //Declare promotions for null values
+                for (let i = this.#matchNumber; i <= this.#totalMatches; i++) {          
+
+                }
+                this.#round++;
+                this.#matchNumber = 1;
             } //If not, we just move to the next match
             else {
-                this.matchNumber++;
+                this.#matchNumber++;
             }
         }
     }
@@ -249,11 +260,11 @@ class TournamentHeap {
     #completeTournament() {
         //If is last round, we add the winner to the organized list
         let winner = this.#getElement(0);
-        this.organizedList.push(winner);
+        this.#organizedList.push(winner);
 
         //If all Elements are organized, we finish the tournament
-        if (this.organizedList.length == this.elementsAmt) {
-            this.completed = true;
+        if (this.#organizedList.length == this.#elementsAmt) {
+            this.#completed = true;
         } else this.#markElementsAsProcessed(0);
     }
 
