@@ -14,6 +14,8 @@ class TournamentHeap {
     #round = 1;
     #organizedList = [];
     #completed = false;
+    #mapMaxValues = new Map();
+    #mapTotalValues = new Map();
     /**
      * @param {string[]} elements - Array of the elements names (minimum 3)
      */
@@ -72,7 +74,7 @@ class TournamentHeap {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(false).name; 
+        return this.#getContestantElement(true).name; 
     }
     /**
      * 
@@ -84,23 +86,21 @@ class TournamentHeap {
             console.error("Tournament is already completed");
             return null;
         }
-        return this.#getContestantElement(true).name; 
+        return this.#getContestantElement(false).name; 
     }
     /**
-     * @param {number} round - Round number (starting on 1)
-     * @param {number} #matchNumber - Match of the round (starting on 1)
      * @param {boolean} isLeft - true for first contestant, false for second
      * @returns {number} Index of the contestant in the heap array
      */
     #getContestantIndex(isLeft) {
-        if (this.#matchNumber > this.#maxMatches()) {
-            console.error("Match number is higher than the maximum matches in that round");
+        if (this.#matchNumber > this.#totalMatches()) {
+            console.error("Match number is higher than the total matches in this round");
             return null;
         }
         let layer = this.#maxRounds + 1 - this.#round;
         let firstInLayer = Math.pow(2, layer) - 1;
         let shiftIndex = (this.#matchNumber - 1) * 2; // Shift to the right according to the match
-        return firstInLayer + shiftIndex + Number(isLeft);
+        return firstInLayer + shiftIndex + Number(!isLeft);
     }    
     /**
      * 
@@ -119,6 +119,7 @@ class TournamentHeap {
      * @returns {number} Amount of matches in the round with both contestants
      */
     #maxMatches = () => {
+        if (this.#mapMaxValues.has(this.#round)) return this.#mapMaxValues.get(this.#round);
         let layer = this.#maxRounds + 1 - this.#round;
         let firstInLayer = Math.pow(2, layer) - 1;
         let lastInLayer = Math.pow(2, layer + 1) - 2;
@@ -128,6 +129,7 @@ class TournamentHeap {
                 maxMatches--;
             } else break;
         }
+        this.#mapMaxValues.set(this.#round, maxMatches);
         return maxMatches;
     };
 
@@ -136,8 +138,11 @@ class TournamentHeap {
      * @returns {number} Amount of matches in the round even with null values
      */
     #totalMatches = () => {
+        if (this.#mapTotalValues.has(this.#round)) return this.#mapTotalValues.get(this.#round);
         let layer = this.#maxRounds + 1 - this.#round;
-        return Math.pow(2, layer) / 2;
+        let totalMatches = Math.pow(2, layer) / 2;
+        this.#mapTotalValues.set(this.#round, totalMatches);
+        return totalMatches;
     };
 
     //Get index of parent and children
@@ -213,12 +218,14 @@ class TournamentHeap {
             return;
         }
         //We promote to the parent node the loser of the match
-        this.#copyToParent(this.#getContestantIndex(!isLeft)); 
+        this.#copyToParent(this.#getContestantIndex(isLeft)); 
+        this.prettyPrintHeap();
         this.#goToNextMatch();
     }
 
-    #copyToParent(childIndex){
+    #copyToParent(childIndex) {
         let element = this.#getElement(childIndex);
+        if (element == null) return;
         this.#setElement(this.#getParentIndex(childIndex), element);
     }
 
@@ -226,17 +233,19 @@ class TournamentHeap {
      * Move to the next match, and if it's the end of the round, move to the next round
      */
     #goToNextMatch() {
-        this.prettyPrintHeap();
         console.log("Next match. Round: " + this.#round + ", Match: " + this.#matchNumber);
         //If this was the last round, complete the tournament
         if (this.#round == this.#maxRounds) {
             this.#completeTournament();
         } else {
             //If is the last match of the round, we move to the next round
-            if (this.#matchNumber >= this.#maxMatches()) {
-                //Declare promotions next odd value
-                if(this.#maxMatches < this.#totalMatches){
-                    this.#copyToParent(this.#getRightChildIndex + 1);
+            if (this.#matchNumber == this.#maxMatches()) {
+                if (this.#maxMatches() < this.#totalMatches()) {
+                    this.#matchNumber++;
+                    //debugger;
+                    //Declare promotions next odd value
+                    this.#copyToParent(this.#getContestantIndex(true));
+                    this.prettyPrintHeap();
                 }
                 this.#round++;
                 this.#matchNumber = 1;
