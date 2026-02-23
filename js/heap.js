@@ -8,273 +8,180 @@ class Element {
 }
 
 class TournamentHeap {
+    /** @type {Element[]} Array where the heap is stored */
+    #heap = [];
+    /** @type {number} Amount of elements */ 
     #elementsAmt = 0;
-    #maxRounds = 0;
-    #matchNumber = 1;
-    #round = 1;
+    /** @type {number} Number of the lowest level (starting from 0) */ 
+    #maxLevel = 0;
+    /** @type {Map<number, number[]>} Map where the key is the level and the value is the start and end index */
+    #levelIndexes = new Map();
+    /** @type {number} Current level */ 
+    #level = 1;
+    /** @type {number} Current match index */
+    #matchIndex = 0;
+    /** @type {string[]} Final organized list */
     #organizedList = [];
+    /** @type {boolean} True if the tournament is completed*/ 
     #completed = false;
-    #mapMaxValues = new Map();
-    #mapTotalValues = new Map();
-    /**
-     * @param {string[]} elements - Array of the elements names (minimum 3)
-     */
+
+
     constructor(elements = []) {
+        // Set initial values
+        // Get amount of elements
         this.#elementsAmt = elements.length;
-        this.#maxRounds = Math.ceil(Math.log2(this.#elementsAmt));
+        // Get max level 
+        this.#maxLevel = Math.ceil(Math.log2(this.#elementsAmt));
+
+        // Set rounds indexes
+        for (let level = 0; level <= this.#maxLevel; level++) {
+            let startIndex = Math.pow(2, level) - 1;
+            let endIndex = Math.pow(2, level + 1) - 2;
+            this.#levelIndexes.set(level, [startIndex, endIndex]);
+        }
+
+        // Set first match
+        this.#matchIndex = this.#levelIndexes.get(this.#maxLevel)[0];
+        this.#level = this.#maxLevel;
+        // Create heap
         this.#createHeap(elements);
-        this.prettyPrintHeap();
     }
-    
-    //For testing purposes, to see the heap in a more visual way
-    prettyPrintHeap(){
-        let layer = 1;
-        let firstInLayer = 0;
-        let lastInLayer = 0;
-        while (firstInLayer < this.heap.length) {
-            lastInLayer = Math.min(firstInLayer + Math.pow(2, layer - 1) - 1, this.heap.length - 1);
-            let row = "";
-            for (let i = firstInLayer; i <= lastInLayer; i++) {
-                if (this.heap[i]) {
-                    row += this.heap[i].name + " ";
-                } else {
-                    row += "-- ";
-                }
+
+    heapPrettyPrint() { 
+        let print = "";
+        //For each level
+        for (let level = 0; level <= this.#maxLevel; level++) {
+            //For each element in the level
+            for (let i = this.#levelIndexes.get(level)[0]; i <= this.#levelIndexes.get(level)[1]; i++) {
+                print += this.#getElement(i) ? this.#getElement(i).name : " -- ";
+                print += " ";
             }
-            console.log(row);
-            firstInLayer = lastInLayer + 1;
-            layer++;
+            print += "\n";
         }
-    }
-
-    //Get information of the heap
-    /**
-     * 
-     * @param {number} i - Index of the element
-     * @returns Element in the index given
-     */
-    #getElement(i) {
-        //Verify if index is null
-        if (i == null) {
-            return new Element("No element");
-        }
-        return this.heap[i];
-    }
-    #setElement(i, element) {this.heap[i] = element;}
-    get size() { return this.heap.length; }
-
-    // Matches
-    /**
-     * 
-     * @returns {string} Name of the first contestant (left)
-     */
-    leftContestant = () => { 
-        //Verify if is completed, if it is, we give error and return null
-        if (this.#completed) {
-            console.error("Tournament is already completed");
-            return null;
-        }
-        return this.#getContestantElement(true).name; 
-    }
-    /**
-     * 
-     * @returns {string} Name of the second contestant (right)
-     */
-    rightContestant = () => { 
-        //Verify if is completed, if it is, we give error and return null
-        if (this.#completed) {
-            console.error("Tournament is already completed");
-            return null;
-        }
-        return this.#getContestantElement(false).name; 
-    }
-    /**
-     * @param {boolean} isLeft - true for first contestant, false for second
-     * @returns {number} Index of the contestant in the heap array
-     */
-    #getContestantIndex(isLeft) {
-        if (this.#matchNumber > this.#totalMatches()) {
-            console.error("Match number is higher than the total matches in this round");
-            return null;
-        }
-        let layer = this.#maxRounds + 1 - this.#round;
-        let firstInLayer = Math.pow(2, layer) - 1;
-        let shiftIndex = (this.#matchNumber - 1) * 2; // Shift to the right according to the match
-        return firstInLayer + shiftIndex + Number(!isLeft);
-    }    
-    /**
-     * 
-     * @param {boolean} isLeft - Is the left contextant of this match
-     * @returns {Element} Element for the contestant
-     */
-    #getContestantElement(isLeft) { return this.#getElement(this.#getContestantIndex(isLeft)); }
-
-    /**
-     * @returns Parent Index for both contestants
-     */
-    #getContestantsParentIndex() {return this.#getParentIndex(this.#getContestantIndex(true));}
-
-    /**
-     * 
-     * @returns {number} Amount of matches in the round with both contestants
-     */
-    #maxMatches = () => {
-        if (this.#mapMaxValues.has(this.#round)) return this.#mapMaxValues.get(this.#round);
-        let layer = this.#maxRounds + 1 - this.#round;
-        let firstInLayer = Math.pow(2, layer) - 1;
-        let lastInLayer = Math.pow(2, layer + 1) - 2;
-        let maxMatches = Math.pow(2, layer) / 2;
-        for (let i = lastInLayer; i >= firstInLayer; i -= 2) {
-            if (this.#getElement(i - 1) == null || this.#getElement(i) == null) {
-                maxMatches--;
-            } else break;
-        }
-        this.#mapMaxValues.set(this.#round, maxMatches);
-        return maxMatches;
-    };
-
-    /**
-     * 
-     * @returns {number} Amount of matches in the round even with null values
-     */
-    #totalMatches = () => {
-        if (this.#mapTotalValues.has(this.#round)) return this.#mapTotalValues.get(this.#round);
-        let layer = this.#maxRounds + 1 - this.#round;
-        let totalMatches = Math.pow(2, layer) / 2;
-        this.#mapTotalValues.set(this.#round, totalMatches);
-        return totalMatches;
-    };
+        console.log(print);
+     }
 
     //Get index of parent and children
-    /**
-     * @param {number} i - Index of node to find it's parent
-     * @returns {number} Index of parent     */
     #getParentIndex(i) { return Math.floor((i - 1) / 2); }
-    /**
-     * @param {number} i - Index of node to find it's left childen
-     * @returns {number} Index of left childen     */
     #getLeftChildIndex(i) { 
         let index = 2 * i;
-        if (index >= this.heap.length) {
-            return null;
-        }
         return index;
     }
-    /**
-     * @param {number} i - Index of node to find it's right childen
-     * @returns {number} Index of right childen
-     */
     #getRightChildIndex(i) { 
         let index = 2 * i + 1;
-        if (index >= this.heap.length) {
-            return null;
-        }
         return index;
-    }
+    }    
 
-    /**
-     * @param {string[]} elements - Array of strings to add to the bottom of the heap as Elements
-     */
+    //INFORMATION OF THE HEAP
+    #getElement(i) {
+        // Verify if the element exists
+        if(this.#heap[i] == null) return null;
+        // Verify if the element is already processed
+        if (this.#heap[i].processed) return null;
+        return this.#heap[i];
+    }
+    #setElement(i, element) { this.#heap[i] = element; }
+    #heapArraySize() { return this.#heap.length; }
+
     #createHeap(elements) {        
-        this.heap = [];
+        this.#heap = [];
         let arrayOfElements = elements.map(el => new Element(el));
-        let amtNodes = Math.pow(2, this.#maxRounds + 1) - 1;
-        let amtNodesLastLayer = Math.pow(2, this.#maxRounds);
+        let amtNodes = Math.pow(2, this.#maxLevel + 1) - 1;
+        let amtNodesLastLayer = Math.pow(2, this.#maxLevel);
         let amtNullValues = amtNodes - amtNodesLastLayer;
 
         // Step 1: push null values
         for (let i = 0; i < amtNullValues; i++) {
-            this.heap.push(null);
+            this.#heap.push(null);
         }
 
         // Step 2: push the actual elements
-        arrayOfElements.forEach(el => { this.heap.push(el); });
+        arrayOfElements.forEach(el => { this.#heap.push(el); });
 
         // Step 3: fill the rest with null until heap has complete amount of nodes
-        while (this.heap.length < amtNodes) {
-            this.heap.push(null);
+        while (this.#heapArraySize() < amtNodes) {
+            this.#heap.push(null);
         }
     }
 
-    /**
-     * 
-     * @param {number} index - Index of the Element on the heap
-     * @returns {Element} The Element at the given index
-     */
-    #promote(index) {
-        let element = this.#getElement(index);
-        if (element == null || element.processed)
-            return null;
-        return element;
-    }
-    
-    /**
-     * @param {boolean} isLeft - true if the left contestant won, false if the right contestant won
-     */
+    // MATCHES INFORMATION
+    leftContestant = () => { return this.#getElement(this.#matchIndex).name; }
+    rightContestant = () => { return this.#getElement(this.#matchIndex + 1).name; }
+
     userWinnerIs(isLeft) {
-        //Verify it is not completed
-        if (this.#completed) {
-            console.error("Tournament is already completed");
-            return;
-        }
         //We promote to the parent node the loser of the match
-        this.#copyToParent(this.#getContestantIndex(isLeft)); 
-        this.prettyPrintHeap();
+        this.#copyToParent(this.#matchIndex + Number(!isLeft));
         this.#goToNextMatch();
+        this.heapPrettyPrint();
     }
 
     #copyToParent(childIndex) {
         let element = this.#getElement(childIndex);
-        if (element == null) return;
         this.#setElement(this.#getParentIndex(childIndex), element);
     }
 
-    /**
-     * Move to the next match, and if it's the end of the round, move to the next round
-     */
     #goToNextMatch() {
-        console.log("Next match. Round: " + this.#round + ", Match: " + this.#matchNumber);
-        //If this was the last round, complete the tournament
-        if (this.#round == this.#maxRounds) {
-            this.#completeTournament();
-        } else {
-            //If is the last match of the round, we move to the next round
-            if (this.#matchNumber == this.#maxMatches()) {
-                if (this.#maxMatches() < this.#totalMatches()) {
-                    this.#matchNumber++;
-                    //debugger;
-                    //Declare promotions next odd value
-                    this.#copyToParent(this.#getContestantIndex(true));
-                    this.prettyPrintHeap();
-                }
-                this.#round++;
-                this.#matchNumber = 1;
-            } //If not, we just move to the next match
-            else {
-                this.#matchNumber++;
+        let left;
+        let right;
+        do {
+            //If we are in the upper level, we go back to the first match of the tournament
+            if (this.#level == 0) {
+                this.#matchIndex = this.#levelIndexes.get(this.#maxLevel)[0];
+                this.#level = this.#maxLevel;
+                this.#extractRootNode();
+                break;
             }
-        }
+            //If this was the last round, add the root node to the organized list
+            if (this.#completed) console.log("Final organized list: ", this.#organizedList); // TODO: Put this in the UI
+
+            // Go to next match
+            this.#matchIndex += 2;
+
+            //If match index is out of bounds of the level, we move to the next level
+            if (this.#matchIndex > this.#levelIndexes.get(this.#level)[1]) {
+                this.#level--;
+                this.#matchIndex = this.#levelIndexes.get(this.#level)[0];
+            }
+
+            //If we only have one not null value, promote it
+            left = this.#getElement(this.#matchIndex);
+            right = this.#getElement(this.#matchIndex + 1);
+
+            if (left != null && right == null) {
+                this.#copyToParent(this.#matchIndex);
+            } else if (left == null && right != null) {
+                this.#copyToParent(this.#matchIndex + 1);
+            }
+        } //Repeat while both contestants are not null
+        while (left == null || right == null);
     }
 
-    #completeTournament() {
-        //If is last round, we add the winner to the organized list
+    #extractRootNode() {
+        //Add the winner to the organized list
         let winner = this.#getElement(0);
         this.#organizedList.push(winner);
+        
+        //Initiates the process of marking elements as processed. Using the root node and its value
+        this.#markAsProcessed(0, this.#getElement(0).name);
 
         //If all Elements are organized, we finish the tournament
-        if (this.#organizedList.length == this.#elementsAmt) {
+        if (this.#heapArraySize() == this.#elementsAmt) {
             this.#completed = true;
-        } else this.#markElementsAsProcessed(0);
+        } 
     }
 
-    #markElementsAsProcessed(index) {
+    /**
+     * Marks nodes in the tree as processed if their name matches the given value. 
+     */
+    #markAsProcessed(index, value) {
+        // Get the current node at the given index
         let element = this.#getElement(index);
-        //Mark element as processed
-        if (element) {
+
+        // If the node exists and its name matches the target value, mark it as processed and recurse into its children
+        if (element && element.name == value) {
             element.processed = true;
-            //Mark children as processed
-            this.#markElementsAsProcessed(this.#getLeftChildIndex(index));
-            this.#markElementsAsProcessed(this.#getRightChildIndex(index));
+            this.#markAsProcessed(this.#getLeftChildIndex(index), value);
+            this.#markAsProcessed(this.#getRightChildIndex(index), value);
         }
     }
 }
