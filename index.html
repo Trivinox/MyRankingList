@@ -2,6 +2,8 @@
 <html lang="en">
 
 <head>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text x= '16' y='28' font-size='30' text-anchor='middle'>🔧</text></svg>">
     <title>MyRankingList</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,12 +13,13 @@
     <div class="container">
         <button id="leftBtn">Left</button>
         <button id="rightBtn">Right</button>
+        <div class="hidden" id="results">
+            <div id="endResult"></div>
+        </div>
     </div>
 
-    <div id="endResult" hidden></div>
 
-    <script src="js/heap.js"></script>
-    <script src="js/script.js"></script>
+    <script type="module" src="js/script.js"></script>
 </body>
 
 </html>

@@ -1,4 +1,4 @@
-class TournamentHeap {
+export class TournamentHeap {
     /** @type {string[]} Array where the heap is stored */
     #heap = [];
     /** @type {number} Amount of elements */
@@ -107,7 +107,7 @@ class TournamentHeap {
     userWinnerIs(isLeft) {
         //We promote to the parent node the loser of the match
         this.#copyToParent(this.#matchIndex + Number(isLeft));
-        this.heapPrettyPrint();
+        //this.heapPrettyPrint();
         //Go to the next match
         this.#goToNextMatch();
     }
@@ -157,7 +157,7 @@ class TournamentHeap {
             } else if (left == null && right != null) {
                 this.#copyToParent(this.#matchIndex + 1);
             }
-            this.heapPrettyPrint();
+            //this.heapPrettyPrint();
         } //Repeat while both contestants are not null
         while (this.#isMatchDefined() || (left == null || right == null));
     }
@@ -175,11 +175,8 @@ class TournamentHeap {
         //Add the winner to the organized list
         let winner = this.#getElement(0);
         this.#organizedList.push(winner);
-        console.log("Organized list: ", this.#organizedList);
+        //console.log("Organized list: ", this.#organizedList);
 
-        if(this.#organizedListSize >=9){
-            debugger;
-        }
         //If all Elements are organized, we finish the tournament
         if (this.#organizedListSize() == this.#elementsAmt) {
             this.completed = true;

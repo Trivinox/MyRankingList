@@ -1,20 +1,24 @@
-/* Full screen setup */
+/* Full screen setup - Dark mode base */
 body {
     margin: 0;
     height: 100vh;
     display: flex;
-    justify-content: center;   /* horizontal center */
-    align-items: center;       /* vertical center */
-    background-color: #f5f5f5;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    align-items: center;
+    justify-content: center;   /* centra horizontalmente */
+    background-color: #212529; /* fondo oscuro */
+    font-family: Inter, system-ui, sans-serif;
+    color: #F8F9FA; /* texto claro */
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Container holding the buttons */
 .container {
     display: flex;
-    justify-content: center;   /* horizontal center */
-    align-items: center;       /* vertical center */
-    gap: 20px; /* space between buttons */
+    flex-direction: row;        /* siempre horizontal */
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
 }
 
 /* Button styling */
@@ -25,20 +29,16 @@ body {
     cursor: pointer;
     border: none;
     border-radius: 12px;
-    background: linear-gradient(135deg, #4a90e2, #357ab8);
+    background: #007BFF; /* acento azul */
     color: #fff;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
 
 .container button:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 18px rgba(0,0,0,0.25);
-}
-
-/* Hidden class to toggle visibility */
-.hidden {
-    display: none;
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+    background: #00D4AA; /* acento neón en hover */
 }
 
 /* End result styling */
@@ -47,36 +47,62 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 16px;
-    width: 80%;
-    max-height: 80vh; /* scrollable area */
-    overflow-y: auto;
+    width: 100%;              /* ocupa todo el ancho disponible */
+    max-height: 80vh;
+    overflow-y: auto;         /* solo scroll vertical */
+    overflow-x: hidden;       /* evita scroll horizontal */
     padding: 20px;
     box-sizing: border-box;
 }
+
+
+/* Hidden class to toggle visibility */
+.hidden {
+    display: none;
+}
+
 
 /* Ranking card styles */
 .rank-item {
     width: 100%;
     max-width: 500px;
-    background: #fff;
+    background: #2C2F33; /* card oscuro */
     border-radius: 12px;
     padding: 16px 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     text-align: center;
-    font-size: 1rem;
+    font-size: 16px;
     font-weight: 500;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: #F8F9FA;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .rank-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    transform: scale(1.03);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
 }
 
 /* Top result styling */
 .rank-item.top {
-    font-size: 1.4rem;
+    font-size: 24px;
     font-weight: 700;
-    background: linear-gradient(135deg, #ffd700, #ffb400);
-    color: #2c3e50;
+    background: linear-gradient(135deg, #FFD700, #FFB400);
+    color: #212529;
+}
+
+/* Responsive: Mobile-first */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: row; /* mantiene horizontal incluso en móvil */
+        flex-wrap: wrap;     /* si no caben, se bajan a la siguiente línea */
+    }
+    .container button {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+        padding: 40px 0;
+    }
+    .rank-item {
+        width: 100%;
+    }
 }

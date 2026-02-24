@@ -1,3 +1,5 @@
+import { TournamentHeap } from "./heap.js";
+
 let fruits = ["Apple", "Banana", "Orange", "Pear", "Watermelon", "Kiwi", "Mango", "Strawberry", "Grape", "Papaya"];
 
 //Rearrange the order of a list randomly
@@ -49,12 +51,15 @@ populateButtons();
 
 function showEndResult(){
     if(!heap.completed) return;
-    let container = document.querySelector(".container");
-    let endResult = document.getElementById("endResult");
+    //get the buttons in the container
+    let leftBtn = document.getElementById("leftBtn");
+    let rightBtn = document.getElementById("rightBtn");
+    let results = document.getElementById("results");
     
-    //Hide container and show end result
-    container.classList.add("hidden");
-    endResult.classList.remove("hidden");
+    //Hide buttons and show end result
+    leftBtn.classList.add("hidden");
+    rightBtn.classList.add("hidden");
+    results.classList.remove("hidden");
 
     // Clear previous content 
     endResult.innerHTML = "";
