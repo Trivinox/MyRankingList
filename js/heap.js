@@ -70,6 +70,7 @@ class TournamentHeap {
     #getElement(i) { return this.#heap[i]; }
     #setElement(i, name) { this.#heap[i] = name; }
     #heapArraySize() { return this.#heap.length; }
+    #organizedListSize() { return this.#organizedList.length; }
 
     /**
      * Creates a heap from the given array of strings.
@@ -162,7 +163,13 @@ class TournamentHeap {
                 this.heapPrettyPrint();
             }
         } //Repeat while both contestants are not null
-        while (left == null || right == null);
+        while (this.#isMatchDefined() || (left == null || right == null));
+    }
+
+    #isMatchDefined() {
+        let parentI = this.#getParentIndex(this.#matchIndex);
+        let element = this.#getElement(parentI);
+        return element != null;
     }
 
     /**
@@ -174,13 +181,17 @@ class TournamentHeap {
         this.#organizedList.push(winner);
         console.log("Organized list: ", this.#organizedList);
 
+        if(this.#organizedListSize >=9){
+            debugger;
+        }
+        //If all Elements are organized, we finish the tournament
+        if (this.#organizedListSize() == this.#elementsAmt) {
+            this.#completed = true;
+            return;
+        }
+
         //Initiates the process of deleting elements processed. Using the root node and its value
         this.#deleteProcessed(0, winner);
-
-        //If all Elements are organized, we finish the tournament
-        if (this.#heapArraySize() == this.#elementsAmt) {
-            this.#completed = true;
-        }
     }
 
     /**
