@@ -14,7 +14,7 @@ class TournamentHeap {
     /** @type {string[]} Final organized list */
     #organizedList = [];
     /** @type {boolean} True if the tournament is completed*/
-    #completed = false;
+    completed = false;
 
 
     constructor(elements = []) {
@@ -106,7 +106,7 @@ class TournamentHeap {
      */
     userWinnerIs(isLeft) {
         //We promote to the parent node the loser of the match
-        this.#copyToParent(this.#matchIndex + Number(!isLeft));
+        this.#copyToParent(this.#matchIndex + Number(isLeft));
         this.heapPrettyPrint();
         //Go to the next match
         this.#goToNextMatch();
@@ -142,10 +142,7 @@ class TournamentHeap {
                 }
 
                 //If this was the last element, add the root node to the organized list
-                if (this.#completed) {
-                    console.log("Final organized list: ", this.#organizedList); // TODO: Put this in the UI
-                    break;
-                }
+                if (this.completed) break;
 
                 //Set the match index according to the level
                 this.#matchIndex = this.#levelIndexes.get(this.#level)[0];
@@ -157,11 +154,10 @@ class TournamentHeap {
 
             if (left != null && right == null) {
                 this.#copyToParent(this.#matchIndex);
-                this.heapPrettyPrint();
             } else if (left == null && right != null) {
                 this.#copyToParent(this.#matchIndex + 1);
-                this.heapPrettyPrint();
             }
+            this.heapPrettyPrint();
         } //Repeat while both contestants are not null
         while (this.#isMatchDefined() || (left == null || right == null));
     }
@@ -186,7 +182,7 @@ class TournamentHeap {
         }
         //If all Elements are organized, we finish the tournament
         if (this.#organizedListSize() == this.#elementsAmt) {
-            this.#completed = true;
+            this.completed = true;
             return;
         }
 
@@ -202,11 +198,9 @@ class TournamentHeap {
     #deleteProcessed(index, value) {
         // Get the current node at the given index
         let element = this.#getElement(index);
-        console.log("Element: ", element, " at index: ", index);
         
         // If the node exists and its name matches the target value, mark it as null and recurse into its children
         if (element && element == value) {
-            console.log("Deleting: ", element, " at index: ", index);
             this.#setElement(index, null);
             if(!this.#deleteProcessed(this.#getLeftChildIndex(index), value)){
                 this.#deleteProcessed(this.#getRightChildIndex(index), value);
@@ -214,5 +208,12 @@ class TournamentHeap {
             return true;
         }
         return false;
+    }
+
+    getOrganizedList() {
+        if(!this.completed){
+            return("Organized list is not complete yet.");
+        }
+        return this.#organizedList;
     }
 }

@@ -26,10 +26,12 @@ const rightBtn = document.getElementById("rightBtn");
 leftBtn.addEventListener("click", () => {
     heap.userWinnerIs(true);
     populateButtons();
+    showEndResult();
 });
 rightBtn.addEventListener("click", () => {
     heap.userWinnerIs(false);
     populateButtons();
+    showEndResult();
 });
 
 //Update buttons when clicking
@@ -44,3 +46,28 @@ function populateButtons() {
 
 //Populate buttons once the page loads
 populateButtons();
+
+function showEndResult(){
+    if(!heap.completed) return;
+    let container = document.querySelector(".container");
+    let endResult = document.getElementById("endResult");
+    
+    //Hide container and show end result
+    container.classList.add("hidden");
+    endResult.classList.remove("hidden");
+
+    // Clear previous content 
+    endResult.innerHTML = "";
+
+    // Add items in vertical ranking style 
+    let list = heap.getOrganizedList().slice().reverse();
+    list.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.classList.add("rank-item");
+        if (index === 0) {
+            div.classList.add("top"); // top result styling 
+        }
+        div.textContent = `${index + 1}. ${item}`;
+        endResult.appendChild(div);
+    });
+}
