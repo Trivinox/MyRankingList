@@ -56,10 +56,6 @@ body {
 }
 
 
-/* Hidden class to toggle visibility */
-.hidden {
-    display: none;
-}
 
 
 /* Ranking card styles */
@@ -105,4 +101,84 @@ body {
     .rank-item {
         width: 100%;
     }
+}
+
+.input-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Input area */
+#input-area {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+#input-area input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    font-size: 16px;
+    outline: none;
+    transition: border 0.3s ease;
+}
+
+#input-area input:focus {
+    border-color: #007BFF;
+}
+
+/* Botón de enviar */
+#submitBtn {
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    background: #007BFF;
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+}
+
+#submitBtn:hover {
+    transform: scale(1.05);
+    background: #00D4AA;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+/* User list styling */
+#user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 80vh;
+    width: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.user-item {
+    max-width: 500px;
+    background: #ced4da; /* card claro */
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #212529;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.user-item:hover {
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+}
+/* Hidden class to toggle visibility */
+.hidden {
+    display: none;
 }

@@ -1,6 +1,62 @@
 import { TournamentHeap } from "./heap.js";
 
-let fruits = ["Apple", "Banana", "Orange", "Pear", "Watermelon", "Kiwi", "Mango", "Strawberry", "Grape", "Papaya"];
+const inputArea = document.getElementById("input-area");
+const input = document.getElementById("valueInput");
+const submitBtn = document.getElementById("submitBtn");
+const userList = document.getElementById("user-list");
+const mainContainer = document.getElementById("mainContainer");
+const inputPage = document.getElementsByClassName("input-page")[0];
+//Reference for the buttons
+const leftBtn = document.getElementById("leftBtn");
+const rightBtn = document.getElementById("rightBtn");
+//For the final list
+const results = document.getElementById("results");
+const endResult = document.getElementById("endResult");
+
+let values = [];
+let heap = null;
+
+function addUserItem() {
+    const val = input.value.trim();
+    if (val && values.length < 50) {
+        values.push(val);
+
+        const item = document.createElement("div");
+        item.classList.add("user-item");
+        item.textContent = val;
+        userList.appendChild(item);
+
+        input.value = "";
+    }
+};
+
+inputArea.addEventListener("submit", (e) => {
+    e.preventDefault();
+    addUserItem();
+})
+
+submitBtn.addEventListener("click", () => {
+    if(values.length < 2){
+        alert("Debes ingresar al menos 2 valores.");
+        return;
+    }
+    console.log("Valores enviados:", values);
+    alert("Valores registrados:\n" + values.join(", "));
+
+    // Show container, hide input list
+    mainContainer.classList.remove("hidden");
+    inputPage.classList.add("hidden");
+    
+    
+    //Rearrange the fruits array
+    values = rearrange(values);
+    //Create heap from fruits array
+    heap = new TournamentHeap(values);
+    //Populate buttons 
+    populateButtons();
+});
+
+//let fruits = ["Apple", "Banana", "Orange", "Pear", "Watermelon", "Kiwi", "Mango", "Strawberry", "Grape", "Papaya"];
 
 //Rearrange the order of a list randomly
 function rearrange(array) {
@@ -13,16 +69,6 @@ function rearrange(array) {
     }
     return newArr;
 }
-
-//Rearrange the fruits array
-fruits = rearrange(fruits);
-
-//Create heap from fruits array
-let heap = new TournamentHeap(fruits);
-
-//Reference for the buttons
-const leftBtn = document.getElementById("leftBtn");
-const rightBtn = document.getElementById("rightBtn");
 
 //Get the button presess and update the heap accordingly
 leftBtn.addEventListener("click", () => {
@@ -46,15 +92,9 @@ function populateButtons() {
     rightBtn.textContent = heap.rightContestant() || "";
 }
 
-//Populate buttons once the page loads
-populateButtons();
 
 function showEndResult(){
     if(!heap.completed) return;
-    //get the buttons in the container
-    let leftBtn = document.getElementById("leftBtn");
-    let rightBtn = document.getElementById("rightBtn");
-    let results = document.getElementById("results");
     
     //Hide buttons and show end result
     leftBtn.classList.add("hidden");

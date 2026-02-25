@@ -9,8 +9,24 @@
 </head>
 
 <body>
+    <div class="input-page">
+        <form id="input-area">
+            <input type="text" id="valueInput" placeholder="Value" />
+            <button id="addBtn" title="Add" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        </form>
+    
+        <button id="submitBtn">Submit</button>
 
-    <div class="container">
+        <div id="user-list"></div>
+    </div>
+
+    <div class="container hidden" id="mainContainer">
         <button id="leftBtn">Left</button>
         <button id="rightBtn">Right</button>
         <div class="hidden" id="results">
