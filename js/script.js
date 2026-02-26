@@ -5,7 +5,7 @@ const input = document.getElementById("valueInput");
 const submitBtn = document.getElementById("submitBtn");
 const userList = document.getElementById("user-list");
 const mainContainer = document.getElementById("mainContainer");
-const inputPage = document.getElementsByClassName("input-page")[0];
+const inputPage = document.getElementById("input-page");
 //Reference for the buttons
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
@@ -23,11 +23,27 @@ function addUserItem() {
 
         const item = document.getElementById("user-item-template").content.cloneNode(true);
         item.querySelector(".target-span").textContent = val;
-        userList.appendChild(item);
+        console.log(item);
+        
+        // Assign the button to delete the item
+        let deleteBtn = item.querySelector(".delete-btn");
+        deleteBtn.addEventListener("click", deleteUserItem);
+        
+        userList.appendChild(item); 
 
         input.value = "";
+        console.log(values);
     }
-};
+}; 
+
+function deleteUserItem(event){
+    if(event.target.classList.contains("delete-btn")){
+        const item = event.target.parentElement;
+        userList.removeChild(item);
+        values.splice(values.indexOf(item.querySelector(".target-span").textContent), 1);
+        console.log(values);
+    }
+}
 
 inputArea.addEventListener("submit", (e) => {
     e.preventDefault();

@@ -103,7 +103,7 @@ body {
     }
 }
 
-.input-page {
+#input-page {
     display: flex;
     flex-direction: column;
     gap: 20px;
