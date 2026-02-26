@@ -23,7 +23,14 @@
     
         <button id="submitBtn">Submit</button>
 
-        <div id="user-list"></div>
+        <div id="user-list">
+            <template id="user-item-template">
+                <div class="user-item">
+                    <span class="target-span">Texto del usuario</span>
+                    <button class="delete-btn">X</button>
+                </div>
+            </template>
+        </div>
     </div>
 
     <div class="container hidden" id="mainContainer">

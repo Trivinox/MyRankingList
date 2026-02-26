@@ -21,9 +21,8 @@ function addUserItem() {
     if (val && values.length < 50) {
         values.push(val);
 
-        const item = document.createElement("div");
-        item.classList.add("user-item");
-        item.textContent = val;
+        const item = document.getElementById("user-item-template").content.cloneNode(true);
+        item.querySelector(".target-span").textContent = val;
         userList.appendChild(item);
 
         input.value = "";
@@ -40,14 +39,10 @@ submitBtn.addEventListener("click", () => {
         alert("Debes ingresar al menos 2 valores.");
         return;
     }
-    console.log("Valores enviados:", values);
-    alert("Valores registrados:\n" + values.join(", "));
-
     // Show container, hide input list
     mainContainer.classList.remove("hidden");
     inputPage.classList.add("hidden");
-    
-    
+
     //Rearrange the fruits array
     values = rearrange(values);
     //Create heap from fruits array
