@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text x= '16' y='28' font-size='30' text-anchor='middle'>🔧</text></svg>">
+    <title>MyRankingList</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="input-page">
+        <form id="input-area">
+            <input type="text" id="valueInput" placeholder="Value" />
+            <button id="addBtn" title="Add" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        </form>
+    
+        <button id="submitBtn">Submit</button>
+
+        <div id="user-list">
+            <template id="user-item-template">
+                <div class="user-item">
+                    <span class="target-span">Texto del usuario</span>
+                    <button class="delete-btn">X</button>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="container hidden" id="mainContainer">
+        <button id="leftBtn">Left</button>
+        <button id="rightBtn">Right</button>
+        <div class="hidden" id="results">
+            <div id="endResult"></div>
+        </div>
+    </div>
+
+
+    <script type="module" src="js/script.js"></script>
+</body>
+
+</html>

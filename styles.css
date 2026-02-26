@@ -1,0 +1,208 @@
+/* Full screen setup - Dark mode base */
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;   /* centra horizontalmente */
+    background-color: #212529; /* fondo oscuro */
+    font-family: Inter, system-ui, sans-serif;
+    color: #F8F9FA; /* texto claro */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Container holding the buttons */
+.container {
+    display: flex;
+    flex-direction: row;        /* siempre horizontal */
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* Button styling */
+.container button {
+    width: 220px;
+    height: 320px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border: none;
+    border-radius: 12px;
+    background: #007BFF; /* acento azul */
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.container button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+    background: #00D4AA; /* acento neón en hover */
+}
+
+/* End result styling */
+#endResult {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;              /* ocupa todo el ancho disponible */
+    max-height: 80vh;
+    overflow-y: auto;         /* solo scroll vertical */
+    overflow-x: hidden;       /* evita scroll horizontal */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+
+
+
+/* Ranking card styles */
+.rank-item {
+    width: 100%;
+    max-width: 500px;
+    background: #2C2F33; /* card oscuro */
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #F8F9FA;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.rank-item:hover {
+    transform: scale(1.03);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+}
+
+/* Top result styling */
+.rank-item.top {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #FFD700, #FFB400);
+    color: #212529;
+}
+
+/* Responsive: Mobile-first */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: row; /* mantiene horizontal incluso en móvil */
+        flex-wrap: wrap;     /* si no caben, se bajan a la siguiente línea */
+    }
+    .container button {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+        padding: 40px 0;
+    }
+    .rank-item {
+        width: 100%;
+    }
+}
+
+#input-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Input area */
+#input-area {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+#input-area input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    font-size: 16px;
+    outline: none;
+    transition: border 0.3s ease;
+}
+
+#input-area input:focus {
+    border-color: #007BFF;
+}
+
+/* Botón de enviar */
+#submitBtn {
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    background: #007BFF;
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+}
+
+#submitBtn:hover {
+    transform: scale(1.05);
+    background: #00D4AA;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+/* User list styling */
+#user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 80vh;
+    width: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.user-item {
+    position: relative;
+    max-width: 500px;
+    background: #ced4da; /* card claro */
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    /*display: flex;     
+    justify-content: space-between; 
+    align-items: center;*/
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #212529;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.user-item:hover {
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+}
+
+/* Botón de eliminar */
+.user-item .delete-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #212529;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.user-item .delete-btn:hover {
+    color: #dc3545; /* rojo al pasar el mouse */
+}
+
+/* Hidden class to toggle visibility */
+.hidden {
+    display: none;
+}
