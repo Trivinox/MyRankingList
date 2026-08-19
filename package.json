@@ -12,6 +12,8 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
