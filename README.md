@@ -1,68 +1,68 @@
 # MyRankingList
 
-Aplicación web para ordenar una lista de elementos por preferencia, arrastrando cada elemento a la posición que se quiera. Se puede usar en solitario o en una sala compartida de hasta 20 personas, donde cada quien ordena la misma lista por su cuenta y al final se comparan los resultados (ranking de consenso, afinidad entre participantes y elementos de mayor discrepancia).
+Web app for sorting a list of items by preference, dragging each item to the position you want. It can be used alone or in a shared room of up to 20 people, where everyone sorts the same list on their own and the results are compared at the end (consensus ranking, affinity between participants and items with the highest discrepancy).
 
-No requiere cuentas de usuario. Las salas funcionan P2P sobre WebRTC en topología de estrella: el creador actúa como host y sostiene el estado de la sala, por lo que no hay backend de aplicación, solo un servidor de señalización.
+No user accounts required. Rooms run P2P over WebRTC in a star topology: the creator acts as the host and holds the room state, so there is no application backend, only a signaling server.
 
-## Estado
+## Status
 
-Fase 0 (andamiaje). El monorepo, la configuración de TypeScript, el linting y el CI están listos; todavía no hay lógica de producto implementada.
+Phase 0 (scaffolding). The monorepo, TypeScript configuration, linting and CI are in place; no product logic has been implemented yet.
 
 ## Stack
 
-- TypeScript en ambos paquetes
+- TypeScript in both packages
 - Frontend: React + Vite, dnd-kit, Zustand, Framer Motion, Howler.js, react-i18next
-- P2P y señalización: PeerJS (`peerjs` en el cliente, `peer` en el servidor)
-- Pruebas: Vitest, React Testing Library, Playwright
+- P2P and signaling: PeerJS (`peerjs` on the client, `peer` on the server)
+- Testing: Vitest, React Testing Library, Playwright
 
-## Requisitos
+## Requirements
 
-Node 22 (la versión exacta se fija en `.nvmrc` y en el campo `engines` de `package.json`).
+Node 22 (the exact version is pinned in `.nvmrc` and in the `engines` field of `package.json`).
 
-## Estructura
+## Structure
 
 ```
 packages/
-  web/                Frontend React + Vite
-  signaling-server/   Servidor de señalización Node + TypeScript
+  web/                React + Vite frontend
+  signaling-server/   Node + TypeScript signaling server
 ```
 
-El repositorio es un monorepo con npm workspaces. La configuración de TypeScript, ESLint y Prettier es compartida y vive en la raíz.
+The repository is a monorepo with npm workspaces. The TypeScript, ESLint and Prettier configuration is shared and lives at the root.
 
-## Instalación
+## Installation
 
 ```
 npm install
 ```
 
-Un solo `npm install` en la raíz instala las dependencias de ambos paquetes.
+A single `npm install` at the root installs the dependencies of both packages.
 
 ## Scripts
 
-Desde la raíz, aplicando a todos los paquetes:
+From the root, applying to every package:
 
 - `npm run build`
 - `npm run lint`
 - `npm run type-check`
 
-Dentro de `packages/web`:
+Inside `packages/web`:
 
-- `npm run dev` levanta el servidor de desarrollo de Vite
-- `npm run preview` sirve el build de producción
+- `npm run dev` starts the Vite development server
+- `npm run preview` serves the production build
 
-Dentro de `packages/signaling-server`:
+Inside `packages/signaling-server`:
 
-- `npm run dev` ejecuta el servidor con recarga vía tsx
-- `npm start` ejecuta el build compilado
+- `npm run dev` runs the server with reload via tsx
+- `npm start` runs the compiled build
 
 ## CI
 
-GitHub Actions corre lint y type-check en cada pull request. A medida que se agreguen pruebas, se sumarán al mismo workflow.
+GitHub Actions runs lint and type-check on every pull request. As tests are added, they will join the same workflow.
 
-## Despliegue
+## Deployment
 
-Previsto para una fase posterior: `packages/web` en Vercel como build estático, y `packages/signaling-server` en Render como servicio Node persistente (necesario para mantener las conexiones WebSocket abiertas).
+Planned for a later phase: `packages/web` on Vercel as a static build, and `packages/signaling-server` on Render as a persistent Node service (required to keep the WebSocket connections open).
 
-## Licencia
+## License
 
-Todos los derechos reservados. El repositorio no incluye un archivo `LICENSE`.
+All rights reserved. The repository does not include a `LICENSE` file.
