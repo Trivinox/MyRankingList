@@ -205,3 +205,38 @@ describe('tieFromPool', () => {
     expect(state.pendingPool).toEqual(['c']);
   });
 });
+
+// A drag lifts the item on pick-up and only places it on drop, so the list the
+// user is aiming at is the one without the dragged item in it. Positions are
+// counted in that shortened list, and these cases are here to keep the two ends
+// of that contract from drifting apart.
+describe('a drag, step by step', () => {
+  it('counts the drop position without the item being dragged', () => {
+    const lifted = liftItem(list('a', 'b', 'c'), 'a');
+    expect(layout(lifted)).toEqual(['b', 'c']);
+
+    // Last place is 2 here, not 3: 'a' no longer occupies a position.
+    expect(layout(insertAt(lifted, 'a', 2))).toEqual(['b', 'c', 'a']);
+    expect(() => insertAt(lifted, 'a', 3)).toThrow(RangeError);
+    expect(() => moveItem(list('a', 'b', 'c'), 'a', 3)).toThrow(RangeError);
+  });
+
+  it('puts the item back untouched when the drop lands where it started', () => {
+    const slots = list('a', 'b', 'c');
+    expect(layout(insertAt(liftItem(slots, 'b'), 'b', 1))).toEqual(layout(slots));
+  });
+
+  it('leaves the original list intact so a cancelled drag has something to fall back on', () => {
+    const slots = list('a', 'b+c');
+    liftItem(slots, 'c');
+    expect(layout(slots)).toEqual(['a', 'b+c']);
+  });
+
+  it('runs the pick-up and drop of a tied item as two separate steps', () => {
+    const lifted = liftItem(list('a+b', 'c', 'd'), 'b');
+    expect(layout(lifted)).toEqual(['a', 'c', 'd']);
+
+    expect(layout(tieAt(lifted, 'b', 2))).toEqual(['a', 'c', 'd+b']);
+    expect(layout(insertAt(lifted, 'b', 1))).toEqual(['a', 'b', 'c', 'd']);
+  });
+});
