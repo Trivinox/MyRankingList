@@ -12,8 +12,13 @@ export function createShuffledOrder(items: Item[], random: () => number = Math.r
 }
 
 // The first item of the shuffle starts out placed, so the list is never empty
-// and the pool always has somewhere to drop.
+// and the pool always has somewhere to drop. That opener has to come from
+// somewhere, hence the guard: the item count itself is the form's business.
 export function startPlacement(items: Item[], random: () => number = Math.random): PlacementState {
+  if (items.length === 0) {
+    throw new Error('A placement needs at least one item to open the list with');
+  }
+
   const shuffledOrder = createShuffledOrder(items, random);
   const [opener, ...rest] = shuffledOrder;
 
@@ -37,6 +42,10 @@ export function insertAt(slots: RankedSlot[], itemId: string, index: number): Ra
 // Only the head of the pool is placeable: the shuffle fixes the order items
 // come out in, and the next one is not visible until this one lands.
 export function placeFromPool(state: PlacementState, index: number): PlacementState {
+  if (state.pendingPool.length === 0) {
+    throw new Error('The pool is empty, every item is already placed');
+  }
+
   const [current, ...rest] = state.pendingPool;
 
   return {

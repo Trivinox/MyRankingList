@@ -31,8 +31,10 @@ describe('createShuffledOrder', () => {
     }
 
     // A uniform shuffle puts 'a' in each slot a quarter of the time. The margin
-    // is wide enough that a fair shuffle will not trip it, and a biased one
-    // (last-position bias is the classic off-by-one) will.
+    // is wide enough not to flake, while still catching the two ways this loop
+    // usually goes wrong: drawing j from the whole array (which piles the item
+    // up at the front) or stopping the loop one step early (which leaves the
+    // first position empty).
     for (const count of landings) {
       expect(count / runs).toBeGreaterThan(0.15);
       expect(count / runs).toBeLessThan(0.35);
@@ -74,6 +76,10 @@ describe('startPlacement', () => {
     expect(ids(state.rankedSlots)).toEqual(['b']);
     expect(state.pendingPool).toEqual(['c', 'a']);
   });
+
+  it('refuses an empty item list instead of opening with an undefined slot', () => {
+    expect(() => startPlacement([])).toThrow();
+  });
 });
 
 describe('placing a three item list', () => {
@@ -87,5 +93,7 @@ describe('placing a three item list', () => {
     state = placeFromPool(state, 1);
     expect(ids(state.rankedSlots)).toEqual(['c', 'a', 'b']);
     expect(state.pendingPool).toEqual([]);
+
+    expect(() => placeFromPool(state, 0)).toThrow();
   });
 });

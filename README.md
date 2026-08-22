@@ -6,7 +6,7 @@ No user accounts required. Rooms run P2P over WebRTC in a star topology: the cre
 
 ## Status
 
-Phase 0 (scaffolding). The monorepo, TypeScript configuration, linting and CI are in place; no product logic has been implemented yet.
+Phase 1 (core logic). The monorepo, TypeScript configuration, linting and CI are in place. The sorting rules are being written as pure functions under `packages/web/src/core`, covered by unit tests; there is no interface on top of them yet.
 
 ## Stack
 
@@ -43,7 +43,9 @@ From the root, applying to every package:
 
 - `npm run build`
 - `npm run lint`
+- `npm run format` (`format:check` to only report)
 - `npm run type-check`
+- `npm test`
 
 Inside `packages/web`:
 
@@ -57,7 +59,7 @@ Inside `packages/signaling-server`:
 
 ## CI
 
-GitHub Actions runs lint and type-check on every pull request. As tests are added, they will join the same workflow.
+GitHub Actions runs the format check, lint, type-check, the test suite and the build on every pull request. End-to-end tests will join the same workflow once there is an interface to drive.
 
 ## Deployment
 
