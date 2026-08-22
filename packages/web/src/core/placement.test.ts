@@ -78,6 +78,10 @@ describe('insertAt', () => {
     expect(slots).toHaveLength(2);
   });
 
+  it('rejects an item that is already down somewhere else', () => {
+    expect(() => insertAt(slots, 'a', 0)).toThrow();
+  });
+
   it('rejects a position past the end of the list', () => {
     expect(() => insertAt(slots, 'x', 3)).toThrow(RangeError);
     expect(() => insertAt(slots, 'x', -1)).toThrow(RangeError);
@@ -125,6 +129,11 @@ describe('tieAt', () => {
 
   it('refuses a position that does not exist', () => {
     expect(() => tieAt(list('a'), 'x', 1)).toThrow(RangeError);
+  });
+
+  it('refuses an item that is already down, including its own position', () => {
+    expect(() => tieAt(list('a', 'b'), 'b', 0)).toThrow();
+    expect(() => tieAt(list('a', 'b'), 'a', 0)).toThrow();
   });
 });
 

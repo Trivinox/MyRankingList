@@ -29,10 +29,24 @@ export function startPlacement(items: Item[], random: () => number = Math.random
   };
 }
 
+function indexOfItem(slots: RankedSlot[], itemId: string): number {
+  return slots.findIndex((slot) => slot.itemIds.includes(itemId));
+}
+
+// An item that is already down cannot be placed again: it has to be lifted
+// first, the way moveItem does it. Without this an id arriving twice would
+// quietly end up in the list twice.
+function refusePlaced(slots: RankedSlot[], itemId: string): void {
+  if (indexOfItem(slots, itemId) !== -1) {
+    throw new Error(`Item ${itemId} is already placed, lift it before placing it again`);
+  }
+}
+
 export function insertAt(slots: RankedSlot[], itemId: string, index: number): RankedSlot[] {
   if (index < 0 || index > slots.length) {
     throw new RangeError(`Position ${index} is outside a list of ${slots.length} slots`);
   }
+  refusePlaced(slots, itemId);
 
   const next = slots.slice();
   next.splice(index, 0, { itemIds: [itemId] });
@@ -49,6 +63,7 @@ export function tieAt(slots: RankedSlot[], itemId: string, index: number): Ranke
   if (target.itemIds.length === 2) {
     throw new Error(`Position ${index} is already tied and cannot take a third item`);
   }
+  refusePlaced(slots, itemId);
 
   const next = slots.slice();
   next[index] = { itemIds: [target.itemIds[0], itemId] };
@@ -60,7 +75,7 @@ export function tieAt(slots: RankedSlot[], itemId: string, index: number): Ranke
 // and everything below moves up. Positions passed to the follow-up placement
 // are indexes into this shortened list.
 export function liftItem(slots: RankedSlot[], itemId: string): RankedSlot[] {
-  const index = slots.findIndex((slot) => slot.itemIds.includes(itemId));
+  const index = indexOfItem(slots, itemId);
   if (index === -1) {
     throw new Error(`Item ${itemId} is not placed in the list`);
   }
