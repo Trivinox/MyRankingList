@@ -16,7 +16,7 @@ describe('normalizeItemText', () => {
   it('collapses runs of whitespace inside the text', () => {
     expect(normalizeItemText('Ice  Cream')).toBe('ice cream');
     expect(normalizeItemText('ice     cream')).toBe('ice cream');
-    expect(normalizeItemText('ice	cream')).toBe('ice cream');
+    expect(normalizeItemText('ice\tcream')).toBe('ice cream');
   });
 
   it('does not close a gap that was never there', () => {

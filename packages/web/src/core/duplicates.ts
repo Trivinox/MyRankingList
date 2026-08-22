@@ -3,23 +3,18 @@ export interface DuplicateGroup {
   indexes: number[];
 }
 
-// Two items count as the same when only casing or spacing tells them apart, so
-// "Ice Cream" and " ice  cream " collide. Any whitespace run collapses, not
-// just plain spaces: text pasted from elsewhere arrives with tabs and newlines
-// in it. NFC keeps an accent typed as a combining mark from passing for a
-// different item than the same accent typed precomposed.
+// Only casing and spacing separate two texts that name the same item, so
+// "Apple" and " apple " collide. The whitespace class covers the tabs a paste
+// drags in, and NFC keeps an accent typed as a combining mark from reading as
+// something other than the precomposed one.
 export function normalizeItemText(text: string): string {
   return text.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-// Takes the texts rather than items, and answers with positions, because the
-// form asks this question while the rows are still being typed and have no
-// item to belong to yet.
-//
-// Groups come back in order of first appearance, and each keeps the text as the
-// first of its rows spelled it, since that is what the warning has to show.
-// Rows whose text normalizes to nothing are left out: an empty field is the
-// form's problem, not a repeat.
+// Positions rather than ids, since the form asks this while its rows are still
+// being typed and are not items yet. A group carries the spelling of its first
+// row because that is what the warning puts on screen. Blank rows stay out: an
+// empty field is the form's own complaint to make.
 export function findDuplicates(texts: string[]): DuplicateGroup[] {
   const groups = new Map<string, DuplicateGroup>();
 
