@@ -6,7 +6,7 @@ No user accounts required. Rooms run P2P over WebRTC in a star topology: the cre
 
 ## Status
 
-Phase 1 (core logic). The monorepo, TypeScript configuration, linting and CI are in place. The sorting rules are being written as pure functions under `packages/web/src/core`, covered by unit tests; there is no interface on top of them yet.
+Phase 1 (core logic) is finished. The monorepo, TypeScript configuration, linting and CI are in place, and the sorting rules live as pure functions under `packages/web/src/core`, covered by unit tests. There is no interface on top of them yet; that is what Phase 2 starts.
 
 ## Stack
 
