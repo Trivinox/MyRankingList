@@ -91,18 +91,18 @@ describe('spearman', () => {
 describe('consensusRanking', () => {
   it('hands back a single participant their own order', () => {
     expect(consensusRanking([order('b', 'a', 'c')])).toEqual([
-      { itemId: 'b', averagePosition: 1, rank: 1 },
-      { itemId: 'a', averagePosition: 2, rank: 2 },
-      { itemId: 'c', averagePosition: 3, rank: 3 },
+      { itemId: 'b', averagePosition: 1, rank: 1, tied: false },
+      { itemId: 'a', averagePosition: 2, rank: 2, tied: false },
+      { itemId: 'c', averagePosition: 3, rank: 3, tied: false },
     ]);
   });
 
   it('averages the positions across participants', () => {
     const consensus = consensusRanking([order('a', 'b', 'c'), order('a', 'c', 'b')]);
     expect(consensus).toEqual([
-      { itemId: 'a', averagePosition: 1, rank: 1 },
-      { itemId: 'b', averagePosition: 2.5, rank: 2 },
-      { itemId: 'c', averagePosition: 2.5, rank: 2 },
+      { itemId: 'a', averagePosition: 1, rank: 1, tied: false },
+      { itemId: 'b', averagePosition: 2.5, rank: 2, tied: true },
+      { itemId: 'c', averagePosition: 2.5, rank: 2, tied: true },
     ]);
   });
 
@@ -124,6 +124,29 @@ describe('consensusRanking', () => {
     ]);
     expect(consensus.map((entry) => entry.averagePosition)).toEqual([2, 2, 2]);
     expect(consensus.map((entry) => entry.rank)).toEqual([1, 1, 1]);
+  });
+
+  it('groups an average that came out level from different numbers', () => {
+    // Item a averages 1, 1.5 and 3, item b averages 2, 1.5 and 2: the same 5.5
+    // reached from different positions, over a third that binary cannot hold
+    // exactly. Both have to land on the same rank, and c has to skip the 2.
+    const consensus = consensusRanking([
+      order('a', 'b', 'c'),
+      [tie('a', 'b'), solo('c')],
+      order('c', 'b', 'a'),
+    ]);
+    expect(consensus.map((entry) => entry.averagePosition)).toEqual([5.5 / 3, 5.5 / 3, 7 / 3]);
+    expect(consensus.map((entry) => entry.rank)).toEqual([1, 1, 3]);
+    expect(consensus.map((entry) => entry.tied)).toEqual([true, true, false]);
+  });
+
+  it('marks every item of a group larger than a pair', () => {
+    const consensus = consensusRanking([
+      order('a', 'b', 'c'),
+      order('b', 'c', 'a'),
+      order('c', 'a', 'b'),
+    ]);
+    expect(consensus.every((entry) => entry.tied)).toBe(true);
   });
 
   it('settles a level average on the first participant order', () => {

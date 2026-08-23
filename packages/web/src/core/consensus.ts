@@ -4,6 +4,7 @@ export interface ConsensusEntry {
   itemId: string;
   averagePosition: number;
   rank: number;
+  tied: boolean;
 }
 
 export interface DiscrepancyEntry {
@@ -76,12 +77,21 @@ export function consensusRanking(lists: RankedSlot[][]): ConsensusEntry[] {
   // exactly holds up because every position is a whole number or a half, so
   // equal sums stay equal to the bit.
   let rank = 1;
-  return averaged.map((entry, index) => {
+  const ranked = averaged.map((entry, index) => {
     if (index > 0 && entry.averagePosition !== averaged[index - 1].averagePosition) {
       rank = index + 1;
     }
     return { ...entry, rank };
   });
+
+  // Unlike a participant's own list, where the slot holds both ids, nothing in
+  // a consensus entry says on its own that it came out level: three people
+  // ranking three items in rotation average them all to the same place. The
+  // neighbours are enough to tell, since equal ranks end up next to each other.
+  return ranked.map((entry, index) => ({
+    ...entry,
+    tied: ranked[index - 1]?.rank === entry.rank || ranked[index + 1]?.rank === entry.rank,
+  }));
 }
 
 // Pearson over the averaged positions, which is what Spearman reduces to. The
