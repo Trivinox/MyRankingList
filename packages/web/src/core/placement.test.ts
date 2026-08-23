@@ -38,6 +38,11 @@ describe('createShuffledOrder', () => {
     expect(createShuffledOrder(items('a', 'b', 'c'), scripted([0, 0]))).toEqual(['b', 'c', 'a']);
   });
 
+  it('survives a random source that reaches 1', () => {
+    const order = createShuffledOrder(items('a', 'b', 'c'), scripted([1, 1]));
+    expect([...order].sort()).toEqual(['a', 'b', 'c']);
+  });
+
   it('does not favour any position over many runs', () => {
     const runs = 3000;
     const landings = [0, 0, 0, 0];

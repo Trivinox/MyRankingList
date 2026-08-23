@@ -5,7 +5,8 @@ import type { Item, PlacementState, RankedSlot } from './types.ts';
 export function createShuffledOrder(items: Item[], random: () => number = Math.random): string[] {
   const ids = items.map((item) => item.id);
   for (let i = ids.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
+    // A source that returns 1 would draw i + 1 and swap an id out for a hole.
+    const j = Math.min(i, Math.floor(random() * (i + 1)));
     [ids[i], ids[j]] = [ids[j], ids[i]];
   }
   return ids;
