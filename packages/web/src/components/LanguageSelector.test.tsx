@@ -51,4 +51,16 @@ describe('LanguageSelector', () => {
     expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Inglés' })).toBeInTheDocument();
   });
+
+  it('keeps the document language in step with the choice', async () => {
+    renderSelector();
+
+    expect(document.documentElement.lang).toBe('en');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Spanish' }));
+    expect(document.documentElement.lang).toBe('es');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Inglés' }));
+    expect(document.documentElement.lang).toBe('en');
+  });
 });

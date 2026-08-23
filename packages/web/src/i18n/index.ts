@@ -5,8 +5,6 @@ import { es } from './locales/es.ts';
 
 export const supportedLanguages = ['en', 'es'] as const;
 
-export type Language = (typeof supportedLanguages)[number];
-
 const resources = {
   en: { translation: en },
   es: { translation: es },
@@ -17,6 +15,13 @@ const resources = {
 // No language detection here, the app always opens in English.
 export function createI18n() {
   const instance = i18next.createInstance();
+
+  // Attached before init so the initial language lands on the document too.
+  // Chrome's translation prompt and any :lang() rule read this attribute, and
+  // index.html can only ever declare the starting value.
+  instance.on('languageChanged', (language) => {
+    document.documentElement.lang = language;
+  });
 
   instance.use(initReactI18next).init({
     resources,
