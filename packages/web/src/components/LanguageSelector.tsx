@@ -14,7 +14,7 @@ export function LanguageSelector() {
           className={styles.option}
           aria-label={t(`language.${code}`)}
           aria-pressed={i18n.resolvedLanguage === code}
-          onClick={() => void i18n.changeLanguage(code)}
+          onClick={() => i18n.changeLanguage(code)}
         >
           {code.toUpperCase()}
         </button>
