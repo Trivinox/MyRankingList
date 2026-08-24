@@ -6,7 +6,7 @@ No user accounts required. Rooms run P2P over WebRTC in a star topology: the cre
 
 ## Status
 
-Phase 1 (core logic) is finished. The monorepo, TypeScript configuration, linting and CI are in place, and the sorting rules live as pure functions under `packages/web/src/core`, covered by unit tests. There is no interface on top of them yet; that is what Phase 2 starts.
+Phase 2 (UI shell) is finished. On top of the Phase 1 core, which holds the sorting rules as pure functions under `packages/web/src/core`, the app now has its first screen: the list input form, with the item and criterion limits, the minimum of three items to continue, the duplicate and long-list notices and the optional image URL per item. The interface is available in Spanish and English through react-i18next, and the list draft lives in a Zustand store the later screens read from. The continue button does not lead anywhere yet; the sorting screen and its drag and drop are Phase 3.
 
 ## Stack
 
