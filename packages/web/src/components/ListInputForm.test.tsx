@@ -135,6 +135,16 @@ describe('ListInputForm', () => {
     expect(screen.getAllByText(en.form.duplicateFlag)).toHaveLength(2);
   });
 
+  it('reads the duplicate flag out as a description of the row it marks', async () => {
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText('Item 1'), 'Apple');
+    await userEvent.type(screen.getByLabelText('Item 2'), 'APPLE');
+
+    expect(screen.getByLabelText('Item 1')).toHaveAccessibleDescription(en.form.duplicateFlag);
+    expect(screen.getByLabelText('Item 3')).not.toHaveAccessibleDescription();
+  });
+
   it('leaves distinct rows unflagged', async () => {
     renderForm();
 

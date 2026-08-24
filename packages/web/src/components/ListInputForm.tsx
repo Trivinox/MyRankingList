@@ -65,6 +65,8 @@ export function ListInputForm() {
           const number = index + 1;
           const imageUrl = item.imageUrl ?? '';
           const badImage = imageUrl !== '' && !isAllowedImageUrl(imageUrl);
+          const duplicated = duplicateRows.has(index);
+          const duplicateNoticeId = `duplicate-notice-${item.id}`;
           const imageNoticeId = `image-notice-${item.id}`;
 
           return (
@@ -75,6 +77,7 @@ export function ListInputForm() {
                 value={item.text}
                 maxLength={TEXT_LIMIT}
                 aria-label={t('form.itemLabel', { number })}
+                aria-describedby={duplicated ? duplicateNoticeId : undefined}
                 placeholder={t('form.itemPlaceholder')}
                 onChange={(event) => updateItemText(item.id, event.target.value)}
               />
@@ -95,8 +98,10 @@ export function ListInputForm() {
               >
                 &times;
               </button>
-              {duplicateRows.has(index) && (
-                <span className={styles.flag}>{t('form.duplicateFlag')}</span>
+              {duplicated && (
+                <span id={duplicateNoticeId} className={styles.flag}>
+                  {t('form.duplicateFlag')}
+                </span>
               )}
               {badImage && (
                 <span id={imageNoticeId} className={styles.flag}>
