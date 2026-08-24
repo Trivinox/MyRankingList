@@ -12,6 +12,13 @@ import { LONG_LIST_THRESHOLD, ListInputForm } from './ListInputForm.tsx';
 const blankRows = (count: number): Item[] =>
   Array.from({ length: count }, () => ({ id: crypto.randomUUID(), text: '' }));
 
+// Distinct text per row, so a seeded list does not trip the duplicate notice.
+const filledRows = (count: number): Item[] =>
+  Array.from({ length: count }, (_, index) => ({
+    id: crypto.randomUUID(),
+    text: `Item ${index + 1}`,
+  }));
+
 const renderForm = () => {
   const i18n = createI18n();
   render(
@@ -48,6 +55,7 @@ describe('ListInputForm', () => {
   });
 
   it('unlocks the continue button on the third filled item', async () => {
+    useListDraft.setState({ criterion: 'Which one do you like more?' });
     renderForm();
 
     const jump = screen.getByRole('button', { name: en.form.continue });
@@ -62,6 +70,7 @@ describe('ListInputForm', () => {
   });
 
   it('ignores rows that only hold whitespace when counting', async () => {
+    useListDraft.setState({ criterion: 'Which one do you like more?' });
     renderForm();
 
     await userEvent.type(screen.getByLabelText('Item 1'), 'Alien');
@@ -71,15 +80,37 @@ describe('ListInputForm', () => {
     expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
   });
 
+  it('keeps continue shut while the criterion is empty', async () => {
+    useListDraft.setState({ items: filledRows(3) });
+    renderForm();
+
+    const jump = screen.getByRole('button', { name: en.form.continue });
+    expect(jump).toBeDisabled();
+    expect(screen.getByText(en.form.criterionNotice)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(en.form.criterionLabel), 'Which one is better?');
+
+    expect(jump).toBeEnabled();
+  });
+
+  it('does not take a criterion of nothing but spaces', async () => {
+    useListDraft.setState({ items: filledRows(3) });
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText(en.form.criterionLabel), '    ');
+
+    expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
+  });
+
   it('holds the long-list warning back until the threshold', () => {
-    useListDraft.setState({ items: blankRows(LONG_LIST_THRESHOLD - 1) });
+    useListDraft.setState({ items: filledRows(LONG_LIST_THRESHOLD - 1) });
     renderForm();
 
     expect(screen.queryByRole('img', { name: en.form.longListWarning })).not.toBeInTheDocument();
   });
 
   it('shows the long-list warning at the threshold', () => {
-    useListDraft.setState({ items: blankRows(LONG_LIST_THRESHOLD) });
+    useListDraft.setState({ items: filledRows(LONG_LIST_THRESHOLD) });
     renderForm();
 
     expect(screen.getByRole('img', { name: en.form.longListWarning })).toBeInTheDocument();
@@ -102,6 +133,16 @@ describe('ListInputForm', () => {
     await userEvent.type(screen.getByLabelText('Item 2'), '  Pear  ');
 
     expect(screen.getAllByText(en.form.duplicateFlag)).toHaveLength(2);
+  });
+
+  it('reads the duplicate flag out as a description of the row it marks', async () => {
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText('Item 1'), 'Apple');
+    await userEvent.type(screen.getByLabelText('Item 2'), 'APPLE');
+
+    expect(screen.getByLabelText('Item 1')).toHaveAccessibleDescription(en.form.duplicateFlag);
+    expect(screen.getByLabelText('Item 3')).not.toHaveAccessibleDescription();
   });
 
   it('leaves distinct rows unflagged', async () => {
@@ -149,13 +190,24 @@ describe('ListInputForm', () => {
     expect(screen.queryByLabelText('Item 4')).not.toBeInTheDocument();
   });
 
+  it('counts filled rows rather than rows', async () => {
+    renderForm();
+
+    expect(screen.getByText('0 items')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Item 1'), 'Alien');
+
+    expect(screen.getByText('1 item')).toBeInTheDocument();
+  });
+
   it('translates its own labels when the language changes', async () => {
     const i18n = renderForm();
+    await userEvent.type(screen.getByLabelText('Item 1'), 'Alien');
 
     await act(() => i18n.changeLanguage('es'));
 
     expect(screen.getByLabelText('Elemento 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Añadir elemento' })).toBeInTheDocument();
-    expect(screen.getByText('3 elementos')).toBeInTheDocument();
+    expect(screen.getByText('1 elemento')).toBeInTheDocument();
   });
 });

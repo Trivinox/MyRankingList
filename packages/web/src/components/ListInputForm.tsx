@@ -26,7 +26,11 @@ export function ListInputForm() {
   const duplicateRows = new Set(
     findDuplicates(items.map((item) => item.text)).flatMap((group) => group.indexes),
   );
-  const ready = items.filter((item) => item.text.trim() !== '').length >= MIN_ITEMS;
+
+  // An empty row is a field waiting to be filled, not an item, so the counter,
+  // the long-list warning and the gate below all work off this one number.
+  const itemCount = items.filter((item) => item.text.trim() !== '').length;
+  const ready = itemCount >= MIN_ITEMS && criterion.trim() !== '';
 
   return (
     <form className={styles.form} onSubmit={(event) => event.preventDefault()}>
@@ -43,8 +47,8 @@ export function ListInputForm() {
 
       <div className={styles.itemsHeader}>
         <h2 className={styles.heading}>{t('form.itemsHeading')}</h2>
-        <span className={styles.count}>{t('form.itemCount', { count: items.length })}</span>
-        {items.length >= LONG_LIST_THRESHOLD && (
+        <span className={styles.count}>{t('form.itemCount', { count: itemCount })}</span>
+        {itemCount >= LONG_LIST_THRESHOLD && (
           <span
             role="img"
             aria-label={t('form.longListWarning')}
@@ -61,6 +65,8 @@ export function ListInputForm() {
           const number = index + 1;
           const imageUrl = item.imageUrl ?? '';
           const badImage = imageUrl !== '' && !isAllowedImageUrl(imageUrl);
+          const duplicated = duplicateRows.has(index);
+          const duplicateNoticeId = `duplicate-notice-${item.id}`;
           const imageNoticeId = `image-notice-${item.id}`;
 
           return (
@@ -71,6 +77,7 @@ export function ListInputForm() {
                 value={item.text}
                 maxLength={TEXT_LIMIT}
                 aria-label={t('form.itemLabel', { number })}
+                aria-describedby={duplicated ? duplicateNoticeId : undefined}
                 placeholder={t('form.itemPlaceholder')}
                 onChange={(event) => updateItemText(item.id, event.target.value)}
               />
@@ -91,8 +98,10 @@ export function ListInputForm() {
               >
                 &times;
               </button>
-              {duplicateRows.has(index) && (
-                <span className={styles.flag}>{t('form.duplicateFlag')}</span>
+              {duplicated && (
+                <span id={duplicateNoticeId} className={styles.flag}>
+                  {t('form.duplicateFlag')}
+                </span>
               )}
               {badImage && (
                 <span id={imageNoticeId} className={styles.flag}>
@@ -114,7 +123,13 @@ export function ListInputForm() {
         <button type="submit" className={styles.continue} disabled={!ready}>
           {t('form.continue')}
         </button>
-        {!ready && <p className={styles.notice}>{t('form.minimumNotice', { count: MIN_ITEMS })}</p>}
+        {!ready && (
+          <p className={styles.notice}>
+            {itemCount < MIN_ITEMS
+              ? t('form.minimumNotice', { count: MIN_ITEMS })
+              : t('form.criterionNotice')}
+          </p>
+        )}
       </div>
     </form>
   );

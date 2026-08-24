@@ -30,6 +30,7 @@ export const es: typeof en = {
     longListWarning:
       'Con una lista así de larga cuesta más afinar: hay más scroll y los huecos donde apuntar son más pequeños.',
     minimumNotice: 'Escribe al menos {{count}} elementos para empezar a ordenar.',
+    criterionNotice: 'Di con qué criterio los comparas para empezar a ordenar.',
     continue: 'Continuar',
   },
 };
