@@ -1,0 +1,145 @@
+/* Spacing and colours are literals until the design system lands. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.criterion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.criterion input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d5d5de;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.itemsHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.count {
+  color: #6b6b76;
+  font-size: 0.85rem;
+}
+
+.warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #f2c14e;
+  color: #4a3a05;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: help;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.row input {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #d5d5de;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.text {
+  flex: 2 1 14rem;
+}
+
+.image {
+  flex: 1 1 11rem;
+  font-size: 0.85rem;
+}
+
+.remove {
+  border: none;
+  background: none;
+  color: #8a8a95;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove:hover {
+  color: #b3261e;
+}
+
+.flag {
+  flex-basis: 100%;
+  color: #8a5b00;
+  font-size: 0.78rem;
+}
+
+.add {
+  align-self: flex-start;
+  padding: 0.4rem 0.8rem;
+  border: 1px dashed #b8b8c2;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.notice {
+  margin: 0;
+  color: #6b6b76;
+  font-size: 0.85rem;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.continue {
+  align-self: flex-start;
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-radius: 6px;
+  background: #33333f;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.continue:disabled {
+  background: #c9c9d1;
+  cursor: not-allowed;
+}
