@@ -1,3 +1,8 @@
 dist
 node_modules
 package-lock.json
+
+# Local Claude Code settings, kept out of the repository by a global gitignore.
+# Prettier still reads the file off disk and fails format:check on a machine
+# that has one, which CI never reproduces.
+.claude
