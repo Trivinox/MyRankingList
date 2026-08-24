@@ -1,0 +1,22 @@
+.selector {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Pill shape and palette are placeholders until the design system lands. */
+.option {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid #d5d5de;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.option[aria-pressed='true'] {
+  border-color: #33333f;
+  background: #33333f;
+  color: #fff;
+}
