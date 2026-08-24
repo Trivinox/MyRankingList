@@ -1,14 +1,23 @@
 .page {
   max-width: 44rem;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: 0 1rem 1.5rem;
 }
 
+/* Sticky so the language selector stays reachable once a screen is long enough
+   to scroll. The top padding moved here from .page: the header has to paint
+   that strip itself, or content shows through above it on the way past. */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 1.5rem 0 0.75rem;
+  /* Placeholder until the design system lands. */
+  background: #fff;
 }
 
 .title {
