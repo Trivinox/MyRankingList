@@ -26,6 +26,7 @@ export const en = {
     longListWarning:
       'A list this long is harder to place precisely: more scrolling, and smaller gaps to aim at.',
     minimumNotice: 'Write at least {{count}} items to start sorting.',
+    criterionNotice: 'Say what you are comparing them by to start sorting.',
     continue: 'Continue',
   },
 };
