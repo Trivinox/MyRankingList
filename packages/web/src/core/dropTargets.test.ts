@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  describeDrop,
-  dropTargetId,
-  parseDropTarget,
-  resolveDrop,
-  type DragSource,
-} from './dropTargets.ts';
+import { describeDrop, dropTargetId, parseDropTarget, resolveDrop } from './dropTargets.ts';
+import type { DragSource, DropTarget } from './dropTargets.ts';
 import type { PlacementState, RankedSlot } from './types.ts';
 
 const list = (...positions: string[]): RankedSlot[] =>
@@ -22,13 +17,13 @@ const state = (slots: RankedSlot[], pool: string[] = []): PlacementState => ({
 const pool: DragSource = { from: 'pool' };
 const placed = (itemId: string): DragSource => ({ from: 'placed', itemId });
 
-const gap = (index: number) => ({ kind: 'gap', index }) as const;
-const slot = (index: number) => ({ kind: 'slot', index }) as const;
+const gap = (index: number): DropTarget => ({ kind: 'gap', index });
+const slot = (index: number): DropTarget => ({ kind: 'slot', index });
 
 // resolveDrop answers with a whole state; almost every case only cares about
 // the list that came out of it.
-const after = (...args: Parameters<typeof resolveDrop>) => {
-  const next = resolveDrop(...args);
+const after = (current: PlacementState, dragged: DragSource, target: DropTarget) => {
+  const next = resolveDrop(current, dragged, target);
   return next && layout(next.rankedSlots);
 };
 

@@ -3,9 +3,9 @@ import type { PlacementState, RankedSlot } from './types.ts';
 
 export type DragSource = { from: 'pool' } | { from: 'placed'; itemId: string };
 
-// A gap is the insertion point above slot `index`, so `gap:0` is above
-// everything and `gap:<length>` below everything. A slot is the position
-// itself, which means tying with what is already there.
+// A gap is the insertion point above the slot of the same index, so gap 0 sits
+// above everything and a gap at the list's length below everything. A slot is
+// the position itself, which means tying with whatever is already there.
 export type DropTarget = { kind: 'gap'; index: number } | { kind: 'slot'; index: number };
 
 export type DropOutcome = 'insert' | 'tie' | 'rejected';
@@ -14,9 +14,8 @@ export function dropTargetId(target: DropTarget): string {
   return `${target.kind}:${target.index}`;
 }
 
-// The id travels through a DOM attribute and comes back as whatever the drag
-// library hands over, so anything unrecognisable answers null rather than
-// throwing in the middle of a drop.
+// The id makes the round trip through a DOM attribute, so anything that does
+// not come back as one answers null instead of throwing mid-drop.
 export function parseDropTarget(id: string): DropTarget | null {
   const match = /^(gap|slot):(\d+)$/.exec(id);
   if (!match) {
@@ -34,8 +33,8 @@ function slotOf(slots: RankedSlot[], itemId: string): number {
 // its position with it, so everything below it moves up one; a tied one leaves
 // its partner holding the position and nothing shifts.
 function shiftForLift(slots: RankedSlot[], from: number, index: number): number {
-  const takesTheSlotAway = slots[from].itemIds.length === 1;
-  return takesTheSlotAway && index > from ? index - 1 : index;
+  const wasAlone = slots[from].itemIds.length === 1;
+  return wasAlone && index > from ? index - 1 : index;
 }
 
 export function describeDrop(
@@ -72,7 +71,6 @@ export function describeDrop(
   return target.index >= 0 && target.index <= slots.length ? 'insert' : 'rejected';
 }
 
-// Null means the drop was refused and the caller keeps the state it had.
 export function resolveDrop(
   state: PlacementState,
   dragged: DragSource,
