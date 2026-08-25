@@ -1,0 +1,27 @@
+.area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 60vh;
+  padding: 2rem 1.5rem;
+  border-radius: 14px;
+  /* Placeholder background until the pastel palette lands. */
+  background: #f4f4f9;
+}
+
+.hint {
+  margin: 0;
+  max-width: 22rem;
+  color: #6b6b76;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.done {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+}

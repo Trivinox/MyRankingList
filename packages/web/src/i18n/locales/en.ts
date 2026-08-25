@@ -29,4 +29,10 @@ export const en = {
     criterionNotice: 'Say what you are comparing them by to start sorting.',
     continue: 'Continue',
   },
+  sorting: {
+    listLabel: 'Your list so far',
+    poolHint: 'Drag it into the list, wherever you think it belongs.',
+    allPlaced: 'Every item is placed.',
+    progress: '{{placed}} of {{total}} placed',
+  },
 };

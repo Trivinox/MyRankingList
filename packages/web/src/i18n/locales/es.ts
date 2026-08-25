@@ -33,4 +33,10 @@ export const es: typeof en = {
     criterionNotice: 'Di con qué criterio los comparas para empezar a ordenar.',
     continue: 'Continuar',
   },
+  sorting: {
+    listLabel: 'Tu lista por ahora',
+    poolHint: 'Arrástralo a la lista, al puesto que creas que le toca.',
+    allPlaced: 'Ya están todos colocados.',
+    progress: '{{placed}} de {{total}} colocados',
+  },
 };

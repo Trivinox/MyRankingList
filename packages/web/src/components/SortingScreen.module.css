@@ -1,0 +1,30 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.question {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+/* Desktop only for now: the mobile layout inverts the hierarchy and is a
+   separate piece of work. */
+.columns {
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* Stays put while the list scrolls past it, offset by the sticky header. */
+.pool {
+  position: sticky;
+  top: 5.5rem;
+}
+
+.list {
+  padding-bottom: 30vh;
+}
