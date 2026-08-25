@@ -11,10 +11,10 @@ function App() {
 
   // The sorting screen needs the room the form does not: a pool taking close
   // to half the width reads as nothing inside a reading-width column.
-  const width = screen === 'sorting' ? `${styles.page} ${styles.wide}` : styles.page;
+  const wrapper = screen === 'sorting' ? `${styles.page} ${styles.wide}` : styles.page;
 
   return (
-    <div className={width}>
+    <div className={wrapper}>
       <header className={styles.header}>
         <h1 className={styles.title}>{t('app.title')}</h1>
         <LanguageSelector />

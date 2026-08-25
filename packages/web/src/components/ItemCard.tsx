@@ -5,7 +5,6 @@ import styles from './ItemCard.module.css';
 
 interface ItemCardProps {
   item: Item;
-  // The pool copy leads the screen, the ones in the list are rows.
   size?: 'lead' | 'row';
 }
 

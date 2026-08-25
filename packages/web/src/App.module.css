@@ -1,9 +1,7 @@
 .page {
-  /* Roughly the sticky header's height, so a screen below it can park its own
-     sticky pieces under it without measuring anything at runtime. Deliberately
-     a little short: whatever sticks at this offset tucks the last few pixels
-     behind the header, which paints over them, and no seam opens up if the
-     header grows a pixel or two. */
+  /* Roughly the header's height, for screens parking their own sticky pieces
+     under it. Deliberately a little short, so whatever sticks there tucks
+     behind the header rather than leaving a seam to show content through. */
   --header-height: 4rem;
   max-width: 44rem;
   margin: 0 auto;

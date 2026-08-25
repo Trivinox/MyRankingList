@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
+import App from '../App.tsx';
 import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
-import App from '../App.tsx';
 import { SortingScreen } from './SortingScreen.tsx';
 
 const items: Item[] = ['Sushi', 'Ramen', 'Curry', 'Tacos'].map((text) => ({

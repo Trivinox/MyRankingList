@@ -11,28 +11,32 @@ interface RankedListProps {
 
 export function RankedList({ slots, items }: RankedListProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
-  const ranks = new Map(rankItems(slots).map((entry) => [entry.itemId, entry.rank]));
+  const entries = rankItems(slots);
+  let seen = 0;
 
   return (
     <ol className={styles.list}>
-      {slots.map((slot, index) => (
-        <Fragment key={slot.itemIds.join('+')}>
-          <Gap />
-          <Slot
-            rank={ranks.get(slot.itemIds[0]) ?? index + 1}
-            items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])}
-          />
-        </Fragment>
-      ))}
+      {slots.map((slot) => {
+        // One entry per item, in list order, so a position takes the rank of
+        // whichever item heads it and a tie leaves a number behind.
+        const { rank } = entries[seen];
+        seen += slot.itemIds.length;
+
+        return (
+          <Fragment key={slot.itemIds.join('+')}>
+            <Gap />
+            <Slot rank={rank} items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])} />
+          </Fragment>
+        );
+      })}
       <Gap />
     </ol>
   );
 }
 
-// The strip between two positions, and above the first and below the last. It
-// is where an insertion aims, so it stays visible instead of collapsing into
-// the list's spacing. Skipped by screen readers: it carries no content of its
-// own, and the equivalent for the keyboard comes with the selection method.
+// The strip an insertion aims at, between two positions and at either end of
+// the list. Hidden from screen readers: it holds nothing to read, and reaching
+// a position without a pointer is the selection method's job.
 function Gap() {
   return <li className={styles.gap} aria-hidden="true" />;
 }
