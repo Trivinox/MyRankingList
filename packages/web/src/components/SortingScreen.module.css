@@ -5,6 +5,21 @@
   margin-top: 1rem;
 }
 
+/* Rides along under the header. A list long enough to scroll is exactly the
+   one whose progress is worth watching, and the pool card staying put while
+   its own progress bar left the screen read as a bug. */
+.headline {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-bottom: 0.75rem;
+  /* Matches the header: content has to be hidden as it passes underneath. */
+  background: #fff;
+}
+
 .question {
   margin: 0;
   font-size: 1.3rem;
@@ -19,10 +34,11 @@
   align-items: start;
 }
 
-/* Stays put while the list scrolls past it, offset by the sticky header. */
+/* Stays put while the list scrolls past it, clearing the header and the
+   headline stacked above it. */
 .pool {
   position: sticky;
-  top: 5.5rem;
+  top: calc(var(--header-height) + 4.75rem);
 }
 
 .list {

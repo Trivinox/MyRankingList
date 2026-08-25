@@ -16,9 +16,10 @@ export function ProgressBar({ placed, total }: ProgressBarProps) {
         className={styles.track}
         role="progressbar"
         aria-valuenow={placed}
-        // The opener is already down when the screen appears, so a run never
-        // starts from zero.
-        aria-valuemin={1}
+        // Counted from zero so the percentage read out matches the width of
+        // the fill. A run opens at 1 because the opener is already down, which
+        // the text below says in words rather than leaving it to the maths.
+        aria-valuemin={0}
         aria-valuemax={total}
         aria-valuetext={label}
       >

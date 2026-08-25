@@ -87,6 +87,9 @@ describe('SortingScreen', () => {
     const bar = screen.getByRole('progressbar');
 
     expect(bar).toHaveAttribute('aria-valuenow', '1');
+    // Counted from zero, or the percentage announced and the width of the fill
+    // tell two different stories until the last item lands.
+    expect(bar).toHaveAttribute('aria-valuemin', '0');
     expect(bar).toHaveAttribute('aria-valuemax', '4');
     expect(screen.getByText('1 of 4 placed')).toBeInTheDocument();
   });

@@ -21,8 +21,10 @@ export function SortingScreen() {
 
   return (
     <div className={styles.screen}>
-      <h2 className={styles.question}>{criterion}</h2>
-      <ProgressBar placed={placed} total={items.length} />
+      <div className={styles.headline}>
+        <h2 className={styles.question}>{criterion}</h2>
+        <ProgressBar placed={placed} total={items.length} />
+      </div>
 
       <div className={styles.columns}>
         <aside className={styles.pool}>

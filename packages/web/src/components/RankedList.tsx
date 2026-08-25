@@ -17,14 +17,14 @@ export function RankedList({ slots, items }: RankedListProps) {
     <ol className={styles.list}>
       {slots.map((slot, index) => (
         <Fragment key={slot.itemIds.join('+')}>
-          <Gap index={index} />
+          <Gap />
           <Slot
             rank={ranks.get(slot.itemIds[0]) ?? index + 1}
             items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])}
           />
         </Fragment>
       ))}
-      <Gap index={slots.length} />
+      <Gap />
     </ol>
   );
 }
@@ -33,8 +33,8 @@ export function RankedList({ slots, items }: RankedListProps) {
 // is where an insertion aims, so it stays visible instead of collapsing into
 // the list's spacing. Skipped by screen readers: it carries no content of its
 // own, and the equivalent for the keyboard comes with the selection method.
-function Gap({ index }: { index: number }) {
-  return <li className={styles.gap} aria-hidden="true" data-gap={index} />;
+function Gap() {
+  return <li className={styles.gap} aria-hidden="true" />;
 }
 
 interface SlotProps {
