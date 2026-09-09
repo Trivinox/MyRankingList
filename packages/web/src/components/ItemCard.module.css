@@ -1,0 +1,55 @@
+/* Colours and radii are literals until the design system lands. */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(20 20 35 / 18%);
+}
+
+.row {
+  padding: 0.55rem 0.7rem;
+}
+
+.lead {
+  flex-direction: column;
+  width: 100%;
+  gap: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.image,
+.placeholder {
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.row .image,
+.row .placeholder {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.lead .image,
+.lead .placeholder {
+  width: 100%;
+  max-width: 16rem;
+  height: 12rem;
+}
+
+.placeholder {
+  background: #e6e6ee;
+}
+
+.text {
+  overflow-wrap: anywhere;
+}
+
+.lead .text {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.25;
+}

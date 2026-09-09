@@ -1,0 +1,37 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gap {
+  height: 0.9rem;
+  border-radius: 999px;
+  /* Faint on its own; the drag preview is what lights it up. */
+  background: #eaeaf1;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.rank {
+  flex: none;
+  width: 1.8rem;
+  color: #6b6b76;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  border-radius: 10px;
+  background: #e6e6ee;
+}

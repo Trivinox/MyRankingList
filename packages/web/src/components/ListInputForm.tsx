@@ -1,7 +1,9 @@
+import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findDuplicates } from '../core/duplicates.ts';
 import { isAllowedImageUrl } from '../core/images.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { usePlacement } from '../state/placementStore.ts';
 import styles from './ListInputForm.module.css';
 
 // Adjustable: past this many rows the warning shows up, without blocking.
@@ -21,19 +23,29 @@ export function ListInputForm() {
     updateItemText,
     updateItemImageUrl,
     setCriterion,
+    setScreen,
   } = useListDraft();
+  const start = usePlacement((state) => state.start);
 
   const duplicateRows = new Set(
     findDuplicates(items.map((item) => item.text)).flatMap((group) => group.indexes),
   );
 
   // An empty row is a field waiting to be filled, not an item, so the counter,
-  // the long-list warning and the gate below all work off this one number.
-  const itemCount = items.filter((item) => item.text.trim() !== '').length;
+  // the long-list warning, the gate below and what gets sorted all work off
+  // the same set.
+  const filled = items.filter((item) => item.text.trim() !== '');
+  const itemCount = filled.length;
   const ready = itemCount >= MIN_ITEMS && criterion.trim() !== '';
 
+  const startSorting = (event: FormEvent) => {
+    event.preventDefault();
+    start(filled, criterion.trim());
+    setScreen('sorting');
+  };
+
   return (
-    <form className={styles.form} onSubmit={(event) => event.preventDefault()}>
+    <form className={styles.form} onSubmit={startSorting}>
       <label className={styles.criterion}>
         <span className={styles.label}>{t('form.criterionLabel')}</span>
         <input

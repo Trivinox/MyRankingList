@@ -1,7 +1,19 @@
 .page {
+  /* Roughly the header's height, for screens parking their own sticky pieces
+     under it. Deliberately a little short, so whatever sticks there tucks
+     behind the header rather than leaving a seam to show content through. */
+  --header-height: 4rem;
   max-width: 44rem;
   margin: 0 auto;
   padding: 0 1rem 1.5rem;
+}
+
+/* The sorting screen takes the monitor it is given. Its pool column has to
+   read as close to half the screen, and no fixed cap can do that: past the cap
+   the column stops growing and the share shrinks with every extra pixel. */
+.wide {
+  max-width: none;
+  padding-inline: 3rem;
 }
 
 /* Sticky so the language selector stays reachable once a screen is long enough
@@ -10,7 +22,8 @@
 .header {
   position: sticky;
   top: 0;
-  z-index: 1;
+  /* Above the sorting screen's own sticky headline, which parks right under it. */
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;

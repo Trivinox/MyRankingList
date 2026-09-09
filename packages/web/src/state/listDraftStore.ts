@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { Item } from '../core/types.ts';
 
-// Only value the app has so far. The sorting screen joins the union once it
-// exists, and App decides what to render off this instead of a router.
-export type Screen = 'list-input';
+// App decides what to render off this instead of pulling in a router. It will
+// outgrow the draft store around the time the room and result screens land.
+export type Screen = 'list-input' | 'sorting';
 
 interface ListDraft {
   screen: Screen;
@@ -14,6 +14,7 @@ interface ListDraft {
   updateItemText: (id: string, text: string) => void;
   updateItemImageUrl: (id: string, imageUrl: string) => void;
   setCriterion: (criterion: string) => void;
+  setScreen: (screen: Screen) => void;
 }
 
 const blankItem = (): Item => ({ id: crypto.randomUUID(), text: '' });
@@ -40,4 +41,6 @@ export const useListDraft = create<ListDraft>((set) => ({
     set((state) => ({ items: patch(state.items, id, { imageUrl: imageUrl || undefined }) })),
 
   setCriterion: (criterion) => set({ criterion }),
+
+  setScreen: (screen) => set({ screen }),
 }));
