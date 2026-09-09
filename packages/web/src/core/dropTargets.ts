@@ -3,6 +3,9 @@ import type { PlacementState, RankedSlot } from './types.ts';
 
 export type DragSource = { from: 'pool' } | { from: 'placed'; itemId: string };
 
+// What the pool card answers to on the way through the DOM.
+export const POOL_DRAG_ID = 'pool';
+
 // A gap is the insertion point above the slot of the same index, so gap 0 sits
 // above everything and a gap at the list's length below everything. A slot is
 // the position itself, which means tying with whatever is already there.

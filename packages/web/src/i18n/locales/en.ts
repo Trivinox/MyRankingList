@@ -34,5 +34,11 @@ export const en = {
     poolHint: 'Add it to the list',
     allPlaced: 'All items placed',
     progress: '{{placed}} of {{total}} placed',
+    announce: {
+      lifted: 'Picked up {{item}}.',
+      placed: 'Placed at position {{position}}.',
+      outside: 'Dropped outside the list. Nothing was placed.',
+      cancelled: 'Drag cancelled. Nothing was placed.',
+    },
   },
 };

@@ -161,6 +161,19 @@ describe('dragging the pool item into the list', () => {
     );
   });
 
+  it('leaves the card to the pointer, promising no keyboard drag', () => {
+    renderScreen();
+
+    const handle = screen.getByText(textOf(started().pendingPool[0])).closest('[data-drag-id]');
+
+    expect(handle).not.toHaveAttribute('tabindex');
+    expect(handle).not.toHaveAttribute('role');
+    expect(handle).not.toHaveAttribute('aria-describedby');
+    // dnd-kit's stock instructions are hidden rather than removed, so they are
+    // still there for a screen reader to find unless they are overridden.
+    expect(document.body).not.toHaveTextContent(/space bar|arrow keys/i);
+  });
+
   it('lands the item above everything, between two positions and at the bottom', () => {
     renderScreen();
 

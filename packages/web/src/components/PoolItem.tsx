@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
+import { POOL_DRAG_ID } from '../core/dropTargets.ts';
 import type { Item } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
 import styles from './PoolItem.module.css';
@@ -31,16 +32,19 @@ export function PoolItem({ item }: PoolItemProps) {
 
 // The card stays in the area while it is dragged and the overlay is what
 // follows the cursor, so this dims rather than moves.
+//
+// dnd-kit's `attributes` are deliberately not spread on it: they turn the card
+// into a focusable button described by instructions for picking it up with the
+// space bar, and there is no sensor here that would answer.
 function Handle({ item }: { item: Item }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: 'pool' });
+  const { listeners, setNodeRef, isDragging } = useDraggable({ id: POOL_DRAG_ID });
 
   return (
     <div
       ref={setNodeRef}
       className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
-      data-drag-id="pool"
+      data-drag-id={POOL_DRAG_ID}
       {...listeners}
-      {...attributes}
     >
       <ItemCard item={item} size="lead" />
     </div>
