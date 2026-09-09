@@ -35,7 +35,8 @@ export function PoolItem({ item }: PoolItemProps) {
 //
 // dnd-kit's `attributes` are deliberately not spread on it: they turn the card
 // into a focusable button described by instructions for picking it up with the
-// space bar, and there is no sensor here that would answer.
+// space bar, and no sensor here would answer. Placing without a pointer means
+// clicking a position in the list, so it is never this card's job.
 function Handle({ item }: { item: Item }) {
   const { listeners, setNodeRef, isDragging } = useDraggable({ id: POOL_DRAG_ID });
 

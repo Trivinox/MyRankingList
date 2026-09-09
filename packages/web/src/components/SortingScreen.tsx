@@ -18,8 +18,9 @@ import { RankedList } from './RankedList.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit ships instructions for picking an item up with the space bar and
-// steering it with the arrow keys. Only the pointer sensor is wired here, so
-// they would describe a way in that does not exist.
+// steering it with the arrow keys. Only the pointer sensor is wired here, and
+// placing without one is going to mean clicking a position in the list rather
+// than driving the drag, so these describe a way in that never arrives.
 const noInstructions = { draggable: '' };
 
 export function SortingScreen() {
@@ -27,8 +28,8 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const [dragging, setDragging] = useState(false);
 
-  // A few pixels of travel before the gesture counts as a drag, so a plain
-  // click on the card stays available for the selection method.
+  // A few pixels of travel before the gesture counts as a drag, so a twitch
+  // between press and release does not fling the card somewhere.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const [next] = placement?.pendingPool ?? [];
