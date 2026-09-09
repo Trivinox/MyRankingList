@@ -1,3 +1,4 @@
+import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import type { Item } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -18,12 +19,30 @@ export function PoolItem({ item }: PoolItemProps) {
         <>
           {/* Keyed so a card that failed to load an image does not keep that
               verdict when the next pool item takes its place. */}
-          <ItemCard key={item.id} item={item} size="lead" />
+          <Handle key={item.id} item={item} />
           <p className={styles.hint}>{t('sorting.poolHint')}</p>
         </>
       ) : (
         <p className={styles.done}>{t('sorting.allPlaced')}</p>
       )}
+    </div>
+  );
+}
+
+// The card stays in the area while it is dragged and the overlay is what
+// follows the cursor, so this dims rather than moves.
+function Handle({ item }: { item: Item }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: 'pool' });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
+      data-drag-id="pool"
+      {...listeners}
+      {...attributes}
+    >
+      <ItemCard item={item} size="lead" />
     </div>
   );
 }

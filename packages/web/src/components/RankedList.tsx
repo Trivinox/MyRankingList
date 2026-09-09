@@ -1,4 +1,6 @@
 import { Fragment } from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { dropTargetId } from '../core/dropTargets.ts';
 import { rankItems } from '../core/ranking.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -16,7 +18,7 @@ export function RankedList({ slots, items }: RankedListProps) {
 
   return (
     <ol className={styles.list}>
-      {slots.map((slot) => {
+      {slots.map((slot, index) => {
         // One entry per item, in list order, so a position takes the rank of
         // whichever item heads it and a tie leaves a number behind.
         const { rank } = entries[seen];
@@ -24,12 +26,12 @@ export function RankedList({ slots, items }: RankedListProps) {
 
         return (
           <Fragment key={slot.itemIds.join('+')}>
-            <Gap />
+            <Gap index={index} />
             <Slot rank={rank} items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])} />
           </Fragment>
         );
       })}
-      <Gap />
+      <Gap index={slots.length} />
     </ol>
   );
 }
@@ -37,8 +39,11 @@ export function RankedList({ slots, items }: RankedListProps) {
 // The strip an insertion aims at, between two positions and at either end of
 // the list. Hidden from screen readers: it holds nothing to read, and reaching
 // a position without a pointer is the selection method's job.
-function Gap() {
-  return <li className={styles.gap} aria-hidden="true" />;
+function Gap({ index }: { index: number }) {
+  const id = dropTargetId({ kind: 'gap', index });
+  const { setNodeRef } = useDroppable({ id });
+
+  return <li ref={setNodeRef} className={styles.gap} data-drop-target={id} aria-hidden="true" />;
 }
 
 interface SlotProps {

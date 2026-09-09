@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import App from '../App.tsx';
@@ -125,5 +125,67 @@ describe('continuing from the form', () => {
     ]);
     expect(screen.getByRole('heading', { name: 'Best noodle' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3');
+  });
+});
+
+describe('dragging the pool item into the list', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  // The drag itself is dnd-kit's, and jsdom gives it neither layout nor
+  // pointer events. What is worth pinning here is the id it drags and what the
+  // screen looks like once the resolved drop comes back through the store.
+  const dropAt = (index: number) => {
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index });
+    });
+  };
+
+  // Every position row ends with the container holding its cards, so this
+  // skips the rank number without matching on it.
+  const listed = () =>
+    screen
+      .getAllByRole('listitem')
+      .filter((row) => !row.hasAttribute('data-drop-target'))
+      .map((row) => row.lastElementChild?.textContent);
+
+  it('picks the card up by the pool id', () => {
+    renderScreen();
+
+    const [next] = started().pendingPool;
+
+    expect(screen.getByText(textOf(next)).closest('[data-drag-id]')).toHaveAttribute(
+      'data-drag-id',
+      'pool',
+    );
+  });
+
+  it('lands the item above everything, between two positions and at the bottom', () => {
+    renderScreen();
+
+    const opener = textOf(started().rankedSlots[0].itemIds[0]);
+    const [first, second, third] = started().pendingPool.map(textOf);
+
+    dropAt(0);
+    expect(listed()).toEqual([first, opener]);
+
+    dropAt(1);
+    expect(listed()).toEqual([first, second, opener]);
+
+    dropAt(3);
+    expect(listed()).toEqual([first, second, opener, third]);
+  });
+
+  it('moves the pool on and the progress with it', () => {
+    renderScreen();
+
+    const [, second] = started().pendingPool.map(textOf);
+
+    dropAt(0);
+
+    expect(screen.getByText(second).closest('[data-drag-id]')).not.toBeNull();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
+    expect(screen.getByText('2 of 4 placed')).toBeInTheDocument();
   });
 });

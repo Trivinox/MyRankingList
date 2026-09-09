@@ -25,3 +25,15 @@
   font-weight: 600;
   text-align: center;
 }
+
+.handle {
+  width: 100%;
+  cursor: grab;
+  /* The pointer sensor owns the gesture; without this the browser scrolls the
+     page instead of starting a drag. */
+  touch-action: none;
+}
+
+.lifted {
+  opacity: 0.4;
+}
