@@ -35,8 +35,8 @@ export const es: typeof en = {
   },
   sorting: {
     listLabel: 'Tu lista por ahora',
-    poolHint: 'Arrástralo a la lista, al puesto que creas que le toca.',
-    allPlaced: 'Ya están todos colocados.',
+    poolHint: 'Añádelo a la lista',
+    allPlaced: 'Todos los elementos están colocados',
     progress: '{{placed}} de {{total}} colocados',
   },
 };

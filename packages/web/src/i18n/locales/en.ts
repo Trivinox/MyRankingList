@@ -31,8 +31,8 @@ export const en = {
   },
   sorting: {
     listLabel: 'Your list so far',
-    poolHint: 'Drag it into the list, wherever you think it belongs.',
-    allPlaced: 'Every item is placed.',
+    poolHint: 'Add it to the list',
+    allPlaced: 'All items placed',
     progress: '{{placed}} of {{total}} placed',
   },
 };
