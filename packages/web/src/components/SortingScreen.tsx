@@ -7,15 +7,22 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { Announcements, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { Announcements, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { landingSlot, parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
+import {
+  describeDrop,
+  dropTargetId,
+  landingSlot,
+  parseDragSource,
+  parseDropTarget,
+} from '../core/dropTargets.ts';
 import type { DragSource } from '../core/dropTargets.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
+import type { DropPreview } from './RankedList.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit's stock instructions explain a keyboard drag, and only the pointer
@@ -23,10 +30,20 @@ import styles from './SortingScreen.module.css';
 // are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
 
+// Every drag event and every announcement starts by reading the same two ids.
+// Anything that is not one of ours comes back null, and so does no `over`.
+function readDrag({ active, over }: Pick<DragEndEvent, 'active' | 'over'>) {
+  return {
+    source: parseDragSource(String(active.id)),
+    target: over && parseDropTarget(String(over.id)),
+  };
+}
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
   const [dragged, setDragged] = useState<DragSource | null>(null);
+  const [preview, setPreview] = useState<DropPreview | null>(null);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -44,12 +61,25 @@ export function SortingScreen() {
           source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
         return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
       },
-      // Narrating the cursor is only worth it once the preview exists to agree
-      // with what it says.
-      onDragOver: () => undefined,
-      onDragEnd: ({ active, over }) => {
-        const source = parseDragSource(String(active.id));
-        const target = over && parseDropTarget(String(over.id));
+      // Reads out the same verdict the preview paints, so the two cannot
+      // disagree. Silent over nothing: letting go there is covered on drop.
+      onDragOver: (event) => {
+        const { source, target } = readDrag(event);
+        if (!placement || !source || !target) {
+          return undefined;
+        }
+        if (describeDrop(placement, source, target) === 'tie') {
+          const [partner] = placement.rankedSlots[target.index].itemIds;
+          const item = items.find(({ id }) => id === partner);
+          return t('sorting.announce.overTie', { item: item?.text });
+        }
+        const slot = landingSlot(placement, source, target);
+        return slot === null
+          ? t('sorting.announce.overRejected')
+          : t('sorting.announce.overInsert', { position: slot + 1 });
+      },
+      onDragEnd: (event) => {
+        const { source, target } = readDrag(event);
         // This runs in the same pass as the drop, before the list re-renders,
         // so the placement here is still the one the drop was made against.
         const slot = placement && source && target && landingSlot(placement, source, target);
@@ -79,10 +109,26 @@ export function SortingScreen() {
     setDragged(parseDragSource(String(active.id)));
   };
 
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
+    const { source, target } = readDrag(event);
+    setPreview(
+      source && target
+        ? { targetId: dropTargetId(target), outcome: describeDrop(placement, source, target) }
+        : null,
+    );
+  };
+
+  // A refused drop, a drop over nothing and a cancelled drag all leave the
+  // placement as it was. The item then is wherever it was before, the pool
+  // card included, because nothing ever took it out of there.
+  const settle = () => {
     setDragged(null);
-    const source = parseDragSource(String(active.id));
-    const target = over && parseDropTarget(String(over.id));
+    setPreview(null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    settle();
+    const { source, target } = readDrag(event);
     if (source && target) {
       drop(source, target);
     }
@@ -102,15 +148,16 @@ export function SortingScreen() {
         collisionDetection={pointerWithin}
         accessibility={{ announcements, screenReaderInstructions: noInstructions }}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setDragged(null)}
+        onDragCancel={settle}
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
             <PoolItem item={current} />
           </aside>
           <section className={styles.list} aria-label={t('sorting.listLabel')}>
-            <RankedList slots={placement.rankedSlots} items={items} />
+            <RankedList slots={placement.rankedSlots} items={items} preview={preview} />
           </section>
         </div>
 

@@ -44,3 +44,23 @@
 .lifted {
   opacity: 0.4;
 }
+
+/* Pastels are placeholders until the design system lands. Whatever replaces
+   them, these three keep meaning insert, tie and refused, and nothing else on
+   screen borrows them. A gap can only ever be an insertion or refused, and a
+   position a tie or refused. */
+.gap[data-outcome='insert'] {
+  background: #9fdcb8;
+}
+
+.gap[data-outcome='rejected'] {
+  background: #f4a59c;
+}
+
+.slot[data-outcome='tie'] .cards {
+  box-shadow: 0 0 0 3px #f0cf6e;
+}
+
+.slot[data-outcome='rejected'] .cards {
+  box-shadow: 0 0 0 3px #f4a59c;
+}
