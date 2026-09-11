@@ -7,7 +7,14 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { Announcements, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
+import type {
+  Announcements,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  Modifier,
+} from '@dnd-kit/core';
+import { getEventCoordinates } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
 import {
   describeDrop,
@@ -29,6 +36,35 @@ import styles from './SortingScreen.module.css';
 // sensor is wired here. Blanked rather than just left unreferenced, since they
 // are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
+
+// dnd-kit sizes the overlay after the node that was picked up. The pool card
+// is far larger than a row, and carried at that size it covered the very row
+// whose preview it was meant to show, so a pool drag drops the sizing and lets
+// the card inside decide.
+const unsized = { width: 'auto', height: 'auto' };
+
+// The overlay still starts at the picked-up node's corner, so once it is
+// smaller than that node the card would hang off away from the pointer. This
+// keeps the same spot of the card under it: grabbed by its middle, carried by
+// its middle. A placed item's overlay is its own size and comes out unmoved.
+const keepGrabPoint: Modifier = ({
+  transform,
+  activatorEvent,
+  activeNodeRect,
+  overlayNodeRect,
+}) => {
+  const pointer = activatorEvent && getEventCoordinates(activatorEvent);
+  if (!pointer || !activeNodeRect || !overlayNodeRect) {
+    return transform;
+  }
+  const across = (pointer.x - activeNodeRect.left) / activeNodeRect.width;
+  const down = (pointer.y - activeNodeRect.top) / activeNodeRect.height;
+  return {
+    ...transform,
+    x: transform.x + across * (activeNodeRect.width - overlayNodeRect.width),
+    y: transform.y + down * (activeNodeRect.height - overlayNodeRect.height),
+  };
+};
 
 // Every drag event and every announcement starts by reading the same two ids.
 // Anything that is not one of ours comes back null, and so does no `over`.
@@ -163,11 +199,17 @@ export function SortingScreen() {
 
         {/* dnd-kit animates a drop back to the dragged node, and here that node
             stays where the item was picked up, not where it has just landed. */}
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay
+          dropAnimation={null}
+          modifiers={[keepGrabPoint]}
+          style={lifted ? undefined : unsized}
+        >
           {lifted ? (
             <ItemCard item={lifted} />
           ) : current ? (
-            <ItemCard item={current} size="lead" />
+            <div className={styles.carried}>
+              <ItemCard item={current} />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>

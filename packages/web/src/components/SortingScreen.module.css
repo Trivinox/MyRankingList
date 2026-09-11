@@ -44,3 +44,10 @@
 .list {
   padding-bottom: 30vh;
 }
+
+/* The pool item in the air, at the size of the row it is about to become.
+   Narrower than the list on purpose, so the rows it passes over still show
+   their preview on either side of it. */
+.carried {
+  width: 20rem;
+}
