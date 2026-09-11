@@ -38,5 +38,11 @@ export const es: typeof en = {
     poolHint: 'Añádelo a la lista',
     allPlaced: 'Todos los elementos están colocados',
     progress: '{{placed}} de {{total}} colocados',
+    announce: {
+      lifted: 'Arrastrando {{item}}.',
+      placed: 'Colocado en la posición {{position}}.',
+      outside: 'Lo has soltado fuera de la lista. No se ha colocado nada.',
+      cancelled: 'Arrastre cancelado. La lista sigue igual.',
+    },
   },
 };
