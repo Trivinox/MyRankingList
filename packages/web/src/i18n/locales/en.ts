@@ -37,7 +37,8 @@ export const en = {
     announce: {
       lifted: 'Picked up {{item}}.',
       placed: 'Placed at position {{position}}.',
-      outside: 'Dropped outside the list. Nothing was placed.',
+      moved: 'Moved to position {{position}}.',
+      outside: 'Dropped outside the list. The list is unchanged.',
       cancelled: 'Drag cancelled. The list is unchanged.',
     },
   },

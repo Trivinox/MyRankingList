@@ -41,7 +41,8 @@ export const es: typeof en = {
     announce: {
       lifted: 'Arrastrando {{item}}.',
       placed: 'Colocado en la posición {{position}}.',
-      outside: 'Lo has soltado fuera de la lista. No se ha colocado nada.',
+      moved: 'Movido a la posición {{position}}.',
+      outside: 'Lo has soltado fuera de la lista. La lista sigue igual.',
       cancelled: 'Arrastre cancelado. La lista sigue igual.',
     },
   },

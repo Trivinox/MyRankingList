@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { describeDrop, dropTargetId, parseDropTarget, resolveDrop } from './dropTargets.ts';
+import {
+  describeDrop,
+  dragSourceId,
+  dropTargetId,
+  parseDragSource,
+  parseDropTarget,
+  resolveDrop,
+} from './dropTargets.ts';
 import type { DragSource, DropTarget } from './dropTargets.ts';
 import type { PlacementState, RankedSlot } from './types.ts';
 
@@ -38,6 +45,29 @@ describe('drop target ids', () => {
   it('answers null for anything that is not a target id', () => {
     for (const id of ['', 'gap', 'gap:', 'gap:-1', 'gap:one', 'gap:1:2', 'row:1', 'pool']) {
       expect(parseDropTarget(id)).toBeNull();
+    }
+  });
+});
+
+describe('drag source ids', () => {
+  it('round-trips the pool and a placed item', () => {
+    expect(dragSourceId(pool)).toBe('pool');
+    expect(dragSourceId(placed('b'))).toBe('placed:b');
+    expect(parseDragSource('pool')).toEqual(pool);
+    expect(parseDragSource('placed:b')).toEqual(placed('b'));
+  });
+
+  // Item ids come out of crypto.randomUUID, dashes and all, and nothing stops
+  // one from carrying the separator.
+  it('keeps everything after the prefix as the item id', () => {
+    const id = '3f1c2e8a-9b7d-4c6e-a1f0-5d2b8c7e9a41';
+    expect(parseDragSource(`placed:${id}`)).toEqual(placed(id));
+    expect(parseDragSource('placed:a:b')).toEqual(placed('a:b'));
+  });
+
+  it('answers null for anything that is not a source id', () => {
+    for (const id of ['', 'placed', 'placed:', 'pool:a', 'gap:0', 'Pool']) {
+      expect(parseDragSource(id)).toBeNull();
     }
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -7,9 +7,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { Announcements, DragEndEvent } from '@dnd-kit/core';
+import type { Announcements, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { parseDropTarget } from '../core/dropTargets.ts';
+import { parseDragSource, parseDropTarget, resolveDrop } from '../core/dropTargets.ts';
+import type { DragSource } from '../core/dropTargets.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
@@ -25,6 +26,7 @@ const noInstructions = { draggable: '' };
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
+  const [dragged, setDragged] = useState<DragSource | null>(null);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -34,25 +36,40 @@ export function SortingScreen() {
   const [next] = placement?.pendingPool ?? [];
   const current = items.find((item) => item.id === next) ?? null;
 
-  const announcements = useMemo<Announcements>(
-    () => ({
-      onDragStart: () =>
-        current ? t('sorting.announce.lifted', { item: current.text }) : undefined,
+  const announcements = useMemo<Announcements>(() => {
+    const itemOf = (source: DragSource) =>
+      source.from === 'pool' ? current : items.find((item) => item.id === source.itemId);
+
+    return {
+      onDragStart: ({ active }) => {
+        const source = parseDragSource(String(active.id));
+        const item = source && itemOf(source);
+        return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
+      },
       // Narrating the cursor is only worth it once the preview exists to agree
       // with what it says.
       onDragOver: () => undefined,
-      onDragEnd: ({ over }) => {
+      onDragEnd: ({ active, over }) => {
+        const source = parseDragSource(String(active.id));
         const target = over && parseDropTarget(String(over.id));
-        // Gaps are the only targets so far, so an accepted drop is always an
-        // insertion and the position it reads out is one past the gap.
-        return target
-          ? t('sorting.announce.placed', { position: target.index + 1 })
-          : t('sorting.announce.outside');
+        // Resolved again rather than read back from the store: this runs in the
+        // same pass as the drop, before the list re-renders, so the placement
+        // here is still the one the drop was made against. A placed item moved
+        // down lands one above the gap it was dropped in, and only the resolver
+        // knows that.
+        const result = placement && source && target && resolveDrop(placement, source, target);
+        const item = source && itemOf(source);
+        if (!result || !item) {
+          return t('sorting.announce.outside');
+        }
+        const position = result.rankedSlots.findIndex((slot) => slot.itemIds.includes(item.id)) + 1;
+        return source.from === 'pool'
+          ? t('sorting.announce.placed', { position })
+          : t('sorting.announce.moved', { position });
       },
       onDragCancel: () => t('sorting.announce.cancelled'),
-    }),
-    [t, current],
-  );
+    };
+  }, [t, items, current, placement]);
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
@@ -61,11 +78,19 @@ export function SortingScreen() {
   }
 
   const placed = items.length - placement.pendingPool.length;
+  const lifted =
+    dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : null;
 
-  const handleDragEnd = ({ over }: DragEndEvent) => {
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setDragged(parseDragSource(String(active.id)));
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setDragged(null);
+    const source = parseDragSource(String(active.id));
     const target = over && parseDropTarget(String(over.id));
-    if (target) {
-      drop({ from: 'pool' }, target);
+    if (source && target) {
+      drop(source, target);
     }
   };
 
@@ -82,7 +107,9 @@ export function SortingScreen() {
         // the cursor rather than snap to the nearest centre.
         collisionDetection={pointerWithin}
         accessibility={{ announcements, screenReaderInstructions: noInstructions }}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setDragged(null)}
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
@@ -93,10 +120,14 @@ export function SortingScreen() {
           </section>
         </div>
 
-        {/* dnd-kit animates a drop back to the dragged node, and here that node is
-            the pool card, not the row the item has just landed in. */}
+        {/* dnd-kit animates a drop back to the dragged node, and here that node
+            stays where the item was picked up, not where it has just landed. */}
         <DragOverlay dropAnimation={null}>
-          {current ? <ItemCard item={current} size="lead" /> : null}
+          {lifted ? (
+            <ItemCard item={lifted} />
+          ) : current ? (
+            <ItemCard item={current} size="lead" />
+          ) : null}
         </DragOverlay>
       </DndContext>
     </div>

@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import { dropTargetId } from '../core/dropTargets.ts';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { dragSourceId, dropTargetId } from '../core/dropTargets.ts';
 import { rankItems } from '../core/ranking.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -59,9 +59,30 @@ function Slot({ rank, items }: SlotProps) {
       <span className={styles.rank}>{rank}</span>
       <div className={styles.cards}>
         {items.map((item) => (
-          <ItemCard key={item.id} item={item} />
+          <Placed key={item.id} item={item} />
         ))}
       </div>
     </li>
+  );
+}
+
+// Each card is picked up on its own, so dragging one half of a tie dims that
+// half and leaves its partner solid, which is what the drop will do to them.
+// The row stays in the list meanwhile: the gaps around it are the ones the
+// user sees, and the drop is resolved against those. No `attributes`, for the
+// same reason as the pool card.
+function Placed({ item }: { item: Item }) {
+  const id = dragSourceId({ from: 'placed', itemId: item.id });
+  const { listeners, setNodeRef, isDragging } = useDraggable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
+      data-drag-id={id}
+      {...listeners}
+    >
+      <ItemCard item={item} />
+    </div>
   );
 }
