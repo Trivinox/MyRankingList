@@ -111,3 +111,19 @@ export function resolveDrop(
         : moveItem(slots, dragged.itemId, index),
   };
 }
+
+// The slot the dragged item ends up in, or null for a refused drop. Read off
+// the resolved list rather than the target: an item moved down lands one above
+// the gap it was dropped in.
+export function landingSlot(
+  state: PlacementState,
+  dragged: DragSource,
+  target: DropTarget,
+): number | null {
+  const next = resolveDrop(state, dragged, target);
+  if (!next) {
+    return null;
+  }
+  const itemId = dragged.from === 'pool' ? state.pendingPool[0] : dragged.itemId;
+  return slotOf(next.rankedSlots, itemId);
+}

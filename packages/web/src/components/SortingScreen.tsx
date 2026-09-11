@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core';
 import type { Announcements, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { parseDragSource, parseDropTarget, resolveDrop } from '../core/dropTargets.ts';
+import { landingSlot, parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
 import type { DragSource } from '../core/dropTargets.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -36,14 +36,12 @@ export function SortingScreen() {
   const [next] = placement?.pendingPool ?? [];
   const current = items.find((item) => item.id === next) ?? null;
 
-  const announcements = useMemo<Announcements>(() => {
-    const itemOf = (source: DragSource) =>
-      source.from === 'pool' ? current : items.find((item) => item.id === source.itemId);
-
-    return {
+  const announcements = useMemo<Announcements>(
+    () => ({
       onDragStart: ({ active }) => {
         const source = parseDragSource(String(active.id));
-        const item = source && itemOf(source);
+        const item =
+          source?.from === 'placed' ? items.find((item) => item.id === source.itemId) : current;
         return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
       },
       // Narrating the cursor is only worth it once the preview exists to agree
@@ -52,24 +50,20 @@ export function SortingScreen() {
       onDragEnd: ({ active, over }) => {
         const source = parseDragSource(String(active.id));
         const target = over && parseDropTarget(String(over.id));
-        // Resolved again rather than read back from the store: this runs in the
-        // same pass as the drop, before the list re-renders, so the placement
-        // here is still the one the drop was made against. A placed item moved
-        // down lands one above the gap it was dropped in, and only the resolver
-        // knows that.
-        const result = placement && source && target && resolveDrop(placement, source, target);
-        const item = source && itemOf(source);
-        if (!result || !item) {
+        // This runs in the same pass as the drop, before the list re-renders,
+        // so the placement here is still the one the drop was made against.
+        const slot = placement && source && target && landingSlot(placement, source, target);
+        if (slot === null) {
           return t('sorting.announce.outside');
         }
-        const position = result.rankedSlots.findIndex((slot) => slot.itemIds.includes(item.id)) + 1;
-        return source.from === 'pool'
-          ? t('sorting.announce.placed', { position })
-          : t('sorting.announce.moved', { position });
+        return source?.from === 'placed'
+          ? t('sorting.announce.moved', { position: slot + 1 })
+          : t('sorting.announce.placed', { position: slot + 1 });
       },
       onDragCancel: () => t('sorting.announce.cancelled'),
-    };
-  }, [t, items, current, placement]);
+    }),
+    [t, items, current, placement],
+  );
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.

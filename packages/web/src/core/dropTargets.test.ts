@@ -3,6 +3,7 @@ import {
   describeDrop,
   dragSourceId,
   dropTargetId,
+  landingSlot,
   parseDragSource,
   parseDropTarget,
   resolveDrop,
@@ -155,6 +156,43 @@ describe('moving one half of a tie', () => {
 
   it('refuses a position that already holds two', () => {
     expect(describeDrop(tied, placed('d'), slot(0))).toBe('rejected');
+  });
+});
+
+// What the screen reader announces once the drop is in. The cases that matter
+// are the ones where the slot and the gap disagree.
+describe('landingSlot', () => {
+  const three = state(list('a', 'b', 'c'), ['d']);
+
+  it('lands a pool item in the slot under the gap, or in the slot it ties with', () => {
+    expect(landingSlot(three, pool, gap(0))).toBe(0);
+    expect(landingSlot(three, pool, gap(3))).toBe(3);
+    expect(landingSlot(three, pool, slot(1))).toBe(1);
+  });
+
+  it('lands an item moved down one above the gap it was dropped in', () => {
+    expect(landingSlot(three, placed('a'), gap(2))).toBe(1);
+    expect(landingSlot(three, placed('a'), gap(3))).toBe(2);
+  });
+
+  it('lands an item moved up in the slot under the gap', () => {
+    expect(landingSlot(three, placed('c'), gap(0))).toBe(0);
+    expect(landingSlot(three, placed('c'), gap(1))).toBe(1);
+  });
+
+  it('leaves an item dropped beside itself where it was', () => {
+    expect(landingSlot(three, placed('b'), gap(1))).toBe(1);
+    expect(landingSlot(three, placed('b'), gap(2))).toBe(1);
+  });
+
+  it('shifts nothing for one half of a tie, whose position stays behind', () => {
+    const tied = state(list('a+b', 'c', 'd'));
+    expect(landingSlot(tied, placed('b'), gap(3))).toBe(3);
+  });
+
+  it('answers null for a refused drop', () => {
+    expect(landingSlot(three, placed('b'), slot(1))).toBeNull();
+    expect(landingSlot(three, pool, gap(4))).toBeNull();
   });
 });
 
