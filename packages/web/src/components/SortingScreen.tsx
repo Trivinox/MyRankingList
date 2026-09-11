@@ -41,7 +41,7 @@ export function SortingScreen() {
       onDragStart: ({ active }) => {
         const source = parseDragSource(String(active.id));
         const item =
-          source?.from === 'placed' ? items.find((item) => item.id === source.itemId) : current;
+          source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
         return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
       },
       // Narrating the cursor is only worth it once the preview exists to agree

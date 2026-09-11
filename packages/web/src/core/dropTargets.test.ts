@@ -58,8 +58,7 @@ describe('drag source ids', () => {
     expect(parseDragSource('placed:b')).toEqual(placed('b'));
   });
 
-  // Item ids come out of crypto.randomUUID, dashes and all, and nothing stops
-  // one from carrying the separator.
+  // The form hands out UUIDs today, but the parser does not count on it.
   it('keeps everything after the prefix as the item id', () => {
     const id = '3f1c2e8a-9b7d-4c6e-a1f0-5d2b8c7e9a41';
     expect(parseDragSource(`placed:${id}`)).toEqual(placed(id));

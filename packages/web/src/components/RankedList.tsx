@@ -66,11 +66,10 @@ function Slot({ rank, items }: SlotProps) {
   );
 }
 
-// Each card is picked up on its own, so dragging one half of a tie dims that
-// half and leaves its partner solid, which is what the drop will do to them.
-// The row stays in the list meanwhile: the gaps around it are the ones the
-// user sees, and the drop is resolved against those. No `attributes`, for the
-// same reason as the pool card.
+// Draggable per card, not per position, so one half of a tie can leave while
+// its partner keeps the position. The row stays in the list during the drag
+// because the drop is resolved against the gaps the user can see. No
+// `attributes`, for the same reason as the pool card.
 function Placed({ item }: { item: Item }) {
   const id = dragSourceId({ from: 'placed', itemId: item.id });
   const { listeners, setNodeRef, isDragging } = useDraggable({ id });
