@@ -93,7 +93,11 @@ export function SortingScreen() {
           </section>
         </div>
 
-        <DragOverlay>{current ? <ItemCard item={current} size="lead" /> : null}</DragOverlay>
+        {/* dnd-kit animates a drop back to the dragged node, and here that node is
+            the pool card, not the row the item has just landed in. */}
+        <DragOverlay dropAnimation={null}>
+          {current ? <ItemCard item={current} size="lead" /> : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );
