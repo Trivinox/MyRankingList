@@ -28,8 +28,9 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const [dragging, setDragging] = useState(false);
 
-  // A few pixels of travel before the gesture counts as a drag, so a twitch
-  // between press and release does not fling the card somewhere.
+  // A few pixels of travel before the gesture counts as a drag. Without them the
+  // sensor starts one on press, and a plain click on the card would announce a
+  // pickup and then a drop outside the list.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const [next] = placement?.pendingPool ?? [];
