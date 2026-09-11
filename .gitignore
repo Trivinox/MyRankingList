@@ -1,6 +1,9 @@
 # Specs
 project_spec
 
+# Claude Code local settings
+.claude
+
 # Logs
 logs
 *.log
