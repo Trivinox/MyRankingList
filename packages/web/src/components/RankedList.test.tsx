@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import { parseDropTarget } from '../core/dropTargets.ts';
+import { parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import { RankedList } from './RankedList.tsx';
 
@@ -40,6 +40,26 @@ describe('RankedList', () => {
       { kind: 'gap', index: 2 },
       'position',
       { kind: 'gap', index: 3 },
+    ]);
+  });
+
+  it('lets every placed item be picked up, each half of a tie on its own', () => {
+    render(
+      <DndContext>
+        <RankedList slots={slots} items={items} />
+      </DndContext>,
+    );
+
+    const handles = [...document.querySelectorAll('[data-drag-id]')].map((handle) => [
+      handle.textContent,
+      parseDragSource(handle.getAttribute('data-drag-id') ?? ''),
+    ]);
+
+    expect(handles).toEqual([
+      ['Sushi', { from: 'placed', itemId: 'sushi' }],
+      ['Ramen', { from: 'placed', itemId: 'ramen' }],
+      ['Curry', { from: 'placed', itemId: 'curry' }],
+      ['Tacos', { from: 'placed', itemId: 'tacos' }],
     ]);
   });
 });

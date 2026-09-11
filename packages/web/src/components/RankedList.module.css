@@ -35,3 +35,12 @@
   border-radius: 10px;
   background: #e6e6ee;
 }
+
+.handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.lifted {
+  opacity: 0.4;
+}

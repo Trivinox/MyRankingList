@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { describeDrop, dropTargetId, parseDropTarget, resolveDrop } from './dropTargets.ts';
+import {
+  describeDrop,
+  dragSourceId,
+  dropTargetId,
+  landingSlot,
+  parseDragSource,
+  parseDropTarget,
+  resolveDrop,
+} from './dropTargets.ts';
 import type { DragSource, DropTarget } from './dropTargets.ts';
 import type { PlacementState, RankedSlot } from './types.ts';
 
@@ -38,6 +46,28 @@ describe('drop target ids', () => {
   it('answers null for anything that is not a target id', () => {
     for (const id of ['', 'gap', 'gap:', 'gap:-1', 'gap:one', 'gap:1:2', 'row:1', 'pool']) {
       expect(parseDropTarget(id)).toBeNull();
+    }
+  });
+});
+
+describe('drag source ids', () => {
+  it('round-trips the pool and a placed item', () => {
+    expect(dragSourceId(pool)).toBe('pool');
+    expect(dragSourceId(placed('b'))).toBe('placed:b');
+    expect(parseDragSource('pool')).toEqual(pool);
+    expect(parseDragSource('placed:b')).toEqual(placed('b'));
+  });
+
+  // The form hands out UUIDs today, but the parser does not count on it.
+  it('keeps everything after the prefix as the item id', () => {
+    const id = '3f1c2e8a-9b7d-4c6e-a1f0-5d2b8c7e9a41';
+    expect(parseDragSource(`placed:${id}`)).toEqual(placed(id));
+    expect(parseDragSource('placed:a:b')).toEqual(placed('a:b'));
+  });
+
+  it('answers null for anything that is not a source id', () => {
+    for (const id of ['', 'placed', 'placed:', 'pool:a', 'gap:0', 'Pool']) {
+      expect(parseDragSource(id)).toBeNull();
     }
   });
 });
@@ -125,6 +155,43 @@ describe('moving one half of a tie', () => {
 
   it('refuses a position that already holds two', () => {
     expect(describeDrop(tied, placed('d'), slot(0))).toBe('rejected');
+  });
+});
+
+// What the screen reader announces once the drop is in. The cases that matter
+// are the ones where the slot and the gap disagree.
+describe('landingSlot', () => {
+  const three = state(list('a', 'b', 'c'), ['d']);
+
+  it('lands a pool item in the slot under the gap, or in the slot it ties with', () => {
+    expect(landingSlot(three, pool, gap(0))).toBe(0);
+    expect(landingSlot(three, pool, gap(3))).toBe(3);
+    expect(landingSlot(three, pool, slot(1))).toBe(1);
+  });
+
+  it('lands an item moved down one above the gap it was dropped in', () => {
+    expect(landingSlot(three, placed('a'), gap(2))).toBe(1);
+    expect(landingSlot(three, placed('a'), gap(3))).toBe(2);
+  });
+
+  it('lands an item moved up in the slot under the gap', () => {
+    expect(landingSlot(three, placed('c'), gap(0))).toBe(0);
+    expect(landingSlot(three, placed('c'), gap(1))).toBe(1);
+  });
+
+  it('leaves an item dropped beside itself where it was', () => {
+    expect(landingSlot(three, placed('b'), gap(1))).toBe(1);
+    expect(landingSlot(three, placed('b'), gap(2))).toBe(1);
+  });
+
+  it('shifts nothing for one half of a tie, whose position stays behind', () => {
+    const tied = state(list('a+b', 'c', 'd'));
+    expect(landingSlot(tied, placed('b'), gap(3))).toBe(3);
+  });
+
+  it('answers null for a refused drop', () => {
+    expect(landingSlot(three, placed('b'), slot(1))).toBeNull();
+    expect(landingSlot(three, pool, gap(4))).toBeNull();
   });
 });
 

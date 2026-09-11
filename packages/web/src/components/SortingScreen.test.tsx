@@ -29,6 +29,14 @@ const started = () => {
 
 const textOf = (id: string) => items.find((item) => item.id === id)?.text ?? id;
 
+// Every position row ends with the container holding its cards, so this
+// skips the rank number without matching on it.
+const listed = () =>
+  screen
+    .getAllByRole('listitem')
+    .filter((row) => !row.hasAttribute('data-drop-target'))
+    .map((row) => row.lastElementChild?.textContent);
+
 const renderScreen = () =>
   render(
     <I18nextProvider i18n={createI18n()}>
@@ -142,14 +150,6 @@ describe('dragging the pool item into the list', () => {
     });
   };
 
-  // Every position row ends with the container holding its cards, so this
-  // skips the rank number without matching on it.
-  const listed = () =>
-    screen
-      .getAllByRole('listitem')
-      .filter((row) => !row.hasAttribute('data-drop-target'))
-      .map((row) => row.lastElementChild?.textContent);
-
   it('picks the card up by the pool id', () => {
     renderScreen();
 
@@ -200,5 +200,76 @@ describe('dragging the pool item into the list', () => {
     expect(screen.getByText(second).closest('[data-drag-id]')).not.toBeNull();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
     expect(screen.getByText('2 of 4 placed')).toBeInTheDocument();
+  });
+});
+
+describe('moving an item that is already in the list', () => {
+  // Each pool item goes to the bottom, so the list ends up in shuffle order
+  // and every case starts from four known positions with the pool empty.
+  let order: string[];
+
+  beforeEach(() => {
+    const { start, drop } = usePlacement.getState();
+    start(items, 'Which one do you like more?');
+    for (let index = 1; index < items.length; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    order = started().shuffledOrder.map(textOf);
+  });
+
+  const move = (position: number, index: number) => {
+    const itemId = started().rankedSlots[position].itemIds[0];
+    act(() => {
+      usePlacement.getState().drop({ from: 'placed', itemId }, { kind: 'gap', index });
+    });
+  };
+
+  it('offers every item for dragging, not only the last one placed', () => {
+    renderScreen();
+
+    const ids = [...screen.getByRole('list').querySelectorAll('[data-drag-id]')].map((handle) =>
+      handle.getAttribute('data-drag-id'),
+    );
+
+    expect(ids).toEqual(started().shuffledOrder.map((id) => `placed:${id}`));
+  });
+
+  it('moves an item from the middle down and back up', () => {
+    renderScreen();
+    const [a, b, c, d] = order;
+    expect(listed()).toEqual([a, b, c, d]);
+
+    move(1, 4);
+    expect(listed()).toEqual([a, c, d, b]);
+
+    move(3, 1);
+    expect(listed()).toEqual([a, b, c, d]);
+  });
+
+  it('moves the first item down into a gap between two others', () => {
+    renderScreen();
+    const [a, b, c, d] = order;
+
+    move(0, 3);
+
+    expect(listed()).toEqual([b, c, a, d]);
+  });
+
+  it('moves the last item to the top', () => {
+    renderScreen();
+    const [a, b, c, d] = order;
+
+    move(3, 0);
+
+    expect(listed()).toEqual([d, a, b, c]);
+  });
+
+  it('keeps the progress where it was, since nothing new was placed', () => {
+    renderScreen();
+
+    move(0, 4);
+
+    expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
+    expect(screen.getByText(en.sorting.allPlaced)).toBeInTheDocument();
   });
 });

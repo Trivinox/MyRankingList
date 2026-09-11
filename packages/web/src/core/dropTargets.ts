@@ -3,8 +3,18 @@ import type { PlacementState, RankedSlot } from './types.ts';
 
 export type DragSource = { from: 'pool' } | { from: 'placed'; itemId: string };
 
-// What the pool card answers to on the way through the DOM.
-export const POOL_DRAG_ID = 'pool';
+// The pool only ever offers its head, so it needs no item id of its own.
+export function dragSourceId(source: DragSource): string {
+  return source.from === 'pool' ? 'pool' : `placed:${source.itemId}`;
+}
+
+export function parseDragSource(id: string): DragSource | null {
+  if (id === 'pool') {
+    return { from: 'pool' };
+  }
+  const match = /^placed:(.+)$/.exec(id);
+  return match ? { from: 'placed', itemId: match[1] } : null;
+}
 
 // A gap is the insertion point above the slot of the same index, so gap 0 sits
 // above everything and a gap at the list's length below everything. A slot is
@@ -100,4 +110,20 @@ export function resolveDrop(
         ? moveIntoTie(slots, dragged.itemId, index)
         : moveItem(slots, dragged.itemId, index),
   };
+}
+
+// The slot the dragged item ends up in, or null for a refused drop. Read off
+// the resolved list rather than the target: an item moved down lands one above
+// the gap it was dropped in.
+export function landingSlot(
+  state: PlacementState,
+  dragged: DragSource,
+  target: DropTarget,
+): number | null {
+  const next = resolveDrop(state, dragged, target);
+  if (!next) {
+    return null;
+  }
+  const itemId = dragged.from === 'pool' ? state.pendingPool[0] : dragged.itemId;
+  return slotOf(next.rankedSlots, itemId);
 }

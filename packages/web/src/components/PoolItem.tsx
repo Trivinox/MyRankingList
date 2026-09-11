@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
-import { POOL_DRAG_ID } from '../core/dropTargets.ts';
+import { dragSourceId } from '../core/dropTargets.ts';
 import type { Item } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
 import styles from './PoolItem.module.css';
@@ -38,13 +38,14 @@ export function PoolItem({ item }: PoolItemProps) {
 // space bar, and no sensor here would answer. Placing without a pointer means
 // clicking a position in the list, so it is never this card's job.
 function Handle({ item }: { item: Item }) {
-  const { listeners, setNodeRef, isDragging } = useDraggable({ id: POOL_DRAG_ID });
+  const id = dragSourceId({ from: 'pool' });
+  const { listeners, setNodeRef, isDragging } = useDraggable({ id });
 
   return (
     <div
       ref={setNodeRef}
       className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
-      data-drag-id={POOL_DRAG_ID}
+      data-drag-id={id}
       {...listeners}
     >
       <ItemCard item={item} size="lead" />
