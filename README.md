@@ -6,7 +6,7 @@ No user accounts required. Rooms run P2P over WebRTC in a star topology: the cre
 
 ## Status
 
-Phase 2 (UI shell) is finished. On top of the Phase 1 core, which holds the sorting rules as pure functions under `packages/web/src/core`, the app now has its first screen: the list input form, with the item and criterion limits, the minimum of three items to continue, the duplicate and long-list notices and the optional image URL per item. The interface is available in Spanish and English through react-i18next, and the list draft lives in a Zustand store the later screens read from. The continue button does not lead anywhere yet; the sorting screen and its drag and drop are Phase 3.
+Phase 3 (drag and drop, solo, desktop) is finished. The list input form from Phase 2 now leads to the sorting screen: the current pool item on the left, the list built so far on the right, and a progress bar. The pool item is dragged into a gap to insert it or onto an item to tie with it, and anything already in the list can be picked up and moved again. While dragging, the target under the cursor is marked green for an insertion, yellow for a tie and red where the drop is refused, which is a position already holding two items or an item's own row. A refused drop, a drop outside the list and Escape all leave the list as it was. The drag runs on dnd-kit over the pure placement rules in `packages/web/src/core`. The screen is desktop only: the click method and the mobile layout are Phase 5, and there is no result screen yet, so sorting stops once the pool is empty.
 
 ## Stack
 
