@@ -39,10 +39,10 @@ export const es: typeof en = {
     allPlaced: 'Todos los elementos están colocados',
     progress: '{{placed}} de {{total}} colocados',
     announce: {
-      lifted: 'Has cogido {{item}}.',
+      lifted: 'Arrastrando {{item}}.',
       placed: 'Colocado en la posición {{position}}.',
       outside: 'Lo has soltado fuera de la lista. No se ha colocado nada.',
-      cancelled: 'Arrastre cancelado. No se ha colocado nada.',
+      cancelled: 'Arrastre cancelado. La lista sigue igual.',
     },
   },
 };

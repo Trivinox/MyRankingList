@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -17,16 +17,14 @@ import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
 import styles from './SortingScreen.module.css';
 
-// dnd-kit ships instructions for picking an item up with the space bar and
-// steering it with the arrow keys. Only the pointer sensor is wired here, and
-// placing without one is going to mean clicking a position in the list rather
-// than driving the drag, so these describe a way in that never arrives.
+// dnd-kit's stock instructions explain a keyboard drag, and only the pointer
+// sensor is wired here. Blanked rather than just left unreferenced, since they
+// are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
 
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
-  const [dragging, setDragging] = useState(false);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -65,7 +63,6 @@ export function SortingScreen() {
   const placed = items.length - placement.pendingPool.length;
 
   const handleDragEnd = ({ over }: DragEndEvent) => {
-    setDragging(false);
     const target = over && parseDropTarget(String(over.id));
     if (target) {
       drop({ from: 'pool' }, target);
@@ -85,9 +82,7 @@ export function SortingScreen() {
         // the cursor rather than snap to the nearest centre.
         collisionDetection={pointerWithin}
         accessibility={{ announcements, screenReaderInstructions: noInstructions }}
-        onDragStart={() => setDragging(true)}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setDragging(false)}
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
@@ -98,12 +93,7 @@ export function SortingScreen() {
           </section>
         </div>
 
-        {/* The store advances the pool the moment a drop lands, so without the
-            flag the landing animation would play holding the next item rather
-            than the one that was just dropped. */}
-        <DragOverlay>
-          {dragging && current ? <ItemCard item={current} size="lead" /> : null}
-        </DragOverlay>
+        <DragOverlay>{current ? <ItemCard item={current} size="lead" /> : null}</DragOverlay>
       </DndContext>
     </div>
   );

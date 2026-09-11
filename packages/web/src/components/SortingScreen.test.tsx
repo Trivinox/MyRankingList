@@ -169,8 +169,8 @@ describe('dragging the pool item into the list', () => {
     expect(handle).not.toHaveAttribute('tabindex');
     expect(handle).not.toHaveAttribute('role');
     expect(handle).not.toHaveAttribute('aria-describedby');
-    // dnd-kit's stock instructions are hidden rather than removed, so they are
-    // still there for a screen reader to find unless they are overridden.
+    // dnd-kit renders its stock instructions even with nothing pointing at
+    // them, so this only holds while they are overridden.
     expect(document.body).not.toHaveTextContent(/space bar|arrow keys/i);
   });
 

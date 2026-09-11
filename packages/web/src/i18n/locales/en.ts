@@ -38,7 +38,7 @@ export const en = {
       lifted: 'Picked up {{item}}.',
       placed: 'Placed at position {{position}}.',
       outside: 'Dropped outside the list. Nothing was placed.',
-      cancelled: 'Drag cancelled. Nothing was placed.',
+      cancelled: 'Drag cancelled. The list is unchanged.',
     },
   },
 };
