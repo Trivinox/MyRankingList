@@ -46,15 +46,11 @@
 }
 
 /* Pastels are placeholders until the design system lands. Whatever replaces
-   them, these three keep meaning insert, tie and refused, and nothing else on
-   screen borrows them. A gap can only ever be an insertion or refused, and a
-   position a tie or refused. */
+   them, these keep meaning insert, tie and refused, and nothing else on screen
+   borrows them. Only a position is ever refused: every gap the list renders is
+   one the resolver accepts. */
 .gap[data-outcome='insert'] {
   background: #9fdcb8;
-}
-
-.gap[data-outcome='rejected'] {
-  background: #f4a59c;
 }
 
 .slot[data-outcome='tie'] .cards {
