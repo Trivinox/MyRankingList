@@ -138,8 +138,8 @@ export function SortingScreen() {
   }
 
   const placed = items.length - placement.pendingPool.length;
-  // What the cursor is carrying: an item picked back up out of the list, or
-  // the pool card, which stays in its area dimmed while the overlay travels.
+  // Whichever it is, the card it was picked up from stays where it was and
+  // dims; the overlay is what travels.
   const carried =
     dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
 
