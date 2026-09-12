@@ -44,3 +44,12 @@
 .list {
   padding-bottom: 30vh;
 }
+
+/* The item in the air, at the size of the row it is about to become. It takes
+   the width of its own text rather than the list's, so the targets it passes
+   over keep showing their preview around it. The cap is there for a long item,
+   which would otherwise be carried as one very wide line. */
+.carried {
+  width: max-content;
+  max-width: 20rem;
+}

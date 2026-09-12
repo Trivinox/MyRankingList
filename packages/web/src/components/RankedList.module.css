@@ -44,3 +44,19 @@
 .lifted {
   opacity: 0.4;
 }
+
+/* Pastels are placeholders until the design system lands. Whatever replaces
+   them, these keep meaning insert, tie and refused, and nothing else on screen
+   borrows them. Only a position is ever refused: every gap the list renders is
+   one the resolver accepts. */
+.gap[data-outcome='insert'] {
+  background: #9fdcb8;
+}
+
+.slot[data-outcome='tie'] .cards {
+  box-shadow: 0 0 0 3px #f0cf6e;
+}
+
+.slot[data-outcome='rejected'] .cards {
+  box-shadow: 0 0 0 3px #f4a59c;
+}

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import { parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
+import { dropTargetId, parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import { RankedList } from './RankedList.tsx';
 
@@ -18,29 +18,46 @@ const slots: RankedSlot[] = [
 ];
 
 describe('RankedList', () => {
-  it('offers an insertion point above every position and one below the last', () => {
+  it('offers an insertion point around every position, and each position as a tie', () => {
     render(
       <DndContext>
         <RankedList slots={slots} items={items} />
       </DndContext>,
     );
 
-    const rows = [...screen.getByRole('list').children].map((row) => {
-      const id = row.getAttribute('data-drop-target');
-      return id === null ? 'position' : parseDropTarget(id);
-    });
+    const rows = [...screen.getByRole('list').children].map((row) =>
+      parseDropTarget(row.getAttribute('data-drop-target') ?? ''),
+    );
 
     // Read back through the parser rather than compared as strings: what
     // matters is the target the resolver will be handed, not the spelling.
     expect(rows).toEqual([
       { kind: 'gap', index: 0 },
-      'position',
+      { kind: 'slot', index: 0 },
       { kind: 'gap', index: 1 },
-      'position',
+      { kind: 'slot', index: 1 },
       { kind: 'gap', index: 2 },
-      'position',
+      { kind: 'slot', index: 2 },
       { kind: 'gap', index: 3 },
     ]);
+  });
+
+  it('marks the target the preview names and nothing else', () => {
+    render(
+      <DndContext>
+        <RankedList
+          slots={slots}
+          items={items}
+          preview={{ targetId: dropTargetId({ kind: 'slot', index: 2 }), outcome: 'tie' }}
+        />
+      </DndContext>,
+    );
+
+    const marked = [...document.querySelectorAll('[data-outcome]')];
+
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveTextContent('Tacos');
+    expect(marked[0]).toHaveAttribute('data-outcome', 'tie');
   });
 
   it('lets every placed item be picked up, each half of a tie on its own', () => {

@@ -7,15 +7,29 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { Announcements, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type {
+  Announcements,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  Modifier,
+} from '@dnd-kit/core';
+import { getEventCoordinates } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
-import { landingSlot, parseDragSource, parseDropTarget } from '../core/dropTargets.ts';
+import {
+  describeDrop,
+  dropTargetId,
+  landingSlot,
+  parseDragSource,
+  parseDropTarget,
+} from '../core/dropTargets.ts';
 import type { DragSource } from '../core/dropTargets.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
+import type { DropPreview } from './RankedList.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit's stock instructions explain a keyboard drag, and only the pointer
@@ -23,10 +37,49 @@ import styles from './SortingScreen.module.css';
 // are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
 
+// dnd-kit sizes the overlay after the node that was picked up, and both of
+// them are wide: the pool card is a screenful and a placed row spans the list.
+// Carried at that size the card covered the very target whose preview it was
+// meant to show, so the sizing is dropped and the card inside decides.
+const unsized = { width: 'auto', height: 'auto' };
+
+// The overlay still starts at the picked-up node's corner, so once it is
+// smaller than that node the card would hang off away from the pointer. This
+// keeps the same spot of the card under it: grabbed by its middle, carried by
+// its middle.
+const keepGrabPoint: Modifier = ({
+  transform,
+  activatorEvent,
+  activeNodeRect,
+  overlayNodeRect,
+}) => {
+  const pointer = activatorEvent && getEventCoordinates(activatorEvent);
+  if (!pointer || !activeNodeRect || !overlayNodeRect) {
+    return transform;
+  }
+  const across = (pointer.x - activeNodeRect.left) / activeNodeRect.width;
+  const down = (pointer.y - activeNodeRect.top) / activeNodeRect.height;
+  return {
+    ...transform,
+    x: transform.x + across * (activeNodeRect.width - overlayNodeRect.width),
+    y: transform.y + down * (activeNodeRect.height - overlayNodeRect.height),
+  };
+};
+
+// Every drag event and every announcement starts by reading the same two ids.
+// Anything that is not one of ours comes back null, and so does no `over`.
+function readDrag({ active, over }: Pick<DragEndEvent, 'active' | 'over'>) {
+  return {
+    source: parseDragSource(String(active.id)),
+    target: over && parseDropTarget(String(over.id)),
+  };
+}
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
   const [dragged, setDragged] = useState<DragSource | null>(null);
+  const [preview, setPreview] = useState<DropPreview | null>(null);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -44,12 +97,25 @@ export function SortingScreen() {
           source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
         return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
       },
-      // Narrating the cursor is only worth it once the preview exists to agree
-      // with what it says.
-      onDragOver: () => undefined,
-      onDragEnd: ({ active, over }) => {
-        const source = parseDragSource(String(active.id));
-        const target = over && parseDropTarget(String(over.id));
+      // Reads out the same verdict the preview paints, so the two cannot
+      // disagree. Silent over nothing: letting go there is covered on drop.
+      onDragOver: (event) => {
+        const { source, target } = readDrag(event);
+        if (!placement || !source || !target) {
+          return undefined;
+        }
+        if (describeDrop(placement, source, target) === 'tie') {
+          const [partner] = placement.rankedSlots[target.index].itemIds;
+          const item = items.find(({ id }) => id === partner);
+          return t('sorting.announce.overTie', { item: item?.text });
+        }
+        const slot = landingSlot(placement, source, target);
+        return slot === null
+          ? t('sorting.announce.overRejected')
+          : t('sorting.announce.overInsert', { position: slot + 1 });
+      },
+      onDragEnd: (event) => {
+        const { source, target } = readDrag(event);
         // This runs in the same pass as the drop, before the list re-renders,
         // so the placement here is still the one the drop was made against.
         const slot = placement && source && target && landingSlot(placement, source, target);
@@ -72,17 +138,35 @@ export function SortingScreen() {
   }
 
   const placed = items.length - placement.pendingPool.length;
-  const lifted =
-    dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : null;
+  // Whichever it is, the card it was picked up from stays where it was and
+  // dims; the overlay is what travels.
+  const carried =
+    dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     setDragged(parseDragSource(String(active.id)));
   };
 
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
+    const { source, target } = readDrag(event);
+    setPreview(
+      source && target
+        ? { targetId: dropTargetId(target), outcome: describeDrop(placement, source, target) }
+        : null,
+    );
+  };
+
+  // A refused drop, a drop over nothing and a cancelled drag all leave the
+  // placement as it was. The item then is wherever it was before, the pool
+  // card included, because nothing ever took it out of there.
+  const settle = () => {
     setDragged(null);
-    const source = parseDragSource(String(active.id));
-    const target = over && parseDropTarget(String(over.id));
+    setPreview(null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    settle();
+    const { source, target } = readDrag(event);
     if (source && target) {
       drop(source, target);
     }
@@ -102,25 +186,26 @@ export function SortingScreen() {
         collisionDetection={pointerWithin}
         accessibility={{ announcements, screenReaderInstructions: noInstructions }}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setDragged(null)}
+        onDragCancel={settle}
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
             <PoolItem item={current} />
           </aside>
           <section className={styles.list} aria-label={t('sorting.listLabel')}>
-            <RankedList slots={placement.rankedSlots} items={items} />
+            <RankedList slots={placement.rankedSlots} items={items} preview={preview} />
           </section>
         </div>
 
         {/* dnd-kit animates a drop back to the dragged node, and here that node
             stays where the item was picked up, not where it has just landed. */}
-        <DragOverlay dropAnimation={null}>
-          {lifted ? (
-            <ItemCard item={lifted} />
-          ) : current ? (
-            <ItemCard item={current} size="lead" />
+        <DragOverlay dropAnimation={null} modifiers={[keepGrabPoint]} style={unsized}>
+          {carried ? (
+            <div className={styles.carried}>
+              <ItemCard item={carried} />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>

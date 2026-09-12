@@ -1,15 +1,35 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
 import { I18nextProvider } from 'react-i18next';
 import App from '../App.tsx';
+import { parseDropTarget } from '../core/dropTargets.ts';
 import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { SortingScreen } from './SortingScreen.tsx';
+
+// jsdom gives dnd-kit neither layout nor pointer events, so no real drag ever
+// starts here. The context is still the real one, wrapped only to keep hold of
+// the handlers the screen gives it, which the tests below call the way dnd-kit
+// would once its own hit detection had settled on a target.
+const dnd = vi.hoisted(() => ({ props: {} as DndContextProps }));
+
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const dndKit = await importOriginal<typeof import('@dnd-kit/core')>();
+  const { createElement } = await import('react');
+  return {
+    ...dndKit,
+    DndContext: (props: DndContextProps) => {
+      dnd.props = props;
+      return createElement(dndKit.DndContext, props);
+    },
+  };
+});
 
 const items: Item[] = ['Sushi', 'Ramen', 'Curry', 'Tacos'].map((text) => ({
   id: text.toLowerCase(),
@@ -34,7 +54,7 @@ const textOf = (id: string) => items.find((item) => item.id === id)?.text ?? id;
 const listed = () =>
   screen
     .getAllByRole('listitem')
-    .filter((row) => !row.hasAttribute('data-drop-target'))
+    .filter((row) => parseDropTarget(row.getAttribute('data-drop-target') ?? '')?.kind === 'slot')
     .map((row) => row.lastElementChild?.textContent);
 
 const renderScreen = () =>
@@ -271,5 +291,144 @@ describe('moving an item that is already in the list', () => {
 
     expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
     expect(screen.getByText(en.sorting.allPlaced)).toBeInTheDocument();
+  });
+});
+
+describe('while an item is in the air', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  // Only the ids are ever read off a drag event, so that is all these carry.
+  const event = (active: string, over: string | null) =>
+    ({ active: { id: active }, over: over && { id: over } }) as unknown as DragEndEvent;
+
+  const pickUp = (active: string) => act(() => dnd.props.onDragStart?.(event(active, null)));
+  const hover = (active: string, over: string | null) =>
+    act(() => dnd.props.onDragOver?.(event(active, over)));
+  const letGo = (active: string, over: string | null) =>
+    act(() => dnd.props.onDragEnd?.(event(active, over)));
+  const cancel = (active: string) => act(() => dnd.props.onDragCancel?.(event(active, null)));
+
+  const marked = () =>
+    [...document.querySelectorAll('[data-outcome]')].map((node) => [
+      node.getAttribute('data-drop-target'),
+      node.getAttribute('data-outcome'),
+    ]);
+
+  const inPool = () => screen.getByText(textOf(started().pendingPool[0])).closest('[data-drag-id]');
+
+  it('marks the gap under the cursor as an insertion', () => {
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'gap:1');
+
+    expect(marked()).toEqual([['gap:1', 'insert']]);
+  });
+
+  it('marks a position holding one item as a tie', () => {
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'slot:0');
+
+    expect(marked()).toEqual([['slot:0', 'tie']]);
+  });
+
+  it('moves the mark along with the cursor and drops it over nothing', () => {
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'gap:0');
+    hover('pool', 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'tie']]);
+
+    hover('pool', null);
+    expect(marked()).toEqual([]);
+  });
+
+  it('lands the item when it is let go over a gap', () => {
+    renderScreen();
+
+    const opener = textOf(started().rankedSlots[0].itemIds[0]);
+    const [first] = started().pendingPool.map(textOf);
+
+    pickUp('pool');
+    hover('pool', 'gap:0');
+    letGo('pool', 'gap:0');
+
+    expect(listed()).toEqual([first, opener]);
+    expect(marked()).toEqual([]);
+  });
+
+  it('refuses a position that already holds two and keeps the item in the pool', () => {
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+
+    const before = listed();
+    const waiting = started().pendingPool[0];
+
+    pickUp('pool');
+    hover('pool', 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    letGo('pool', 'slot:0');
+
+    expect(listed()).toEqual(before);
+    expect(started().pendingPool[0]).toBe(waiting);
+    expect(inPool()).toHaveAttribute('data-drag-id', 'pool');
+    expect(screen.getByText('2 of 4 placed')).toBeInTheDocument();
+  });
+
+  it('refuses a placed item on its own position and leaves it there', () => {
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+    });
+    renderScreen();
+
+    const before = listed();
+    const [itemId] = started().rankedSlots[0].itemIds;
+
+    pickUp(`placed:${itemId}`);
+    hover(`placed:${itemId}`, 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    letGo(`placed:${itemId}`, 'slot:0');
+
+    expect(listed()).toEqual(before);
+  });
+
+  it('puts the item back in the pool when it is let go outside the list', () => {
+    renderScreen();
+
+    const before = listed();
+
+    pickUp('pool');
+    hover('pool', 'gap:1');
+    hover('pool', null);
+    letGo('pool', null);
+
+    expect(listed()).toEqual(before);
+    expect(inPool()).toHaveAttribute('data-drag-id', 'pool');
+    expect(screen.getByText('1 of 4 placed')).toBeInTheDocument();
+  });
+
+  it('clears the mark and changes nothing when the drag is cancelled', () => {
+    renderScreen();
+
+    const before = listed();
+
+    pickUp('pool');
+    hover('pool', 'gap:0');
+    expect(marked()).toEqual([['gap:0', 'insert']]);
+
+    cancel('pool');
+
+    expect(marked()).toEqual([]);
+    expect(listed()).toEqual(before);
+    expect(inPool()).toHaveAttribute('data-drag-id', 'pool');
   });
 });
