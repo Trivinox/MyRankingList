@@ -37,16 +37,16 @@ import styles from './SortingScreen.module.css';
 // are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
 
-// dnd-kit sizes the overlay after the node that was picked up. The pool card
-// is far larger than a row, and carried at that size it covered the very row
-// whose preview it was meant to show, so a pool drag drops the sizing and lets
-// the card inside decide.
+// dnd-kit sizes the overlay after the node that was picked up, and both of
+// them are wide: the pool card is a screenful and a placed row spans the list.
+// Carried at that size the card covered the very target whose preview it was
+// meant to show, so the sizing is dropped and the card inside decides.
 const unsized = { width: 'auto', height: 'auto' };
 
 // The overlay still starts at the picked-up node's corner, so once it is
 // smaller than that node the card would hang off away from the pointer. This
 // keeps the same spot of the card under it: grabbed by its middle, carried by
-// its middle. A placed item's overlay is its own size and comes out unmoved.
+// its middle.
 const keepGrabPoint: Modifier = ({
   transform,
   activatorEvent,
@@ -138,8 +138,10 @@ export function SortingScreen() {
   }
 
   const placed = items.length - placement.pendingPool.length;
-  const lifted =
-    dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : null;
+  // What the cursor is carrying: an item picked back up out of the list, or
+  // the pool card, which stays in its area dimmed while the overlay travels.
+  const carried =
+    dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     setDragged(parseDragSource(String(active.id)));
@@ -199,16 +201,10 @@ export function SortingScreen() {
 
         {/* dnd-kit animates a drop back to the dragged node, and here that node
             stays where the item was picked up, not where it has just landed. */}
-        <DragOverlay
-          dropAnimation={null}
-          modifiers={[keepGrabPoint]}
-          style={lifted ? undefined : unsized}
-        >
-          {lifted ? (
-            <ItemCard item={lifted} />
-          ) : current ? (
+        <DragOverlay dropAnimation={null} modifiers={[keepGrabPoint]} style={unsized}>
+          {carried ? (
             <div className={styles.carried}>
-              <ItemCard item={current} />
+              <ItemCard item={carried} />
             </div>
           ) : null}
         </DragOverlay>
