@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
@@ -81,6 +81,8 @@ const marked = () =>
   ]);
 
 const inPool = () => screen.getByText(textOf(started().pendingPool[0])).closest('[data-drag-id]');
+
+const announced = () => document.querySelector('[data-announcer]')?.textContent;
 
 const renderScreen = () =>
   render(
@@ -570,5 +572,123 @@ describe('tying two items together', () => {
 
     expect(listed()).toEqual([row(a), row(b), row(c)]);
     expect(ranks()).toEqual(['1', '2', '3']);
+  });
+});
+
+// dnd-kit sends the pick-up and the first drop hint a frame apart, and a live
+// region read twice in one frame is heard once, so the screen holds each
+// message for a beat. These walk the queue rather than the clock.
+describe('what the live region says', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const beat = () =>
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+  it('keeps the pick-up up until the hint that follows it has waited its turn', () => {
+    renderScreen();
+    const next = textOf(started().pendingPool[0]);
+
+    pickUp('pool');
+    expect(announced()).toBe(`Picked up ${next}.`);
+
+    // Arrives while the pick-up is still being read, so it queues behind it.
+    hover('pool', 'gap:0');
+    expect(announced()).toBe(`Picked up ${next}.`);
+
+    beat();
+    expect(announced()).toBe('Drop to put it at position 1.');
+  });
+
+  it('reads a pick-up that empties a tie, then what the drop would do', () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    // The ids come back as a one-or-two tuple, and the pair is what this case
+    // is about, so it stops here rather than reading past the end.
+    const ids = started().rankedSlots[0].itemIds;
+    if (ids.length !== 2) {
+      throw new Error('The drops above were supposed to leave a tie in the top position');
+    }
+    const [first, second] = ids;
+
+    pickUp(`placed:${second}`);
+    hover(`placed:${second}`, 'slot:0');
+
+    expect(announced()).toBe(`Picked up ${textOf(second)}.`);
+    beat();
+    expect(announced()).toBe(`Drop to tie it with ${textOf(first)}.`);
+  });
+
+  // A drag crosses a lot of targets, and a region that read all of them would
+  // still be somewhere behind the pointer when the item lands.
+  it('skips the positions a fast drag crossed and says where it ended up', () => {
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'gap:0');
+    hover('pool', 'gap:1');
+    hover('pool', 'gap:0');
+
+    beat();
+    expect(announced()).toBe('Drop to put it at position 1.');
+
+    beat();
+    expect(announced()).toBe('Drop to put it at position 1.');
+  });
+
+  it('names the partner when a drop ties, rather than calling it a placement', () => {
+    renderScreen();
+    const [opener] = started().rankedSlots[0].itemIds;
+
+    pickUp('pool');
+    hover('pool', 'slot:0');
+    letGo('pool', 'slot:0');
+
+    beat();
+    beat();
+    expect(announced()).toBe(`Tied with ${textOf(opener)}.`);
+  });
+
+  it('says the list is unchanged for a refused drop and for a cancelled drag', () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', null);
+    beat();
+    expect(announced()).toBe('Dropped outside the list. The list is unchanged.');
+
+    pickUp('pool');
+    cancel('pool');
+    beat();
+    beat();
+    expect(announced()).toBe('Drag cancelled. The list is unchanged.');
+  });
+
+  // dnd-kit renders a region of its own whether or not anything is put in it,
+  // and left to its own devices it fills that one with ids while this one is
+  // reading item names. Checked through the config rather than the DOM: the
+  // handlers here are called directly, so its pipeline never runs in a test.
+  it('leaves dnd-kit with nothing to say of its own', () => {
+    renderScreen();
+
+    const theirs = dnd.props.accessibility?.announcements;
+    const event = { active: { id: 'pool' }, over: null } as unknown as DragEndEvent;
+
+    expect(theirs).toBeDefined();
+    expect(theirs?.onDragStart(event)).toBeUndefined();
+    expect(theirs?.onDragOver(event)).toBeUndefined();
+    expect(theirs?.onDragEnd(event)).toBeUndefined();
+    expect(theirs?.onDragCancel(event)).toBeUndefined();
   });
 });

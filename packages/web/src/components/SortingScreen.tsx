@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -24,9 +24,11 @@ import {
   parseDragSource,
   parseDropTarget,
 } from '../core/dropTargets.ts';
-import type { DragSource } from '../core/dropTargets.ts';
+import type { DragSource, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { Announcer } from './Announcer.tsx';
+import { useAnnouncer } from './useAnnouncer.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
@@ -38,6 +40,16 @@ import styles from './SortingScreen.module.css';
 // sensor is wired here. Blanked rather than just left unreferenced, since they
 // are rendered into the page whether or not anything points at them.
 const noInstructions = { draggable: '' };
+
+// The announcing is done through our own region, which queues, so dnd-kit's is
+// left empty rather than racing it. Its defaults have to be overridden for
+// that: left alone it reads out ids of its own accord.
+const noAnnouncements: Announcements = {
+  onDragStart: () => undefined,
+  onDragOver: () => undefined,
+  onDragEnd: () => undefined,
+  onDragCancel: () => undefined,
+};
 
 // dnd-kit sizes the overlay after the node that was picked up, and both of
 // them are wide: the pool card is a screenful and a placed row spans the list.
@@ -87,65 +99,10 @@ export function SortingScreen() {
   // sensor starts one on press, and a plain click on the card would announce a
   // pickup and then a drop outside the list.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const { announcement, say } = useAnnouncer();
 
   const [next] = placement?.pendingPool ?? [];
   const current = items.find((item) => item.id === next) ?? null;
-
-  const announcements = useMemo<Announcements>(() => {
-    // Whichever of the two names in a position is not the one being carried.
-    // On a pair being put back together the carried item is the head of its
-    // own slot, and reading that would have it tying with itself.
-    const partnerIn = (slot: RankedSlot | undefined, dragged: DragSource) => {
-      const own = dragged.from === 'placed' ? dragged.itemId : null;
-      const partner = slot?.itemIds.find((id) => id !== own);
-      return items.find(({ id }) => id === partner)?.text;
-    };
-
-    return {
-      onDragStart: ({ active }) => {
-        const source = parseDragSource(String(active.id));
-        const item =
-          source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
-        return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
-      },
-      // Reads out the same verdict the preview paints, so the two cannot
-      // disagree. Silent over nothing: letting go there is covered on drop.
-      onDragOver: (event) => {
-        const { source, target } = readDrag(event);
-        if (!placement || !source || !target) {
-          return undefined;
-        }
-        if (describeDrop(placement, source, target) === 'tie') {
-          const item = partnerIn(placement.rankedSlots[target.index], source);
-          return t('sorting.announce.overTie', { item });
-        }
-        const slot = landingSlot(placement, source, target);
-        return slot === null
-          ? t('sorting.announce.overRejected')
-          : t('sorting.announce.overInsert', { position: slot + 1 });
-      },
-      onDragEnd: (event) => {
-        const { source, target } = readDrag(event);
-        // This runs in the same pass as the drop, before the list re-renders,
-        // so the placement here is still the one the drop was made against.
-        if (!placement || !source || !target) {
-          return t('sorting.announce.outside');
-        }
-        if (describeDrop(placement, source, target) === 'tie') {
-          const item = partnerIn(placement.rankedSlots[target.index], source);
-          return t('sorting.announce.tied', { item });
-        }
-        const slot = landingSlot(placement, source, target);
-        if (slot === null) {
-          return t('sorting.announce.outside');
-        }
-        return source.from === 'placed'
-          ? t('sorting.announce.moved', { position: slot + 1 })
-          : t('sorting.announce.placed', { position: slot + 1 });
-      },
-      onDragCancel: () => t('sorting.announce.cancelled'),
-    };
-  }, [t, items, current, placement]);
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
@@ -162,16 +119,44 @@ export function SortingScreen() {
   const carried =
     dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
 
-  const handleDragStart = ({ active }: DragStartEvent) => {
-    setDragged(parseDragSource(String(active.id)));
+  // Whichever of the two names in a position is not the one being carried. On
+  // a pair being put back together the carried item is the head of its own
+  // slot, and reading that would have it tying with itself.
+  const partnerIn = (slot: RankedSlot | undefined, dragged: DragSource) => {
+    const own = dragged.from === 'placed' ? dragged.itemId : null;
+    const partner = slot?.itemIds.find((id) => id !== own);
+    return items.find(({ id }) => id === partner)?.text;
   };
 
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    const source = parseDragSource(String(active.id));
+    setDragged(source);
+    const item = source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
+    say(item ? t('sorting.announce.lifted', { item: item.text }) : undefined);
+  };
+
+  // The preview and the announcement are the same verdict, so they come off
+  // one call and cannot disagree. Silent over nothing: letting go there is
+  // covered on drop.
   const handleDragOver = (event: DragOverEvent) => {
     const { source, target } = readDrag(event);
-    setPreview(
-      source && target
-        ? { targetId: dropTargetId(target), outcome: describeDrop(placement, source, target) }
-        : null,
+    if (!source || !target) {
+      setPreview(null);
+      return;
+    }
+    const outcome = describeDrop(placement, source, target);
+    setPreview({ targetId: dropTargetId(target), outcome });
+
+    if (outcome === 'tie') {
+      const item = partnerIn(placement.rankedSlots[target.index], source);
+      say(t('sorting.announce.overTie', { item }));
+      return;
+    }
+    const slot = landingSlot(placement, source, target);
+    say(
+      slot === null
+        ? t('sorting.announce.overRejected')
+        : t('sorting.announce.overInsert', { position: slot + 1 }),
     );
   };
 
@@ -183,9 +168,31 @@ export function SortingScreen() {
     setPreview(null);
   };
 
+  const handleDragCancel = () => {
+    settle();
+    say(t('sorting.announce.cancelled'));
+  };
+
+  const landed = (source: DragSource, target: DropTarget) => {
+    if (describeDrop(placement, source, target) === 'tie') {
+      const item = partnerIn(placement.rankedSlots[target.index], source);
+      return t('sorting.announce.tied', { item });
+    }
+    const slot = landingSlot(placement, source, target);
+    if (slot === null) {
+      return t('sorting.announce.outside');
+    }
+    return source.from === 'placed'
+      ? t('sorting.announce.moved', { position: slot + 1 })
+      : t('sorting.announce.placed', { position: slot + 1 });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     settle();
     const { source, target } = readDrag(event);
+    // Read off the placement the drop was made against, before the store
+    // swaps it for the one the drop produced.
+    say(source && target ? landed(source, target) : t('sorting.announce.outside'));
     if (source && target) {
       drop(source, target);
     }
@@ -203,11 +210,14 @@ export function SortingScreen() {
         // The gaps are thin strips between the cards, so the drop has to follow
         // the cursor rather than snap to the nearest centre.
         collisionDetection={pointerWithin}
-        accessibility={{ announcements, screenReaderInstructions: noInstructions }}
+        accessibility={{
+          announcements: noAnnouncements,
+          screenReaderInstructions: noInstructions,
+        }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={settle}
+        onDragCancel={handleDragCancel}
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
@@ -228,6 +238,8 @@ export function SortingScreen() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <Announcer announcement={announcement} />
     </div>
   );
 }
