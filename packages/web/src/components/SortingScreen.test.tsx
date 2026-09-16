@@ -577,7 +577,8 @@ describe('tying two items together', () => {
 
 // dnd-kit sends the pick-up and the first drop hint a frame apart, and a live
 // region read twice in one frame is heard once, so the screen holds each
-// message for a beat. These walk the queue rather than the clock.
+// message for a beat. These step the clock a beat at a time and read the
+// region in between.
 describe('what the live region says', () => {
   beforeEach(() => {
     vi.useFakeTimers();

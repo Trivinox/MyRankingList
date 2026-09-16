@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // them, short enough that the hints keep up with the pointer.
 const beat = 250;
 
-export function useAnnouncer(hold: number = beat) {
+export function useAnnouncer() {
   const [announcement, setAnnouncement] = useState('');
   // Only ever one message waiting. A region that has fallen behind should say
   // where the drag is now, not read out every position it crossed on the way.
@@ -23,8 +23,8 @@ export function useAnnouncer(hold: number = beat) {
       return;
     }
     setAnnouncement(message);
-    timer.current = setTimeout(next, hold);
-  }, [hold]);
+    timer.current = setTimeout(next, beat);
+  }, []);
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
