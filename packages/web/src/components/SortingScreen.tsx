@@ -20,10 +20,12 @@ import {
   describeDrop,
   dropTargetId,
   landingSlot,
+  listWhileDragging,
   parseDragSource,
   parseDropTarget,
 } from '../core/dropTargets.ts';
 import type { DragSource } from '../core/dropTargets.ts';
+import type { RankedSlot } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
@@ -89,13 +91,37 @@ export function SortingScreen() {
   const [next] = placement?.pendingPool ?? [];
   const current = items.find((item) => item.id === next) ?? null;
 
-  const announcements = useMemo<Announcements>(
-    () => ({
+  const announcements = useMemo<Announcements>(() => {
+    // Whichever of the two names in a position is not the one being carried.
+    // On a pair being put back together the carried item is the head of its
+    // own slot, and reading that would have it tying with itself.
+    const partnerIn = (slot: RankedSlot | undefined, dragged: DragSource) => {
+      const own = dragged.from === 'placed' ? dragged.itemId : null;
+      const partner = slot?.itemIds.find((id) => id !== own);
+      return items.find(({ id }) => id === partner)?.text;
+    };
+
+    return {
       onDragStart: ({ active }) => {
         const source = parseDragSource(String(active.id));
         const item =
           source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
-        return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
+        if (!source || !item) {
+          return undefined;
+        }
+        // Half a tie leaves the list on the way up, the one moment it changes
+        // without anything having been dropped, so the pick-up says who is
+        // left standing in the position and the renumbering follows from that.
+        const partner =
+          source.from === 'placed'
+            ? partnerIn(
+                placement?.rankedSlots.find(({ itemIds }) => itemIds.includes(source.itemId)),
+                source,
+              )
+            : undefined;
+        return partner
+          ? t('sorting.announce.liftedFromTie', { item: item.text, partner })
+          : t('sorting.announce.lifted', { item: item.text });
       },
       // Reads out the same verdict the preview paints, so the two cannot
       // disagree. Silent over nothing: letting go there is covered on drop.
@@ -105,9 +131,8 @@ export function SortingScreen() {
           return undefined;
         }
         if (describeDrop(placement, source, target) === 'tie') {
-          const [partner] = placement.rankedSlots[target.index].itemIds;
-          const item = items.find(({ id }) => id === partner);
-          return t('sorting.announce.overTie', { item: item?.text });
+          const item = partnerIn(placement.rankedSlots[target.index], source);
+          return t('sorting.announce.overTie', { item });
         }
         const slot = landingSlot(placement, source, target);
         return slot === null
@@ -118,18 +143,24 @@ export function SortingScreen() {
         const { source, target } = readDrag(event);
         // This runs in the same pass as the drop, before the list re-renders,
         // so the placement here is still the one the drop was made against.
-        const slot = placement && source && target && landingSlot(placement, source, target);
+        if (!placement || !source || !target) {
+          return t('sorting.announce.outside');
+        }
+        if (describeDrop(placement, source, target) === 'tie') {
+          const item = partnerIn(placement.rankedSlots[target.index], source);
+          return t('sorting.announce.tied', { item });
+        }
+        const slot = landingSlot(placement, source, target);
         if (slot === null) {
           return t('sorting.announce.outside');
         }
-        return source?.from === 'placed'
+        return source.from === 'placed'
           ? t('sorting.announce.moved', { position: slot + 1 })
           : t('sorting.announce.placed', { position: slot + 1 });
       },
       onDragCancel: () => t('sorting.announce.cancelled'),
-    }),
-    [t, items, current, placement],
-  );
+    };
+  }, [t, items, current, placement]);
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
@@ -138,8 +169,11 @@ export function SortingScreen() {
   }
 
   const placed = items.length - placement.pendingPool.length;
-  // Whichever it is, the card it was picked up from stays where it was and
-  // dims; the overlay is what travels.
+  // The preview, the resolver and the progress all keep reading the placement
+  // itself: the drop is worked out against the real list, and the progress
+  // counts what has left the pool rather than what is on screen right now.
+  const shown = listWhileDragging(placement.rankedSlots, dragged);
+  // An untied card stays where it was and dims; the overlay is what travels.
   const carried =
     dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
 
@@ -195,7 +229,7 @@ export function SortingScreen() {
             <PoolItem item={current} />
           </aside>
           <section className={styles.list} aria-label={t('sorting.listLabel')}>
-            <RankedList slots={placement.rankedSlots} items={items} preview={preview} />
+            <RankedList slots={shown} items={items} preview={preview} />
           </section>
         </div>
 

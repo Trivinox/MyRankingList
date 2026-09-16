@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useTranslation } from 'react-i18next';
 import { dragSourceId, dropTargetId } from '../core/dropTargets.ts';
 import type { DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import { rankItems } from '../core/ranking.ts';
@@ -33,7 +34,7 @@ export function RankedList({ slots, items, preview }: RankedListProps) {
       {slots.map((slot, index) => {
         // One entry per item, in list order, so a position takes the rank of
         // whichever item heads it and a tie leaves a number behind.
-        const { rank } = entries[seen];
+        const { rank, tied } = entries[seen];
         seen += slot.itemIds.length;
 
         return (
@@ -42,6 +43,7 @@ export function RankedList({ slots, items, preview }: RankedListProps) {
             <Slot
               index={index}
               rank={rank}
+              tied={tied}
               items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])}
               outcome={outcomeAt({ kind: 'slot', index })}
             />
@@ -74,6 +76,7 @@ function Gap({ index, outcome }: { index: number; outcome?: DropOutcome }) {
 interface SlotProps {
   index: number;
   rank: number;
+  tied: boolean;
   items: Item[];
   outcome?: DropOutcome;
 }
@@ -82,13 +85,18 @@ interface SlotProps {
 // list reads as one position holding both. The whole row is the tie target,
 // rank number included, so the pointer never crosses a dead strip on its way
 // from a gap to a card.
-function Slot({ index, rank, items, outcome }: SlotProps) {
+function Slot({ index, rank, tied, items, outcome }: SlotProps) {
+  const { t } = useTranslation();
   const id = dropTargetId({ kind: 'slot', index });
   const { setNodeRef } = useDroppable({ id });
 
   return (
     <li ref={setNodeRef} className={styles.slot} data-drop-target={id} data-outcome={outcome}>
       <span className={styles.rank}>{rank}</span>
+      {/* The shared container and the repeated number carry the tie on screen,
+          so this is only here for the readers that see neither. It sits ahead
+          of the cards so the position is announced as a tie before its items. */}
+      {tied ? <span className={styles.tie}>{t('sorting.tied')}</span> : null}
       <div className={styles.cards}>
         {items.map((item) => (
           <Placed key={item.id} item={item} />

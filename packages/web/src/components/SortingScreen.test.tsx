@@ -49,13 +49,38 @@ const started = () => {
 
 const textOf = (id: string) => items.find((item) => item.id === id)?.text ?? id;
 
-// Every position row ends with the container holding its cards, so this
-// skips the rank number without matching on it.
-const listed = () =>
+const positions = () =>
   screen
     .getAllByRole('listitem')
-    .filter((row) => parseDropTarget(row.getAttribute('data-drop-target') ?? '')?.kind === 'slot')
-    .map((row) => row.lastElementChild?.textContent);
+    .filter((row) => parseDropTarget(row.getAttribute('data-drop-target') ?? '')?.kind === 'slot');
+
+// A position row opens with its rank and ends with the container holding its
+// cards, so neither of these has to match on what is in between.
+const listed = () => positions().map((row) => row.lastElementChild?.textContent);
+const ranks = () => positions().map((row) => row.firstElementChild?.textContent);
+
+// listed() reads a whole position at once, so a tie comes back as both names
+// run together.
+const row = (...ids: string[]) => ids.map(textOf).join('');
+
+// Only the ids are ever read off a drag event, so that is all these carry.
+const event = (active: string, over: string | null) =>
+  ({ active: { id: active }, over: over && { id: over } }) as unknown as DragEndEvent;
+
+const pickUp = (active: string) => act(() => dnd.props.onDragStart?.(event(active, null)));
+const hover = (active: string, over: string | null) =>
+  act(() => dnd.props.onDragOver?.(event(active, over)));
+const letGo = (active: string, over: string | null) =>
+  act(() => dnd.props.onDragEnd?.(event(active, over)));
+const cancel = (active: string) => act(() => dnd.props.onDragCancel?.(event(active, null)));
+
+const marked = () =>
+  [...document.querySelectorAll('[data-outcome]')].map((node) => [
+    node.getAttribute('data-drop-target'),
+    node.getAttribute('data-outcome'),
+  ]);
+
+const inPool = () => screen.getByText(textOf(started().pendingPool[0])).closest('[data-drag-id]');
 
 const renderScreen = () =>
   render(
@@ -299,25 +324,6 @@ describe('while an item is in the air', () => {
     usePlacement.getState().start(items, 'Which one do you like more?');
   });
 
-  // Only the ids are ever read off a drag event, so that is all these carry.
-  const event = (active: string, over: string | null) =>
-    ({ active: { id: active }, over: over && { id: over } }) as unknown as DragEndEvent;
-
-  const pickUp = (active: string) => act(() => dnd.props.onDragStart?.(event(active, null)));
-  const hover = (active: string, over: string | null) =>
-    act(() => dnd.props.onDragOver?.(event(active, over)));
-  const letGo = (active: string, over: string | null) =>
-    act(() => dnd.props.onDragEnd?.(event(active, over)));
-  const cancel = (active: string) => act(() => dnd.props.onDragCancel?.(event(active, null)));
-
-  const marked = () =>
-    [...document.querySelectorAll('[data-outcome]')].map((node) => [
-      node.getAttribute('data-drop-target'),
-      node.getAttribute('data-outcome'),
-    ]);
-
-  const inPool = () => screen.getByText(textOf(started().pendingPool[0])).closest('[data-drag-id]');
-
   it('marks the gap under the cursor as an insertion', () => {
     renderScreen();
 
@@ -430,5 +436,139 @@ describe('while an item is in the air', () => {
     expect(marked()).toEqual([]);
     expect(listed()).toEqual(before);
     expect(inPool()).toHaveAttribute('data-drag-id', 'pool');
+  });
+});
+
+describe('tying two items together', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  // The shuffle picks the opener, so each case empties as much of the pool as
+  // it needs into the bottom of the list and reads the ids back afterwards.
+  const fill = (count: number) => {
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index <= count; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    return started().shuffledOrder;
+  };
+
+  const tieOnto = (index: number) => {
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index });
+    });
+  };
+
+  it('puts both items under one number and moves the pool on', () => {
+    const [a, b, c, d] = fill(2);
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'slot:1');
+    expect(marked()).toEqual([['slot:1', 'tie']]);
+
+    letGo('pool', 'slot:1');
+
+    expect(listed()).toEqual([row(a), row(b, d), row(c)]);
+    expect(ranks()).toEqual(['1', '2', '4']);
+    expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
+  });
+
+  it('refuses a third item, whether it comes from the pool or from the list', () => {
+    const [a, b, c] = fill(1);
+    renderScreen();
+
+    tieOnto(0);
+    expect(listed()).toEqual([row(a, c), row(b)]);
+
+    pickUp('pool');
+    hover('pool', 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+    letGo('pool', 'slot:0');
+    expect(listed()).toEqual([row(a, c), row(b)]);
+    expect(inPool()).toHaveAttribute('data-drag-id', 'pool');
+
+    pickUp(`placed:${b}`);
+    hover(`placed:${b}`, 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+    letGo(`placed:${b}`, 'slot:0');
+    expect(listed()).toEqual([row(a, c), row(b)]);
+  });
+
+  // A pair with two positions under it, so the numbering has room to move when
+  // one half of it goes up.
+  const pairOnTop = () => {
+    const order = fill(2);
+    tieOnto(0);
+    return order;
+  };
+
+  it('takes half a pair out of the list the moment it is picked up', () => {
+    const [a, b, c, d] = pairOnTop();
+    renderScreen();
+
+    expect(listed()).toEqual([row(a, d), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '3', '4']);
+
+    pickUp(`placed:${d}`);
+
+    expect(listed()).toEqual([row(a), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '2', '3']);
+  });
+
+  it('lands that half in a gap and leaves the partner holding its position', () => {
+    const [a, b, c, d] = pairOnTop();
+    renderScreen();
+
+    pickUp(`placed:${d}`);
+    hover(`placed:${d}`, 'gap:3');
+    letGo(`placed:${d}`, 'gap:3');
+
+    expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+    expect(ranks()).toEqual(['1', '2', '3', '4']);
+  });
+
+  it('puts it back beside its partner when the drag is cancelled', () => {
+    const [a, b, c, d] = pairOnTop();
+    renderScreen();
+
+    pickUp(`placed:${d}`);
+    hover(`placed:${d}`, 'gap:3');
+    expect(listed()).toEqual([row(a), row(b), row(c)]);
+
+    cancel(`placed:${d}`);
+
+    expect(listed()).toEqual([row(a, d), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '3', '4']);
+    expect(marked()).toEqual([]);
+  });
+
+  // The partner is standing there on its own by then, so a red position around
+  // a single item would contradict the rule the user has just been taught.
+  it('reads a drop back onto the partner as a tie and leaves the list as it was', () => {
+    const [a, b, c, d] = pairOnTop();
+    renderScreen();
+
+    pickUp(`placed:${d}`);
+    hover(`placed:${d}`, 'slot:0');
+    expect(marked()).toEqual([['slot:0', 'tie']]);
+
+    letGo(`placed:${d}`, 'slot:0');
+
+    expect(listed()).toEqual([row(a, d), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '3', '4']);
+  });
+
+  // Only a tie leaves the list on pick-up. An untied item takes its position
+  // with it, which would slide every gap below it out from under the cursor.
+  it('keeps an untied item in the list while it is in the air', () => {
+    const [a, b, c] = fill(2);
+    renderScreen();
+
+    pickUp(`placed:${b}`);
+
+    expect(listed()).toEqual([row(a), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '2', '3']);
   });
 });

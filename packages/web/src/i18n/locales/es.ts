@@ -38,10 +38,13 @@ export const es: typeof en = {
     poolHint: 'Añádelo a la lista',
     allPlaced: 'Todos los elementos están colocados',
     progress: '{{placed}} de {{total}} colocados',
+    tied: 'Empatado',
     announce: {
       lifted: 'Arrastrando {{item}}.',
+      liftedFromTie: 'Arrastrando {{item}}. En esa posición ya solo está {{partner}}.',
       placed: 'Colocado en la posición {{position}}.',
       moved: 'Movido a la posición {{position}}.',
+      tied: 'Empatado con {{item}}.',
       overInsert: 'Suéltalo para dejarlo en la posición {{position}}.',
       overTie: 'Suéltalo para empatarlo con {{item}}.',
       overRejected: 'Aquí no se puede soltar.',

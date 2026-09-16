@@ -1,4 +1,4 @@
-import { moveIntoTie, moveItem, placeFromPool, tieFromPool } from './placement.ts';
+import { liftItem, moveIntoTie, moveItem, placeFromPool, tieFromPool } from './placement.ts';
 import type { PlacementState, RankedSlot } from './types.ts';
 
 export type DragSource = { from: 'pool' } | { from: 'placed'; itemId: string };
@@ -50,6 +50,19 @@ function shiftForLift(slots: RankedSlot[], from: number, index: number): number 
   return wasAlone && index > from ? index - 1 : index;
 }
 
+// What the list looks like with the dragged item in the air. Only half a tie
+// comes out of it: its partner keeps the position, so the list stays the same
+// length and every gap index the resolver counts still lines up with what is
+// on screen. An untied item would take its position with it and shift
+// everything below it under the cursor, so it stays put and dims instead.
+export function listWhileDragging(slots: RankedSlot[], dragged: DragSource | null): RankedSlot[] {
+  if (dragged?.from !== 'placed') {
+    return slots;
+  }
+  const from = slotOf(slots, dragged.itemId);
+  return from !== -1 && slots[from].itemIds.length === 2 ? liftItem(slots, dragged.itemId) : slots;
+}
+
 export function describeDrop(
   state: PlacementState,
   dragged: DragSource,
@@ -73,12 +86,12 @@ export function describeDrop(
   }
 
   if (target.kind === 'slot') {
-    // Dropping an item onto the position it already occupies is not a tie with
-    // itself, it is a drag that went nowhere.
-    if (target.index === from || slots[target.index]?.itemIds.length !== 1) {
-      return 'rejected';
-    }
-    return 'tie';
+    // Counted without the item being dragged, which is what lets half a pair
+    // be dropped back on the position its partner is now holding alone. Two
+    // others in there is the third-item case; none at all is an untied item on
+    // its own position, a drag that went nowhere rather than a tie with itself.
+    const others = slots[target.index]?.itemIds.filter((id) => id !== dragged.itemId) ?? [];
+    return others.length === 1 ? 'tie' : 'rejected';
   }
 
   return target.index >= 0 && target.index <= slots.length ? 'insert' : 'rejected';
@@ -101,7 +114,16 @@ export function resolveDrop(
   }
 
   const slots = state.rankedSlots;
-  const index = shiftForLift(slots, slotOf(slots, dragged.itemId), target.index);
+  const from = slotOf(slots, dragged.itemId);
+
+  // Re-tying with the partner it was already tied to. moveIntoTie would lift
+  // and re-tie, handing back the pair with the two cards swapped, so a drop
+  // that changes nothing would still shuffle the rows.
+  if (outcome === 'tie' && target.index === from) {
+    return state;
+  }
+
+  const index = shiftForLift(slots, from, target.index);
 
   return {
     ...state,

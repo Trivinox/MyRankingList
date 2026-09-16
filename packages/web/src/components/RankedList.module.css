@@ -36,6 +36,19 @@
   background: #e6e6ee;
 }
 
+/* Off the screen, still in the accessibility tree. `display: none` would take
+   it out of both. */
+.tie {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .handle {
   cursor: grab;
   touch-action: none;
