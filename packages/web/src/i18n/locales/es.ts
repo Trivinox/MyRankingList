@@ -41,6 +41,7 @@ export const es: typeof en = {
     tied: 'Empatado',
     announce: {
       lifted: 'Arrastrando {{item}}.',
+      liftedFromTie: 'Arrastrando {{item}}. En esa posición ya solo está {{partner}}.',
       placed: 'Colocado en la posición {{position}}.',
       moved: 'Movido a la posición {{position}}.',
       tied: 'Empatado con {{item}}.',

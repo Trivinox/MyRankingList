@@ -132,7 +132,24 @@ export function SortingScreen() {
     const source = parseDragSource(String(active.id));
     setDragged(source);
     const item = source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
-    say(item ? t('sorting.announce.lifted', { item: item.text }) : undefined);
+    if (!source || !item) {
+      return;
+    }
+    // Half a tie leaves the list on the way up, the one moment it changes
+    // without anything having been dropped, so the pick-up says who is left
+    // standing in the position and the renumbering follows from that.
+    const partner =
+      source.from === 'placed'
+        ? partnerIn(
+            placement.rankedSlots.find(({ itemIds }) => itemIds.includes(source.itemId)),
+            source,
+          )
+        : undefined;
+    say(
+      partner
+        ? t('sorting.announce.liftedFromTie', { item: item.text, partner })
+        : t('sorting.announce.lifted', { item: item.text }),
+    );
   };
 
   // The preview and the announcement are the same verdict, so they come off

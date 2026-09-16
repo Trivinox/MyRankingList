@@ -608,7 +608,7 @@ describe('what the live region says', () => {
     expect(announced()).toBe('Drop to put it at position 1.');
   });
 
-  it('reads a pick-up that empties a tie, then what the drop would do', () => {
+  it('says who is left holding the position when half a tie is picked up', () => {
     const { drop } = usePlacement.getState();
     drop({ from: 'pool' }, { kind: 'gap', index: 1 });
     drop({ from: 'pool' }, { kind: 'slot', index: 0 });
@@ -625,9 +625,23 @@ describe('what the live region says', () => {
     pickUp(`placed:${second}`);
     hover(`placed:${second}`, 'slot:0');
 
-    expect(announced()).toBe(`Picked up ${textOf(second)}.`);
+    expect(announced()).toBe(
+      `Picked up ${textOf(second)}. Only ${textOf(first)} is left in that position.`,
+    );
     beat();
     expect(announced()).toBe(`Drop to tie it with ${textOf(first)}.`);
+  });
+
+  it('still just names an untied item on the way up, which leaves nothing behind', () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+    renderScreen();
+
+    const [itemId] = started().rankedSlots[1].itemIds;
+
+    pickUp(`placed:${itemId}`);
+
+    expect(announced()).toBe(`Picked up ${textOf(itemId)}.`);
   });
 
   // A drag crosses a lot of targets, and a region that read all of them would
