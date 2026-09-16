@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { PointerEvent } from 'react';
+import type { MouseEvent, PointerEvent } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { dragSourceId, dropTargetId } from '../core/dropTargets.ts';
@@ -36,7 +36,7 @@ export function RankedList({ slots, items, preview, onSelect, onHover }: RankedL
 
   const targetProps = (target: DropTarget) => ({
     outcome: outcomeAt(target),
-    onSelect: onSelect && (() => onSelect(target)),
+    onSelect: onSelect && selectHandler(target, onSelect),
     hover: hoverHandlers(target, onHover),
   });
 
@@ -66,6 +66,17 @@ export function RankedList({ slots, items, preview, onSelect, onHover }: RankedL
   );
 }
 
+// The first click of a double-click places the item and the list moves under
+// the pointer, so the second would land on whatever took its place and put the
+// next pool item there as well. A keyboard press counts no clicks at all.
+function selectHandler(target: DropTarget, onSelect: (target: DropTarget) => void) {
+  return (event: MouseEvent) => {
+    if (event.detail <= 1) {
+      onSelect(target);
+    }
+  };
+}
+
 // Hover only previews for a mouse. A finger fires enter and leave around the
 // tap itself, and the leave would wipe the red a refused tap has just left.
 function hoverHandlers(target: DropTarget, onHover?: (target: DropTarget | null) => void) {
@@ -89,12 +100,16 @@ function hoverHandlers(target: DropTarget, onHover?: (target: DropTarget | null)
 interface TargetProps {
   index: number;
   outcome?: DropOutcome;
-  onSelect?: () => void;
+  onSelect?: (event: MouseEvent) => void;
   hover: ReturnType<typeof hoverHandlers>;
 }
 
 // The strip an insertion aims at, between two positions and at either end of
 // the list. The button fills it, so a click anywhere on the strip counts.
+//
+// Every target is marked disabled rather than made so while there is nothing
+// to put down. A disabled button drops focus, and the last placement by
+// keyboard would leave the user nowhere.
 function Gap({ index, outcome, onSelect, hover }: TargetProps) {
   const { t } = useTranslation();
   const id = dropTargetId({ kind: 'gap', index });
@@ -105,7 +120,7 @@ function Gap({ index, outcome, onSelect, hover }: TargetProps) {
       <button
         type="button"
         className={styles.gapButton}
-        disabled={!onSelect}
+        aria-disabled={!onSelect}
         aria-label={t('sorting.select.gap', { position: index + 1 })}
         onClick={onSelect}
         {...hover}
@@ -148,7 +163,7 @@ function Slot({ index, rank, tied, items, outcome, onSelect, hover }: SlotProps)
       <button
         type="button"
         className={styles.rank}
-        disabled={!onSelect}
+        aria-disabled={!onSelect}
         aria-label={t('sorting.select.tie', { item: names })}
       >
         {rank}

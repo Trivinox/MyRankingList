@@ -138,6 +138,15 @@ describe('RankedList', () => {
     ]);
   });
 
+  it('ignores the second click of a double-click', async () => {
+    const onSelect = vi.fn();
+    renderList(undefined, { onSelect });
+
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Put it at position 1' }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
   it('reports the target under the mouse and clears it on the way out', async () => {
     const onHover = vi.fn();
     renderList(undefined, { onSelect: () => undefined, onHover });
@@ -155,7 +164,7 @@ describe('RankedList', () => {
 
     expect(buttons).toHaveLength(7);
     for (const button of buttons) {
-      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
     }
   });
 });

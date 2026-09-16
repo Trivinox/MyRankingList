@@ -674,8 +674,60 @@ describe('clicking where the pool item goes', () => {
 
     expect(targets).toHaveLength(9);
     for (const target of targets) {
-      expect(target).toBeDisabled();
+      expect(target).toHaveAttribute('aria-disabled', 'true');
     }
+  });
+
+  it('places one item for a double-click, not two', async () => {
+    renderScreen();
+
+    await userEvent.dblClick(gap(1));
+
+    expect(started().pendingPool).toHaveLength(2);
+  });
+
+  it('places from the keyboard, with Enter on a gap and Space on a rank', async () => {
+    const [a, b, c, d] = fill(1);
+    renderScreen();
+
+    gap(3).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(listed()).toEqual([row(a), row(b), row(c)]);
+
+    screen.getByRole('button', { name: `Tie it with ${textOf(b)}` }).focus();
+    await userEvent.keyboard(' ');
+    expect(listed()).toEqual([row(a), row(b, d), row(c)]);
+  });
+
+  // The pressed button moves down with its row when something lands above it,
+  // so the focus goes to where the item went rather than staying put.
+  it('moves the focus to the position the item landed in', async () => {
+    renderScreen();
+    const [first, second] = started().pendingPool.map(textOf);
+
+    gap(1).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: `Tie it with ${first}` }),
+    );
+
+    // Tied onto the focused position, the focus stays with the pair.
+    await userEvent.keyboard('{Enter}');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: `Tie it with ${first} and ${second}` }),
+    );
+  });
+
+  it('keeps the focus on the list when the last item is placed from the keyboard', async () => {
+    fill(2);
+    renderScreen();
+
+    gap(1).focus();
+    await userEvent.keyboard('{Enter}');
+
+    expect(started().pendingPool).toHaveLength(0);
+    expect(document.activeElement).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('list')).toContainElement(document.activeElement as HTMLElement);
   });
 });
 
@@ -777,6 +829,27 @@ describe('what the live region says', () => {
     beat();
     beat();
     expect(announced()).toBe(`Tied with ${textOf(opener)}.`);
+  });
+
+  // Two clicks on the same gap a while apart are two placements, and both are
+  // read, even though the second message is word for word the first.
+  it('reads a message again when the next one says the same thing', async () => {
+    vi.useRealTimers();
+    renderScreen();
+    const region = document.querySelector('[data-announcer]');
+    if (!region) {
+      throw new Error('The screen rendered no live region');
+    }
+    const gap = () => screen.getByRole('button', { name: 'Put it at position 1' });
+
+    await userEvent.click(gap());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const first = region.firstElementChild;
+
+    await userEvent.click(gap());
+
+    expect(announced()).toBe('Placed at position 1.');
+    expect(region.firstElementChild).not.toBe(first);
   });
 
   it('tells a drop over nothing from a cancelled drag', () => {

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -94,6 +95,7 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const [dragged, setDragged] = useState<DragSource | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
+  const list = useRef<HTMLElement>(null);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -230,7 +232,18 @@ export function SortingScreen() {
     const source: DragSource = { from: 'pool' };
     const outcome = describeDrop(placement, source, target);
     setPreview(outcome === 'rejected' ? { targetId: dropTargetId(target), outcome } : null);
-    putDown(source, target, t('sorting.select.refused'));
+    const slot = landingSlot(placement, source, target);
+    // Rendered straight away so the focus can follow the item. The button that
+    // was pressed stays in the list but moves down with the row it belongs to,
+    // and whatever it names by then is not where the item went.
+    flushSync(() => putDown(source, target, t('sorting.select.refused')));
+    if (slot !== null) {
+      list.current
+        ?.querySelector<HTMLElement>(
+          `[data-drop-target="${dropTargetId({ kind: 'slot', index: slot })}"] button`,
+        )
+        ?.focus();
+    }
   };
 
   // A drag keeps its own preview going, and the pointer crosses targets on
@@ -272,7 +285,7 @@ export function SortingScreen() {
           <aside className={styles.pool}>
             <PoolItem item={current} />
           </aside>
-          <section className={styles.list} aria-label={t('sorting.listLabel')}>
+          <section ref={list} className={styles.list} aria-label={t('sorting.listLabel')}>
             <RankedList
               slots={shown}
               items={items}
