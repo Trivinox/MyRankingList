@@ -106,22 +106,7 @@ export function SortingScreen() {
         const source = parseDragSource(String(active.id));
         const item =
           source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
-        if (!source || !item) {
-          return undefined;
-        }
-        // Half a tie leaves the list on the way up, the one moment it changes
-        // without anything having been dropped, so the pick-up says who is
-        // left standing in the position and the renumbering follows from that.
-        const partner =
-          source.from === 'placed'
-            ? partnerIn(
-                placement?.rankedSlots.find(({ itemIds }) => itemIds.includes(source.itemId)),
-                source,
-              )
-            : undefined;
-        return partner
-          ? t('sorting.announce.liftedFromTie', { item: item.text, partner })
-          : t('sorting.announce.lifted', { item: item.text });
+        return item ? t('sorting.announce.lifted', { item: item.text }) : undefined;
       },
       // Reads out the same verdict the preview paints, so the two cannot
       // disagree. Silent over nothing: letting go there is covered on drop.

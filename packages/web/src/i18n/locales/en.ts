@@ -37,7 +37,6 @@ export const en = {
     tied: 'Tied',
     announce: {
       lifted: 'Picked up {{item}}.',
-      liftedFromTie: 'Picked up {{item}}. Only {{partner}} is left in that position.',
       placed: 'Placed at position {{position}}.',
       moved: 'Moved to position {{position}}.',
       tied: 'Tied with {{item}}.',
