@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -94,6 +95,7 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const [dragged, setDragged] = useState<DragSource | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
+  const list = useRef<HTMLElement>(null);
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -190,6 +192,7 @@ export function SortingScreen() {
     say(t('sorting.announce.cancelled'));
   };
 
+  // Null for a refusal, which a drag and a tap word differently.
   const landed = (source: DragSource, target: DropTarget) => {
     if (describeDrop(placement, source, target) === 'tie') {
       const item = partnerIn(placement.rankedSlots[target.index], source);
@@ -197,22 +200,64 @@ export function SortingScreen() {
     }
     const slot = landingSlot(placement, source, target);
     if (slot === null) {
-      return t('sorting.announce.refused');
+      return null;
     }
     return source.from === 'placed'
       ? t('sorting.announce.moved', { position: slot + 1 })
       : t('sorting.announce.placed', { position: slot + 1 });
   };
 
+  // Both methods end here, so whatever a drop does, a tap does too. The
+  // message is read off the placement the drop was made against, before the
+  // store swaps it for the one the drop produced.
+  const putDown = (source: DragSource, target: DropTarget, refused: string) => {
+    say(landed(source, target) ?? refused);
+    drop(source, target);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     settle();
     const { source, target } = readDrag(event);
-    // Read off the placement the drop was made against, before the store
-    // swaps it for the one the drop produced.
-    say(source && target ? landed(source, target) : t('sorting.announce.outside'));
     if (source && target) {
-      drop(source, target);
+      putDown(source, target, t('sorting.announce.refused'));
+    } else {
+      say(t('sorting.announce.outside'));
     }
+  };
+
+  // A tap has no hover to warn it off a full position, so a refused one stays
+  // red until the next tap. An accepted one changes the list under the
+  // pointer, and whatever the mark said no longer applies.
+  const handleSelect = (target: DropTarget) => {
+    const source: DragSource = { from: 'pool' };
+    const outcome = describeDrop(placement, source, target);
+    setPreview(outcome === 'rejected' ? { targetId: dropTargetId(target), outcome } : null);
+    const slot = landingSlot(placement, source, target);
+    // Rendered straight away so the focus can follow the item. The button that
+    // was pressed stays in the list but moves down with the row it belongs to,
+    // and whatever it names by then is not where the item went.
+    flushSync(() => putDown(source, target, t('sorting.select.refused')));
+    if (slot !== null) {
+      list.current
+        ?.querySelector<HTMLElement>(
+          `[data-drop-target="${dropTargetId({ kind: 'slot', index: slot })}"] button`,
+        )
+        ?.focus();
+    }
+  };
+
+  // A drag keeps its own preview going, and the pointer crosses targets on
+  // the way.
+  const handleHover = (target: DropTarget | null) => {
+    if (dragged) {
+      return;
+    }
+    setPreview(
+      target && {
+        targetId: dropTargetId(target),
+        outcome: describeDrop(placement, { from: 'pool' }, target),
+      },
+    );
   };
 
   return (
@@ -240,8 +285,14 @@ export function SortingScreen() {
           <aside className={styles.pool}>
             <PoolItem item={current} />
           </aside>
-          <section className={styles.list} aria-label={t('sorting.listLabel')}>
-            <RankedList slots={shown} items={items} preview={preview} />
+          <section ref={list} className={styles.list} aria-label={t('sorting.listLabel')}>
+            <RankedList
+              slots={shown}
+              items={items}
+              preview={preview}
+              onSelect={current ? handleSelect : undefined}
+              onHover={current ? handleHover : undefined}
+            />
           </section>
         </div>
 
