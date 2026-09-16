@@ -35,6 +35,11 @@ export const en = {
     allPlaced: 'All items placed',
     progress: '{{placed}} of {{total}} placed',
     tied: 'Tied',
+    select: {
+      gap: 'Put it at position {{position}}',
+      tie: 'Tie it with {{item}}',
+      refused: 'It cannot go there. The list is unchanged.',
+    },
     announce: {
       lifted: 'Picked up {{item}}.',
       liftedFromTie: 'Picked up {{item}}. Only {{partner}} is left in that position.',

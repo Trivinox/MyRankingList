@@ -11,16 +11,50 @@
   background: #eaeaf1;
 }
 
+/* The button is the whole strip, so it carries no look of its own and the
+   outcome colours stay on the row. */
+.gapButton {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+.gapButton:disabled,
+.rank:disabled {
+  cursor: default;
+}
+
+/* Placeholder ring until the design system decides focus. */
+.gapButton:focus-visible,
+.rank:focus-visible {
+  outline: 2px solid #6b6bd6;
+  outline-offset: 2px;
+}
+
 .slot {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  cursor: pointer;
+}
+
+.slot:has(.rank:disabled) {
+  cursor: default;
 }
 
 .rank {
   flex: none;
   width: 1.8rem;
+  padding: 0;
+  border: 0;
+  background: none;
   color: #6b6b76;
+  font-family: inherit;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   text-align: right;

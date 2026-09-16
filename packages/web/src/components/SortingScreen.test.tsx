@@ -575,6 +575,110 @@ describe('tying two items together', () => {
   });
 });
 
+describe('clicking where the pool item goes', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  const fill = (count: number) => {
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index <= count; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    return started().shuffledOrder;
+  };
+
+  const gap = (position: number) =>
+    screen.getByRole('button', { name: `Put it at position ${position}` });
+
+  it('lands the item above everything, between two positions and at the bottom', async () => {
+    renderScreen();
+
+    const opener = textOf(started().rankedSlots[0].itemIds[0]);
+    const [first, second, third] = started().pendingPool.map(textOf);
+
+    await userEvent.click(gap(1));
+    expect(listed()).toEqual([first, opener]);
+    expect(inPool()).toHaveTextContent(second);
+
+    await userEvent.click(gap(2));
+    expect(listed()).toEqual([first, second, opener]);
+    expect(inPool()).toHaveTextContent(third);
+
+    await userEvent.click(gap(4));
+    expect(listed()).toEqual([first, second, opener, third]);
+    expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
+  });
+
+  // Clicked on the card rather than the rank: a press that never travels is
+  // not a drag, so the row still gets it.
+  it('ties the item with a position holding one', async () => {
+    const [a, b, c, d] = fill(2);
+    renderScreen();
+
+    await userEvent.click(screen.getByText(textOf(b)));
+
+    expect(listed()).toEqual([row(a), row(b, d), row(c)]);
+    expect(ranks()).toEqual(['1', '2', '4']);
+    expect(announced()).toBe(`Tied with ${textOf(b)}.`);
+  });
+
+  it('refuses a position holding two, marks it and keeps the item in the pool', async () => {
+    const [a, b, c] = fill(1);
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+
+    const waiting = started().pendingPool[0];
+
+    await userEvent.click(
+      screen.getByRole('button', { name: `Tie it with ${textOf(a)} and ${textOf(c)}` }),
+    );
+
+    expect(listed()).toEqual([row(a, c), row(b)]);
+    expect(started().pendingPool[0]).toBe(waiting);
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+    expect(announced()).toBe('It cannot go there. The list is unchanged.');
+
+    // The red stays only until the next click lands somewhere.
+    await userEvent.click(gap(3));
+    expect(marked()).toEqual([]);
+  });
+
+  it('previews under the mouse what a click would do, and clears on the way out', async () => {
+    const [a] = fill(1);
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+
+    await userEvent.hover(gap(2));
+    expect(marked()).toEqual([['gap:1', 'insert']]);
+
+    await userEvent.hover(screen.getAllByRole('listitem')[3]);
+    expect(marked()).toEqual([['slot:1', 'tie']]);
+
+    await userEvent.hover(screen.getByText(textOf(a)));
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    await userEvent.unhover(screen.getByText(textOf(a)));
+    expect(marked()).toEqual([]);
+  });
+
+  it('disables every target once the pool is empty', () => {
+    fill(3);
+    renderScreen();
+
+    const targets = screen.getAllByRole('button');
+
+    expect(targets).toHaveLength(9);
+    for (const target of targets) {
+      expect(target).toBeDisabled();
+    }
+  });
+});
+
 // dnd-kit sends the pick-up and the first drop hint a frame apart, and a live
 // region read twice in one frame is heard once, so the screen holds each
 // message for a beat. These step the clock a beat at a time and read the

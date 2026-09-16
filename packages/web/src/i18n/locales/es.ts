@@ -39,6 +39,11 @@ export const es: typeof en = {
     allPlaced: 'Todos los elementos están colocados',
     progress: '{{placed}} de {{total}} colocados',
     tied: 'Empatado',
+    select: {
+      gap: 'Ponerlo en la posición {{position}}',
+      tie: 'Empatarlo con {{item}}',
+      refused: 'Ahí no puede ir. La lista sigue igual.',
+    },
     announce: {
       lifted: 'Arrastrando {{item}}.',
       liftedFromTie: 'Arrastrando {{item}}. Queda solo {{partner}} en esa posición.',
