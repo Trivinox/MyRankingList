@@ -4,6 +4,7 @@ import {
   dragSourceId,
   dropTargetId,
   landingSlot,
+  listWhileDragging,
   parseDragSource,
   parseDropTarget,
   resolveDrop,
@@ -149,12 +150,55 @@ describe('moving one half of a tie', () => {
     expect(after(tied, placed('b'), gap(3))).toEqual(['a', 'c', 'd', 'b']);
   });
 
+  // The gaps touching its own position, where the lift shifts the index below
+  // but not the one above. The position stays behind either way, so both of
+  // these leave it beside the partner rather than back in the tie.
+  it('lands in the gaps either side of the position it came out of', () => {
+    expect(after(tied, placed('b'), gap(0))).toEqual(['b', 'a', 'c', 'd']);
+    expect(after(tied, placed('b'), gap(1))).toEqual(['a', 'b', 'c', 'd']);
+    expect(after(tied, placed('a'), gap(0))).toEqual(['a', 'b', 'c', 'd']);
+    expect(after(tied, placed('a'), gap(1))).toEqual(['b', 'a', 'c', 'd']);
+  });
+
   it('can tie again somewhere else', () => {
     expect(after(tied, placed('b'), slot(2))).toEqual(['a', 'c', 'd+b']);
   });
 
   it('refuses a position that already holds two', () => {
     expect(describeDrop(tied, placed('d'), slot(0))).toBe('rejected');
+  });
+
+  // Once it is in the air the partner is standing in that position alone, so
+  // refusing it would leave a single item showing as an invalid target.
+  it('goes back on the position its partner is holding, in the order it was in', () => {
+    expect(describeDrop(tied, placed('b'), slot(0))).toBe('tie');
+    expect(after(tied, placed('b'), slot(0))).toEqual(['a+b', 'c', 'd']);
+    expect(after(tied, placed('a'), slot(0))).toEqual(['a+b', 'c', 'd']);
+  });
+});
+
+// What the screen draws between the pick-up and the drop. The drop itself is
+// still resolved against the real list, so this only has to agree with it on
+// how long the list is and what sits at each index.
+describe('the list while an item is in the air', () => {
+  const slots = list('a+b', 'c', 'd');
+
+  it('is the list as it stands with nothing up, and with the pool item up', () => {
+    expect(listWhileDragging(slots, null)).toBe(slots);
+    expect(listWhileDragging(slots, pool)).toBe(slots);
+  });
+
+  it('keeps an untied item in place, since its position would travel with it', () => {
+    expect(listWhileDragging(slots, placed('c'))).toBe(slots);
+  });
+
+  it('takes half a pair out and leaves the partner alone in the position', () => {
+    expect(layout(listWhileDragging(slots, placed('b')))).toEqual(['a', 'c', 'd']);
+    expect(layout(listWhileDragging(slots, placed('a')))).toEqual(['b', 'c', 'd']);
+  });
+
+  it('leaves the list alone for an item that is not down at all', () => {
+    expect(listWhileDragging(slots, placed('z'))).toBe(slots);
   });
 });
 

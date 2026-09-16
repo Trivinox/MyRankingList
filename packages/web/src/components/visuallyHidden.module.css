@@ -1,0 +1,13 @@
+/* Off the screen and still in the accessibility tree, which is what rules out
+   `display: none`. Shared because the tie note and the live region both want
+   it and neither of them is its natural owner. */
+.text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
