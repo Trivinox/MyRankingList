@@ -18,11 +18,11 @@ export interface Announcement {
 
 export function useAnnouncer() {
   const [announcement, setAnnouncement] = useState<Announcement>({ text: '', count: 0 });
-  const shown = useRef('');
   // Only ever one message waiting. A region that has fallen behind should say
   // where the drag is now, not read out every position it crossed on the way.
   const waiting = useRef<string | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const shown = useRef('');
 
   // A queued message that matches the one still up is a drag that wandered
   // off a target and came back, and hearing it twice says nothing new. One

@@ -107,9 +107,9 @@ interface TargetProps {
 // The strip an insertion aims at, between two positions and at either end of
 // the list. The button fills it, so a click anywhere on the strip counts.
 //
-// Every target is marked disabled rather than made so while there is nothing
-// to put down. A disabled button drops focus, and the last placement by
-// keyboard would leave the user nowhere.
+// With nothing to put down, a target only says it is disabled through
+// aria-disabled. The real attribute drops focus, and after the last placement
+// made from the keyboard the user would be left nowhere.
 function Gap({ index, outcome, onSelect, hover }: TargetProps) {
   const { t } = useTranslation();
   const id = dropTargetId({ kind: 'gap', index });
