@@ -44,6 +44,7 @@ export const en = {
       overInsert: 'Drop to put it at position {{position}}.',
       overTie: 'Drop to tie it with {{item}}.',
       overRejected: 'It cannot be dropped here.',
+      refused: 'It cannot be dropped there. The list is unchanged.',
       outside: 'Dropped outside the list. The list is unchanged.',
       cancelled: 'Drag cancelled. The list is unchanged.',
     },

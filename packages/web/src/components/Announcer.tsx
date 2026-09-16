@@ -1,9 +1,9 @@
-import styles from './Announcer.module.css';
+import hidden from './visuallyHidden.module.css';
 
 export function Announcer({ announcement }: { announcement: string }) {
   return (
     <div
-      className={styles.region}
+      className={hidden.text}
       role="status"
       aria-live="assertive"
       aria-atomic="true"

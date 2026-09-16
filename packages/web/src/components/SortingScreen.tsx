@@ -197,7 +197,7 @@ export function SortingScreen() {
     }
     const slot = landingSlot(placement, source, target);
     if (slot === null) {
-      return t('sorting.announce.outside');
+      return t('sorting.announce.refused');
     }
     return source.from === 'placed'
       ? t('sorting.announce.moved', { position: slot + 1 })

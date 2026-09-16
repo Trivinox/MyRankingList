@@ -7,6 +7,7 @@ import { rankItems } from '../core/ranking.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import { ItemCard } from './ItemCard.tsx';
 import styles from './RankedList.module.css';
+import hidden from './visuallyHidden.module.css';
 
 // What a drop would do at the target under the cursor. Worked out by the screen
 // that owns the drag and handed down, so the list never has to ask dnd-kit.
@@ -96,7 +97,7 @@ function Slot({ index, rank, tied, items, outcome }: SlotProps) {
       {/* The shared container and the repeated number carry the tie on screen,
           so this is only here for the readers that see neither. It sits ahead
           of the cards so the position is announced as a tie before its items. */}
-      {tied ? <span className={styles.tie}>{t('sorting.tied')}</span> : null}
+      {tied ? <span className={hidden.text}>{t('sorting.tied')}</span> : null}
       <div className={styles.cards}>
         {items.map((item) => (
           <Placed key={item.id} item={item} />

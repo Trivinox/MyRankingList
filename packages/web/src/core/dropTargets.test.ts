@@ -150,6 +150,16 @@ describe('moving one half of a tie', () => {
     expect(after(tied, placed('b'), gap(3))).toEqual(['a', 'c', 'd', 'b']);
   });
 
+  // The gaps touching its own position, where the lift shifts the index below
+  // but not the one above. The position stays behind either way, so both of
+  // these leave it beside the partner rather than back in the tie.
+  it('lands in the gaps either side of the position it came out of', () => {
+    expect(after(tied, placed('b'), gap(0))).toEqual(['b', 'a', 'c', 'd']);
+    expect(after(tied, placed('b'), gap(1))).toEqual(['a', 'b', 'c', 'd']);
+    expect(after(tied, placed('a'), gap(0))).toEqual(['a', 'b', 'c', 'd']);
+    expect(after(tied, placed('a'), gap(1))).toEqual(['b', 'a', 'c', 'd']);
+  });
+
   it('can tie again somewhere else', () => {
     expect(after(tied, placed('b'), slot(2))).toEqual(['a', 'c', 'd+b']);
   });

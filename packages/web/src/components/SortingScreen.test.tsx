@@ -674,7 +674,7 @@ describe('what the live region says', () => {
     expect(announced()).toBe(`Tied with ${textOf(opener)}.`);
   });
 
-  it('says the list is unchanged for a refused drop and for a cancelled drag', () => {
+  it('tells a drop over nothing from a cancelled drag', () => {
     renderScreen();
 
     pickUp('pool');
@@ -687,6 +687,22 @@ describe('what the live region says', () => {
     beat();
     beat();
     expect(announced()).toBe('Drag cancelled. The list is unchanged.');
+  });
+
+  // The item was let go on a position, not off the end of the list, and being
+  // told it landed outside would send the user looking in the wrong place.
+  it('says a refused drop was refused rather than dropped outside', () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    pickUp('pool');
+    hover('pool', 'slot:0');
+    letGo('pool', 'slot:0');
+
+    beat();
+    expect(announced()).toBe('It cannot be dropped there. The list is unchanged.');
   });
 
   // dnd-kit renders a region of its own whether or not anything is put in it,

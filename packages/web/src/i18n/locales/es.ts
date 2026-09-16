@@ -48,6 +48,7 @@ export const es: typeof en = {
       overInsert: 'Suéltalo para dejarlo en la posición {{position}}.',
       overTie: 'Suéltalo para empatarlo con {{item}}.',
       overRejected: 'Aquí no se puede soltar.',
+      refused: 'Ahí no se puede soltar. La lista sigue igual.',
       outside: 'Lo has soltado fuera de la lista. La lista sigue igual.',
       cancelled: 'Arrastre cancelado. La lista sigue igual.',
     },
