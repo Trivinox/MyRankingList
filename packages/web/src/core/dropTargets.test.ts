@@ -4,7 +4,7 @@ import {
   dragSourceId,
   dropTargetId,
   landingSlot,
-  listWhileDragging,
+  listWhileLifted,
   parseDragSource,
   parseDropTarget,
   resolveDrop,
@@ -184,21 +184,21 @@ describe('the list while an item is in the air', () => {
   const slots = list('a+b', 'c', 'd');
 
   it('is the list as it stands with nothing up, and with the pool item up', () => {
-    expect(listWhileDragging(slots, null)).toBe(slots);
-    expect(listWhileDragging(slots, pool)).toBe(slots);
+    expect(listWhileLifted(slots, null)).toBe(slots);
+    expect(listWhileLifted(slots, pool)).toBe(slots);
   });
 
   it('keeps an untied item in place, since its position would travel with it', () => {
-    expect(listWhileDragging(slots, placed('c'))).toBe(slots);
+    expect(listWhileLifted(slots, placed('c'))).toBe(slots);
   });
 
   it('takes half a pair out and leaves the partner alone in the position', () => {
-    expect(layout(listWhileDragging(slots, placed('b')))).toEqual(['a', 'c', 'd']);
-    expect(layout(listWhileDragging(slots, placed('a')))).toEqual(['b', 'c', 'd']);
+    expect(layout(listWhileLifted(slots, placed('b')))).toEqual(['a', 'c', 'd']);
+    expect(layout(listWhileLifted(slots, placed('a')))).toEqual(['b', 'c', 'd']);
   });
 
   it('leaves the list alone for an item that is not down at all', () => {
-    expect(listWhileDragging(slots, placed('z'))).toBe(slots);
+    expect(listWhileLifted(slots, placed('z'))).toBe(slots);
   });
 });
 
