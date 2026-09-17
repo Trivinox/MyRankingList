@@ -33,9 +33,8 @@
 }
 
 /* Stays put while the list scrolls past it, clearing the header and the
-   headline stacked above it. The headline's height is measured, since the
-   question can wrap; the fallback is a one-line question. The extra space keeps
-   the gap the column had under the headline before it was measured. */
+   headline stacked above it. The headline height comes from the screen, which
+   measures it because a long question wraps; the fallback fits one line. */
 .pool {
   position: sticky;
   top: calc(var(--header-height) + var(--headline-height, 4.15rem) + 0.6rem);
@@ -54,7 +53,7 @@
   max-width: 20rem;
 }
 
-/* Keep the width in step with useIsMobile.ts. On a phone the hierarchy flips:
+/* The breakpoint has to match useIsMobile.ts. On a phone the hierarchy flips:
    one column, the list as the main element, and the pool reduced to a strip
    above it that stays in view while the page scrolls down the list. */
 @media (max-width: 767px) {

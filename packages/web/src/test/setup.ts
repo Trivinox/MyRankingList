@@ -5,28 +5,24 @@ import '@testing-library/jest-dom/vitest';
 // Testing Library only registers its own cleanup when Vitest runs with globals.
 afterEach(cleanup);
 
-// jsdom has no matchMedia at all. Every test starts on a desktop-wide screen
-// that never changes, and the ones about the phone layout swap in their own.
-// Node-environment tests have no window to put it on.
+// jsdom has neither matchMedia nor ResizeObserver, and the node-environment
+// tests have no window at all.
 if (typeof window !== 'undefined') {
-  // No layout either, so nothing would ever be observed resizing.
+  // Nothing is laid out, so there is never a resize to report.
   window.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
+  // Every test starts desktop-wide. The phone tests put their own in place.
   beforeEach(() => {
     window.matchMedia = (query: string) =>
       ({
         matches: false,
         media: query,
-        onchange: null,
         addEventListener: () => undefined,
         removeEventListener: () => undefined,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        dispatchEvent: () => false,
-      }) as MediaQueryList;
+      }) as unknown as MediaQueryList;
   });
 }

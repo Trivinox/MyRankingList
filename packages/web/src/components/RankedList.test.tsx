@@ -124,7 +124,7 @@ describe('RankedList', () => {
 
   // The class is what carries touch-action: none, so without it a swipe that
   // starts on a card scrolls the page.
-  it('leaves every card free to scroll the page when dragging is off', () => {
+  it('drops the drag styling from every card when dragging is off', () => {
     renderList(undefined, { draggable: false });
 
     const handles = [...document.querySelectorAll('[data-drag-id]')];

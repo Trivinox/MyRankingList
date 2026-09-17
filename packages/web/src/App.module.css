@@ -38,7 +38,7 @@
   font-size: 1.5rem;
 }
 
-/* Keep the width in step with useIsMobile.ts. */
+/* Same breakpoint as useIsMobile.ts. */
 @media (max-width: 767px) {
   .wide {
     padding-inline: 1rem;
