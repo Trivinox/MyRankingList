@@ -50,17 +50,18 @@ function shiftForLift(slots: RankedSlot[], from: number, index: number): number 
   return wasAlone && index > from ? index - 1 : index;
 }
 
-// What the list looks like with the dragged item in the air. Only half a tie
-// comes out of it: its partner keeps the position, so the list stays the same
-// length and every gap index the resolver counts still lines up with what is
-// on screen. An untied item would take its position with it and shift
-// everything below it under the cursor, so it stays put and dims instead.
-export function listWhileDragging(slots: RankedSlot[], dragged: DragSource | null): RankedSlot[] {
-  if (dragged?.from !== 'placed') {
+// What the list looks like with a placed item picked up, whether it is being
+// dragged or held for a tap. Only half a tie comes out of it: its partner keeps
+// the position, so the list stays the same length and every gap index the
+// resolver counts still lines up with what is on screen. An untied item would
+// take its position with it and shift everything below it under the cursor, so
+// it stays put and dims instead.
+export function listWhileLifted(slots: RankedSlot[], lifted: DragSource | null): RankedSlot[] {
+  if (lifted?.from !== 'placed') {
     return slots;
   }
-  const from = slotOf(slots, dragged.itemId);
-  return from !== -1 && slots[from].itemIds.length === 2 ? liftItem(slots, dragged.itemId) : slots;
+  const from = slotOf(slots, lifted.itemId);
+  return from !== -1 && slots[from].itemIds.length === 2 ? liftItem(slots, lifted.itemId) : slots;
 }
 
 export function describeDrop(

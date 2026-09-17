@@ -26,13 +26,21 @@ const slots: RankedSlot[] = [
 interface Handlers {
   onSelect?: (target: DropTarget) => void;
   onHover?: (target: DropTarget | null) => void;
+  held?: string;
+  onPickUp?: (itemId: string) => void;
 }
 
 const renderList = (preview?: DropPreview, handlers: Handlers = {}) =>
   render(
     <I18nextProvider i18n={createI18n()}>
       <DndContext>
-        <RankedList slots={slots} items={items} preview={preview} {...handlers} />
+        <RankedList
+          slots={slots}
+          items={items}
+          preview={preview}
+          onPickUp={() => undefined}
+          {...handlers}
+        />
       </DndContext>
     </I18nextProvider>,
   );
@@ -41,6 +49,13 @@ const positions = () =>
   [...screen.getByRole('list').children].filter(
     (row) => parseDropTarget(row.getAttribute('data-drop-target') ?? '')?.kind === 'slot',
   );
+
+// Every button in the list except the move buttons, which pick a card up
+// rather than put anything down.
+const targets = () =>
+  screen.getAllByRole('button').filter((button) => !button.hasAttribute('aria-pressed'));
+
+const moveButton = (text: string) => screen.getByRole('button', { name: `Move ${text}` });
 
 describe('RankedList', () => {
   it('offers an insertion point around every position, and each position as a tie', () => {
@@ -109,7 +124,7 @@ describe('RankedList', () => {
   it('names every target for what a click there would do', () => {
     renderList(undefined, { onSelect: () => undefined });
 
-    const names = screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'));
+    const names = targets().map((button) => button.getAttribute('aria-label'));
 
     expect(names).toEqual([
       'Put it at position 1',
@@ -160,11 +175,72 @@ describe('RankedList', () => {
   it('disables every target when there is nothing to put down', () => {
     renderList();
 
-    const buttons = screen.getAllByRole('button');
+    const buttons = targets();
 
     expect(buttons).toHaveLength(7);
     for (const button of buttons) {
       expect(button).toHaveAttribute('aria-disabled', 'true');
     }
+  });
+});
+
+describe('the move button', () => {
+  it('sits on every card, each half of a tie included, and stays usable with nothing to place', () => {
+    renderList();
+
+    for (const text of ['Sushi', 'Ramen', 'Curry', 'Tacos']) {
+      expect(moveButton(text)).not.toHaveAttribute('aria-disabled');
+    }
+  });
+
+  // The card it belongs to is also the row a tap ties the pool item with, so
+  // the click has to stop at the button.
+  it('picks its own card up without also selecting the row', async () => {
+    const onSelect = vi.fn();
+    const onPickUp = vi.fn();
+    renderList(undefined, { onSelect, onPickUp });
+
+    await userEvent.click(moveButton('Curry'));
+
+    expect(onPickUp.mock.calls).toEqual([['curry']]);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('shows as pressed on the held card only, and dims that card', () => {
+    renderList(undefined, { held: 'tacos' });
+
+    expect(moveButton('Tacos')).toHaveAttribute('aria-pressed', 'true');
+    expect(moveButton('Sushi')).toHaveAttribute('aria-pressed', 'false');
+    expect(document.querySelector('[data-drag-id="placed:tacos"]')?.className).toMatch(/lifted/);
+    expect(document.querySelector('[data-drag-id="placed:sushi"]')?.className).not.toMatch(
+      /lifted/,
+    );
+  });
+
+  it('ignores the second click of a double-click', async () => {
+    const onPickUp = vi.fn();
+    renderList(undefined, { onPickUp });
+
+    await userEvent.dblClick(moveButton('Sushi'));
+
+    expect(onPickUp).toHaveBeenCalledTimes(1);
+  });
+
+  // Pressing it picks the card up and never ties anything, so a mouse resting
+  // on it should not see the row lit up as a tie.
+  it('takes the preview off its row while the mouse is on it', async () => {
+    const onHover = vi.fn();
+    renderList(undefined, { onSelect: () => undefined, onHover });
+
+    // Read after each step rather than as one list of calls: user-event enters
+    // the row again on its way into the button, which a browser does not.
+    await userEvent.hover(screen.getByText('Tacos'));
+    expect(onHover.mock.lastCall).toEqual([{ kind: 'slot', index: 2 }]);
+
+    await userEvent.hover(moveButton('Tacos'));
+    expect(onHover.mock.lastCall).toEqual([null]);
+
+    await userEvent.hover(screen.getByText('Tacos'));
+    expect(onHover.mock.lastCall).toEqual([{ kind: 'slot', index: 2 }]);
   });
 });

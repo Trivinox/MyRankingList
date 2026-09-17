@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   DndContext,
@@ -19,9 +19,10 @@ import { getEventCoordinates } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
 import {
   describeDrop,
+  dragSourceId,
   dropTargetId,
   landingSlot,
-  listWhileDragging,
+  listWhileLifted,
   parseDragSource,
   parseDropTarget,
 } from '../core/dropTargets.ts';
@@ -90,10 +91,16 @@ function readDrag({ active, over }: Pick<DragEndEvent, 'active' | 'over'>) {
   };
 }
 
+type Placed = Extract<DragSource, { from: 'placed' }>;
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
   const [dragged, setDragged] = useState<DragSource | null>(null);
+  // A placed item picked up with its move button, waiting for the tap that puts
+  // it down. Null means a tap places the pool item. Kept here and not in the
+  // store: a half-finished tap is not progress worth saving.
+  const [held, setHeld] = useState<Placed | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
   const list = useRef<HTMLElement>(null);
 
@@ -105,6 +112,44 @@ export function SortingScreen() {
 
   const [next] = placement?.pendingPool ?? [];
   const current = items.find((item) => item.id === next) ?? null;
+  const heldItem = held && items.find((item) => item.id === held.itemId);
+
+  const moveButtonOf = (itemId: string) =>
+    list.current?.querySelector<HTMLElement>(
+      `[data-drag-id="${dragSourceId({ from: 'placed', itemId })}"] + button`,
+    );
+
+  // Putting the held item back is nothing more than no longer holding it.
+  // Rendered at once so half a tie is back in the list before the focus goes
+  // looking for its button.
+  const release = (refocus: boolean) => {
+    if (!held) {
+      return;
+    }
+    flushSync(() => {
+      setHeld(null);
+      setPreview(null);
+    });
+    say(t('sorting.select.released', { item: heldItem?.text }));
+    if (refocus) {
+      moveButtonOf(held.itemId)?.focus();
+    }
+  };
+
+  // No dependency list, so the listener never calls a stale release. It only
+  // listens while something is held, and leaves Escape alone otherwise.
+  useEffect(() => {
+    if (!held) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        release(true);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  });
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
@@ -116,7 +161,7 @@ export function SortingScreen() {
   // The preview, the resolver and the progress all keep reading the placement
   // itself: the drop is worked out against the real list, and the progress
   // counts what has left the pool rather than what is on screen right now.
-  const shown = listWhileDragging(placement.rankedSlots, dragged);
+  const shown = listWhileLifted(placement.rankedSlots, dragged ?? held);
   // An untied card stays where it was and dims; the overlay is what travels.
   const carried =
     dragged?.from === 'placed' ? items.find((item) => item.id === dragged.itemId) : current;
@@ -130,23 +175,25 @@ export function SortingScreen() {
     return items.find(({ id }) => id === partner)?.text;
   };
 
+  // Half a tie leaves the list on the way up, the one moment it changes without
+  // anything having been put down, so a pick-up says who is left standing in
+  // the position and the renumbering follows from that.
+  const leftBehind = (source: Placed) =>
+    partnerIn(
+      placement.rankedSlots.find(({ itemIds }) => itemIds.includes(source.itemId)),
+      source,
+    );
+
   const handleDragStart = ({ active }: DragStartEvent) => {
     const source = parseDragSource(String(active.id));
     setDragged(source);
+    // A drag takes over from whatever was held for a tap.
+    setHeld(null);
     const item = source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
     if (!source || !item) {
       return;
     }
-    // Half a tie leaves the list on the way up, the one moment it changes
-    // without anything having been dropped, so the pick-up says who is left
-    // standing in the position and the renumbering follows from that.
-    const partner =
-      source.from === 'placed'
-        ? partnerIn(
-            placement.rankedSlots.find(({ itemIds }) => itemIds.includes(source.itemId)),
-            source,
-          )
-        : undefined;
+    const partner = source.from === 'placed' ? leftBehind(source) : undefined;
     say(
       partner
         ? t('sorting.announce.liftedFromTie', { item: item.text, partner })
@@ -225,24 +272,66 @@ export function SortingScreen() {
     }
   };
 
+  const rankOf = (slot: number) =>
+    list.current?.querySelector<HTMLElement>(
+      `[data-drop-target="${dropTargetId({ kind: 'slot', index: slot })}"] button`,
+    );
+
   // A tap has no hover to warn it off a full position, so a refused one stays
   // red until the next tap. An accepted one changes the list under the
-  // pointer, and whatever the mark said no longer applies.
+  // pointer, and whatever the mark said no longer applies. A held item stays
+  // in hand after a refusal, so the next try does not start from the button.
   const handleSelect = (target: DropTarget) => {
-    const source: DragSource = { from: 'pool' };
+    const source: DragSource = held ?? { from: 'pool' };
     const outcome = describeDrop(placement, source, target);
     setPreview(outcome === 'rejected' ? { targetId: dropTargetId(target), outcome } : null);
     const slot = landingSlot(placement, source, target);
     // Rendered straight away so the focus can follow the item. The button that
     // was pressed stays in the list but moves down with the row it belongs to,
     // and whatever it names by then is not where the item went.
-    flushSync(() => putDown(source, target, t('sorting.select.refused')));
-    if (slot !== null) {
-      list.current
-        ?.querySelector<HTMLElement>(
-          `[data-drop-target="${dropTargetId({ kind: 'slot', index: slot })}"] button`,
-        )
-        ?.focus();
+    flushSync(() => {
+      putDown(source, target, t('sorting.select.refused'));
+      if (slot !== null) {
+        setHeld(null);
+      }
+    });
+    if (slot === null) {
+      return;
+    }
+    // A moved item keeps the focus on its own button, which names it and picks
+    // it straight back up if the spot was wrong. The rank of the position it
+    // landed in would offer to tie the next pool item with it instead.
+    if (source.from === 'placed') {
+      moveButtonOf(source.itemId)?.focus();
+    } else {
+      rankOf(slot)?.focus();
+    }
+  };
+
+  // The move button of the item already in hand puts it back.
+  const handlePickUp = (itemId: string) => {
+    if (held?.itemId === itemId) {
+      release(true);
+      return;
+    }
+    const source: Placed = { from: 'placed', itemId };
+    const item = items.find(({ id }) => id === itemId);
+    const from = placement.rankedSlots.findIndex(({ itemIds }) => itemIds.includes(itemId));
+    const partner = leftBehind(source);
+    flushSync(() => {
+      setHeld(source);
+      setPreview(null);
+    });
+    say(
+      partner
+        ? t('sorting.select.heldFromTie', { item: item?.text, partner })
+        : t('sorting.select.held', { item: item?.text }),
+    );
+    // Half a pair leaves the list the moment it is held, and its button goes
+    // with it. The focus lands on the partner's rank instead: the same
+    // position, and pressing it puts the pair back together.
+    if (partner) {
+      rankOf(from)?.focus();
     }
   };
 
@@ -255,7 +344,7 @@ export function SortingScreen() {
     setPreview(
       target && {
         targetId: dropTargetId(target),
-        outcome: describeDrop(placement, { from: 'pool' }, target),
+        outcome: describeDrop(placement, held ?? { from: 'pool' }, target),
       },
     );
   };
@@ -283,15 +372,17 @@ export function SortingScreen() {
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
-            <PoolItem item={current} />
+            <PoolItem item={current} held={heldItem} onRelease={() => release(false)} />
           </aside>
           <section ref={list} className={styles.list} aria-label={t('sorting.listLabel')}>
             <RankedList
               slots={shown}
               items={items}
               preview={preview}
-              onSelect={current ? handleSelect : undefined}
-              onHover={current ? handleHover : undefined}
+              onSelect={current || held ? handleSelect : undefined}
+              onHover={current || held ? handleHover : undefined}
+              held={held?.itemId}
+              onPickUp={handlePickUp}
             />
           </section>
         </div>

@@ -24,9 +24,21 @@ interface RankedListProps {
   // Left out while there is nothing to put down, which disables every target.
   onSelect?: (target: DropTarget) => void;
   onHover?: (target: DropTarget | null) => void;
+  // The placed item picked up for a tap, if any. The pool item is in hand
+  // otherwise, and nothing here needs to know which one that is.
+  held?: string | null;
+  onPickUp: (itemId: string) => void;
 }
 
-export function RankedList({ slots, items, preview, onSelect, onHover }: RankedListProps) {
+export function RankedList({
+  slots,
+  items,
+  preview,
+  onSelect,
+  onHover,
+  held,
+  onPickUp,
+}: RankedListProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const entries = rankItems(slots);
   let seen = 0;
@@ -37,7 +49,7 @@ export function RankedList({ slots, items, preview, onSelect, onHover }: RankedL
   const targetProps = (target: DropTarget) => ({
     outcome: outcomeAt(target),
     onSelect: onSelect && selectHandler(target, onSelect),
-    hover: hoverHandlers(target, onHover),
+    hover: hoverHandlers(target, null, onHover),
   });
 
   return (
@@ -56,6 +68,11 @@ export function RankedList({ slots, items, preview, onSelect, onHover }: RankedL
               rank={rank}
               tied={tied}
               items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])}
+              held={held}
+              onPickUp={onPickUp}
+              // Hovering the move button leaves the row, as far as the preview
+              // goes: pressing it picks the card up, it never ties anything.
+              moveHover={hoverHandlers(null, { kind: 'slot', index }, onHover)}
               {...targetProps({ kind: 'slot', index })}
             />
           </Fragment>
@@ -79,19 +96,23 @@ function selectHandler(target: DropTarget, onSelect: (target: DropTarget) => voi
 
 // Hover only previews for a mouse. A finger fires enter and leave around the
 // tap itself, and the leave would wipe the red a refused tap has just left.
-function hoverHandlers(target: DropTarget, onHover?: (target: DropTarget | null) => void) {
+function hoverHandlers(
+  enter: DropTarget | null,
+  leave: DropTarget | null,
+  onHover?: (target: DropTarget | null) => void,
+) {
   if (!onHover) {
     return {};
   }
   return {
     onPointerEnter: (event: PointerEvent) => {
       if (event.pointerType === 'mouse') {
-        onHover(target);
+        onHover(enter);
       }
     },
     onPointerLeave: (event: PointerEvent) => {
       if (event.pointerType === 'mouse') {
-        onHover(null);
+        onHover(leave);
       }
     },
   };
@@ -133,6 +154,9 @@ interface SlotProps extends TargetProps {
   rank: number;
   tied: boolean;
   items: Item[];
+  held?: string | null;
+  onPickUp: (itemId: string) => void;
+  moveHover: ReturnType<typeof hoverHandlers>;
 }
 
 // Two tied items share one container rather than getting a row each, so the
@@ -143,7 +167,18 @@ interface SlotProps extends TargetProps {
 // The click goes on the row for the same reason. The rank is a button with no
 // handler of its own, there so a keyboard can reach the position: its click
 // bubbles up to the row like any other.
-function Slot({ index, rank, tied, items, outcome, onSelect, hover }: SlotProps) {
+function Slot({
+  index,
+  rank,
+  tied,
+  items,
+  outcome,
+  onSelect,
+  hover,
+  held,
+  onPickUp,
+  moveHover,
+}: SlotProps) {
   const { t, i18n } = useTranslation();
   const id = dropTargetId({ kind: 'slot', index });
   const { setNodeRef } = useDroppable({ id });
@@ -174,29 +209,69 @@ function Slot({ index, rank, tied, items, outcome, onSelect, hover }: SlotProps)
       {tied ? <span className={hidden.text}>{t('sorting.tied')}</span> : null}
       <div className={styles.cards}>
         {items.map((item) => (
-          <Placed key={item.id} item={item} />
+          <Placed
+            key={item.id}
+            item={item}
+            held={item.id === held}
+            onPickUp={onPickUp}
+            hover={moveHover}
+          />
         ))}
       </div>
     </li>
   );
 }
 
+interface PlacedProps {
+  item: Item;
+  held: boolean;
+  onPickUp: (itemId: string) => void;
+  hover: ReturnType<typeof hoverHandlers>;
+}
+
 // Draggable per card, not per position, so one half of a tie can leave while
 // its partner keeps the position. The row stays in the list during the drag
 // because the drop is resolved against the gaps the user can see. No
 // `attributes`, for the same reason as the pool card.
-function Placed({ item }: { item: Item }) {
+//
+// The move button is the way to pick a card up without dragging it. A tap on
+// the card itself already means tying the pool item with it, so the button
+// sits beside the card rather than on it, and its click stops before the row.
+function Placed({ item, held, onPickUp, hover }: PlacedProps) {
+  const { t } = useTranslation();
   const id = dragSourceId({ from: 'placed', itemId: item.id });
   const { listeners, setNodeRef, isDragging } = useDraggable({ id });
 
+  // Only the first click of a double-click counts, as on the targets. The
+  // second would put the card straight back, and it would look as if the
+  // button had done nothing.
+  const pickUp = (event: MouseEvent) => {
+    event.stopPropagation();
+    if (event.detail <= 1) {
+      onPickUp(item.id);
+    }
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
-      data-drag-id={id}
-      {...listeners}
-    >
-      <ItemCard item={item} />
+    <div className={styles.placed}>
+      <div
+        ref={setNodeRef}
+        className={isDragging || held ? `${styles.handle} ${styles.lifted}` : styles.handle}
+        data-drag-id={id}
+        {...listeners}
+      >
+        <ItemCard item={item} />
+      </div>
+      <button
+        type="button"
+        className={styles.move}
+        aria-label={t('sorting.select.moveItem', { item: item.text })}
+        aria-pressed={held}
+        onClick={pickUp}
+        {...hover}
+      >
+        {t('sorting.select.move')}
+      </button>
     </div>
   );
 }

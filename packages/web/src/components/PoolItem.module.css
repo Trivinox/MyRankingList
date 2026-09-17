@@ -37,3 +37,7 @@
 .lifted {
   opacity: 0.4;
 }
+
+.releasing {
+  cursor: pointer;
+}

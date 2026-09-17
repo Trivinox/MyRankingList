@@ -43,6 +43,12 @@ export const es: typeof en = {
       gap: 'Ponerlo en la posición {{position}}',
       tie: 'Empatarlo con {{item}}',
       refused: 'Ahí no puede ir. La lista sigue igual.',
+      move: 'Mover',
+      moveItem: 'Mover {{item}}',
+      held: 'Moviendo {{item}}. Elige dónde va.',
+      heldFromTie: 'Moviendo {{item}}. Queda solo {{partner}} en esa posición.',
+      heldHint: 'Elige dónde va {{item}}',
+      released: '{{item}} se queda donde estaba. La lista sigue igual.',
     },
     announce: {
       lifted: 'Arrastrando {{item}}.',

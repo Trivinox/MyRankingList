@@ -31,7 +31,8 @@
 
 /* Placeholder ring until the design system decides focus. */
 .gapButton:focus-visible,
-.rank:focus-visible {
+.rank:focus-visible,
+.move:focus-visible {
   outline: 2px solid #6b6bd6;
   outline-offset: 2px;
 }
@@ -70,9 +71,37 @@
   background: #e6e6ee;
 }
 
+.placed {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .handle {
+  flex: 1;
+  min-width: 0;
   cursor: grab;
   touch-action: none;
+}
+
+/* A plain text button until the icon set lands. */
+.move {
+  flex: none;
+  margin-right: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #c9c9d6;
+  border-radius: 999px;
+  background: #fff;
+  color: #4a4a55;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.move[aria-pressed='true'] {
+  border-color: #6b6bd6;
+  background: #6b6bd6;
+  color: #fff;
 }
 
 .lifted {

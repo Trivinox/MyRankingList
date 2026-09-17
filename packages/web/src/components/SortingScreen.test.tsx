@@ -54,9 +54,13 @@ const positions = () =>
     .getAllByRole('listitem')
     .filter((row) => parseDropTarget(row.getAttribute('data-drop-target') ?? '')?.kind === 'slot');
 
-// A position row opens with its rank and ends with the container holding its
-// cards, so neither of these has to match on what is in between.
-const listed = () => positions().map((row) => row.lastElementChild?.textContent);
+// A position row opens with its rank, and each of its cards is a drag handle
+// with the move button beside it rather than inside, so the handles carry
+// nothing but the item.
+const listed = () =>
+  positions().map((row) =>
+    [...row.querySelectorAll('[data-drag-id]')].map((card) => card.textContent).join(''),
+  );
 const ranks = () => positions().map((row) => row.firstElementChild?.textContent);
 
 // listed() reads a whole position at once, so a tie comes back as both names
@@ -670,7 +674,10 @@ describe('clicking where the pool item goes', () => {
     fill(3);
     renderScreen();
 
-    const targets = screen.getAllByRole('button');
+    // The move buttons stay live: reordering goes on after the pool is empty.
+    const targets = screen
+      .getAllByRole('button')
+      .filter((button) => !button.hasAttribute('aria-pressed'));
 
     expect(targets).toHaveLength(9);
     for (const target of targets) {
@@ -728,6 +735,366 @@ describe('clicking where the pool item goes', () => {
     expect(started().pendingPool).toHaveLength(0);
     expect(document.activeElement).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('list')).toContainElement(document.activeElement as HTMLElement);
+  });
+});
+
+describe('moving a placed item with its move button', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  const fill = (count: number) => {
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index <= count; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    return started().shuffledOrder;
+  };
+
+  const gap = (position: number) =>
+    screen.getByRole('button', { name: `Put it at position ${position}` });
+  const moveButton = (id: string) => screen.getByRole('button', { name: `Move ${textOf(id)}` });
+  const pressed = () =>
+    screen
+      .queryAllByRole('button', { pressed: true })
+      .map((button) => button.getAttribute('aria-label'));
+
+  // The gap indexes are counted on the list as it stands with the item still
+  // in it, and the item leaves its own position on the way down, so these are
+  // the cases where an off-by-one would show.
+  it('moves an item from the middle, the top and the bottom, with the pool already empty', async () => {
+    const [a, b, c, d] = fill(3);
+    renderScreen();
+
+    await userEvent.click(moveButton(b));
+    await userEvent.click(gap(4));
+    expect(listed()).toEqual([row(a), row(c), row(b), row(d)]);
+
+    await userEvent.click(moveButton(a));
+    await userEvent.click(gap(4));
+    expect(listed()).toEqual([row(c), row(b), row(a), row(d)]);
+
+    await userEvent.click(moveButton(d));
+    await userEvent.click(gap(1));
+    expect(listed()).toEqual([row(d), row(c), row(b), row(a)]);
+    expect(pressed()).toEqual([]);
+  });
+
+  it('puts the held item down instead of the pool item, and leaves the pool alone', async () => {
+    const [a, b] = fill(1);
+    renderScreen();
+    const waiting = started().pendingPool[0];
+
+    await userEvent.click(moveButton(a));
+    expect(inPool()?.className).toMatch(/lifted/);
+    expect(screen.getByText(`Choose where ${textOf(a)} goes`)).toBeInTheDocument();
+
+    await userEvent.click(gap(3));
+
+    expect(listed()).toEqual([row(b), row(a)]);
+    expect(started().pendingPool[0]).toBe(waiting);
+    expect(screen.getByText('2 of 4 placed')).toBeInTheDocument();
+    expect(screen.getByText(en.sorting.poolHint)).toBeInTheDocument();
+  });
+
+  it('ties the held item with a position holding one', async () => {
+    const [a, b, c] = fill(2);
+    renderScreen();
+
+    await userEvent.click(moveButton(c));
+    await userEvent.click(screen.getByText(textOf(a)));
+
+    expect(listed()).toEqual([row(a, c), row(b)]);
+    expect(ranks()).toEqual(['1', '3']);
+  });
+
+  it('unties half a pair at once and puts it back on its partner', async () => {
+    const [a, b, c, d] = fill(2);
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    expect(listed()).toEqual([row(a, d), row(b), row(c)]);
+
+    await userEvent.click(moveButton(d));
+    expect(listed()).toEqual([row(a), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '2', '3']);
+
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${textOf(a)}` }));
+    expect(listed()).toEqual([row(a, d), row(b), row(c)]);
+    expect(ranks()).toEqual(['1', '3', '4']);
+  });
+
+  it('refuses a position holding two and keeps the item in hand', async () => {
+    const [a, b, c, d] = fill(3);
+    act(() => {
+      usePlacement.getState().drop({ from: 'placed', itemId: b }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    const before = listed();
+    expect(before).toEqual([row(a, b), row(c), row(d)]);
+
+    await userEvent.click(moveButton(d));
+    await userEvent.click(screen.getByText(textOf(a)));
+
+    expect(listed()).toEqual(before);
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+    expect(pressed()).toEqual([`Move ${textOf(d)}`]);
+
+    // Still in hand, so the next tap moves it.
+    await userEvent.click(gap(1));
+    expect(listed()).toEqual([row(d), row(a, b), row(c)]);
+  });
+
+  it('changes nothing when it is put down in either gap beside its own position', async () => {
+    const [a, b, c, d] = fill(3);
+    renderScreen();
+
+    await userEvent.click(moveButton(b));
+    await userEvent.click(gap(2));
+    expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+    expect(pressed()).toEqual([]);
+
+    await userEvent.click(moveButton(b));
+    await userEvent.click(gap(3));
+    expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+    expect(pressed()).toEqual([]);
+  });
+
+  it('refuses an untied item on its own position', async () => {
+    const [a, b, c, d] = fill(3);
+    renderScreen();
+
+    await userEvent.click(moveButton(b));
+    await userEvent.click(screen.getByText(textOf(b)));
+
+    expect(marked()).toEqual([['slot:1', 'rejected']]);
+    expect(pressed()).toEqual([`Move ${textOf(b)}`]);
+    expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+  });
+
+  it('puts the item back with Escape, with the move button again, or by tapping the pool', async () => {
+    const [a, b, c, d] = fill(2);
+    act(() => {
+      usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    const before = listed();
+    expect(before).toEqual([row(a, d), row(b), row(c)]);
+    const waiting = started().pendingPool;
+
+    await userEvent.click(moveButton(d));
+    await userEvent.keyboard('{Escape}');
+    expect(listed()).toEqual(before);
+    expect(pressed()).toEqual([]);
+
+    await userEvent.click(moveButton(b));
+    await userEvent.click(moveButton(b));
+    expect(listed()).toEqual(before);
+    expect(pressed()).toEqual([]);
+
+    await userEvent.click(moveButton(c));
+    await userEvent.click(screen.getByText(en.sorting.allPlaced));
+    expect(listed()).toEqual(before);
+    expect(pressed()).toEqual([]);
+
+    expect(started().pendingPool).toEqual(waiting);
+  });
+
+  it('hands the next tap back to the pool item once released', async () => {
+    const [a, b] = fill(1);
+    renderScreen();
+    const [next] = started().pendingPool;
+
+    await userEvent.click(moveButton(a));
+    await userEvent.click(inPool() as HTMLElement);
+    await userEvent.click(gap(1));
+
+    expect(listed()).toEqual([row(next), row(a), row(b)]);
+  });
+
+  it('drops what was held for a tap as soon as a drag starts', async () => {
+    const [a] = fill(1);
+    renderScreen();
+
+    await userEvent.click(moveButton(a));
+    pickUp('pool');
+
+    expect(pressed()).toEqual([]);
+  });
+
+  it('picks up only once for a double-click', async () => {
+    const [a] = fill(3);
+    renderScreen();
+
+    await userEvent.dblClick(moveButton(a));
+
+    expect(pressed()).toEqual([`Move ${textOf(a)}`]);
+  });
+
+  it('hands over to another item when its move button is pressed while one is held', async () => {
+    const [a, b] = fill(3);
+    renderScreen();
+
+    await userEvent.click(moveButton(a));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(moveButton(b));
+
+    expect(pressed()).toEqual([`Move ${textOf(b)}`]);
+    expect(announced()).toBe(`Moving ${textOf(b)}. Choose where it goes.`);
+    expect(screen.getByText(`Choose where ${textOf(b)} goes`)).toBeInTheDocument();
+
+    await userEvent.click(gap(1));
+    expect(listed()[0]).toBe(row(b));
+  });
+
+  // The preview is worked out for what is in hand, not for the pool item: the
+  // pair is refused either way, but the held item's own position is refused
+  // only because it is the one being moved.
+  it('previews under the mouse what putting the held item down would do', async () => {
+    const [a, b, c, d] = fill(3);
+    act(() => {
+      usePlacement.getState().drop({ from: 'placed', itemId: b }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    expect(listed()).toEqual([row(a, b), row(c), row(d)]);
+
+    await userEvent.click(moveButton(d));
+
+    await userEvent.hover(screen.getByText(textOf(a)));
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    await userEvent.hover(screen.getByText(textOf(c)));
+    expect(marked()).toEqual([['slot:1', 'tie']]);
+
+    await userEvent.hover(screen.getByText(textOf(d)));
+    expect(marked()).toEqual([['slot:2', 'rejected']]);
+
+    await userEvent.hover(gap(1));
+    expect(marked()).toEqual([['gap:0', 'insert']]);
+  });
+
+  it('reads the tap wording in Spanish', async () => {
+    const [a] = fill(3);
+    const i18n = createI18n();
+    await i18n.changeLanguage('es');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <SortingScreen />
+      </I18nextProvider>,
+    );
+    const mover = () => screen.getByRole('button', { name: `Mover ${textOf(a)}` });
+
+    await userEvent.click(mover());
+    expect(announced()).toBe(`Moviendo ${textOf(a)}. Elige dónde va.`);
+    expect(screen.getByText(`Elige dónde va ${textOf(a)}`)).toBeInTheDocument();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.keyboard('{Escape}');
+    expect(announced()).toBe(`${textOf(a)} se queda donde estaba. La lista sigue igual.`);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(mover());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(screen.getByRole('button', { name: 'Ponerlo en la posición 5' }));
+    expect(announced()).toBe('Movido a la posición 4.');
+  });
+
+  describe('where the focus goes', () => {
+    it('stays on the button that picked the item up, and follows the item once it lands', async () => {
+      const [a] = fill(3);
+      renderScreen();
+
+      moveButton(a).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(document.activeElement).toBe(moveButton(a));
+
+      gap(5).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(document.activeElement).toBe(moveButton(a));
+    });
+
+    // Its button left the list with it, so it has to be found again in the
+    // render that puts the item down.
+    it('follows half a pair to its move button once it lands in a gap', async () => {
+      const [a, b, c, d] = fill(2);
+      act(() => {
+        usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+      });
+      renderScreen();
+
+      moveButton(d).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(listed()).toEqual([row(a), row(b), row(c)]);
+
+      gap(4).focus();
+      await userEvent.keyboard('{Enter}');
+
+      expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+      expect(document.activeElement).toBe(moveButton(d));
+    });
+
+    it('goes back to the move button after Escape', async () => {
+      const [a] = fill(3);
+      renderScreen();
+
+      moveButton(a).focus();
+      await userEvent.keyboard('{Enter}');
+      gap(3).focus();
+      await userEvent.keyboard('{Escape}');
+
+      expect(document.activeElement).toBe(moveButton(a));
+    });
+
+    // Half a pair leaves the list when it is held, and its button with it.
+    it("lands on the partner's rank when half a pair is picked up, and back on the button after Escape", async () => {
+      const [a, , , d] = fill(2);
+      act(() => {
+        usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+      });
+      renderScreen();
+
+      moveButton(d).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: `Tie it with ${textOf(a)}` }),
+      );
+
+      await userEvent.keyboard('{Escape}');
+      expect(document.activeElement).toBe(moveButton(d));
+    });
+  });
+
+  describe('what it says', () => {
+    it('names the item picked up, the partner it leaves and the item put back', async () => {
+      const [a, , , d] = fill(2);
+      act(() => {
+        usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+      });
+      renderScreen();
+
+      await userEvent.click(moveButton(d));
+      expect(announced()).toBe(`Moving ${textOf(d)}. Only ${textOf(a)} is left in that position.`);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await userEvent.keyboard('{Escape}');
+      expect(announced()).toBe(`${textOf(d)} stays where it was. The list is unchanged.`);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await userEvent.click(moveButton(a));
+      expect(announced()).toBe(`Moving ${textOf(a)}. Only ${textOf(d)} is left in that position.`);
+    });
+
+    it('calls a put-down a move, not a placement', async () => {
+      const [a] = fill(3);
+      renderScreen();
+
+      await userEvent.click(moveButton(a));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await userEvent.click(gap(5));
+
+      expect(announced()).toBe('Moved to position 4.');
+    });
   });
 });
 
