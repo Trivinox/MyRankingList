@@ -1371,8 +1371,8 @@ describe('what the list shows once something is put down', () => {
     expect(second).not.toBe(first);
   });
 
-  // Half a tie picked up remounts the position it leaves, which would
-  // otherwise play the burst that tie got all over again.
+  // Half a tie picked up remounts the position it leaves, and the burst that
+  // tie got would play a second time.
   it('lets go of the last burst once something is picked up', async () => {
     renderScreen();
 

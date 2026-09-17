@@ -28,7 +28,6 @@
 
 .handle {
   width: 100%;
-  /* Fades out as it is picked up, and back in if the card returns. */
   transition: opacity 0.15s ease-out;
 }
 

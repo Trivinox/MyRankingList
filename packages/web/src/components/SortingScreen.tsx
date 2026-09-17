@@ -340,9 +340,9 @@ export function SortingScreen() {
   // message is read off the placement the drop was made against, before the
   // store swaps it for the one the drop produced.
   //
-  // A refused item shakes the position that turned it away, where it is now.
-  // An accepted one marks the position it landed in, counted in the list the
-  // drop produces, which is the one about to be on screen.
+  // A refused item shakes the position that turned it away. An accepted one
+  // marks the position it landed in, counted in the list the drop produces,
+  // since that is the list about to be on screen.
   const putDown = (source: DragSource, target: DropTarget, refused: string) => {
     const outcome = describeDrop(placement, source, target);
     const slot = landingSlot(placement, source, target) ?? target.index;
@@ -354,7 +354,6 @@ export function SortingScreen() {
   const handleDragEnd = (event: DragEndEvent) => {
     settle();
     const { source, target } = readDrag(event);
-    // Over nothing counts as refused too: the list is unchanged either way.
     setReturning(!source || !target || describeDrop(placement, source, target) === 'rejected');
     if (source && target) {
       putDown(source, target, t('sorting.announce.refused'));
