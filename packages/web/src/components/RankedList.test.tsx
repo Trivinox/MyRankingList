@@ -28,6 +28,7 @@ interface Handlers {
   onHover?: (target: DropTarget | null) => void;
   held?: string;
   onPickUp?: (itemId: string) => void;
+  draggable?: boolean;
 }
 
 const renderList = (preview?: DropPreview, handlers: Handlers = {}) =>
@@ -119,6 +120,20 @@ describe('RankedList', () => {
       ['Curry', { from: 'placed', itemId: 'curry' }],
       ['Tacos', { from: 'placed', itemId: 'tacos' }],
     ]);
+  });
+
+  // The class is what carries touch-action: none, so without it a swipe that
+  // starts on a card scrolls the page.
+  it('leaves every card free to scroll the page when dragging is off', () => {
+    renderList(undefined, { draggable: false });
+
+    const handles = [...document.querySelectorAll('[data-drag-id]')];
+
+    expect(handles).toHaveLength(4);
+    for (const handle of handles) {
+      expect(handle.className).not.toMatch(/draggable/);
+    }
+    expect(moveButton('Ramen')).toBeInTheDocument();
   });
 
   it('names every target for what a click there would do', () => {

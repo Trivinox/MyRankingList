@@ -1348,6 +1348,48 @@ describe('on a phone-wide screen', () => {
     expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
   });
 
+  it('refuses a tap on a position holding two and marks it until the next tap', async () => {
+    screenWidth(true);
+    const { drop } = usePlacement.getState();
+    act(() => {
+      drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+      drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    const before = listed();
+    const [waiting] = started().pendingPool;
+    const [a, c] = started().rankedSlots[0].itemIds.map(textOf);
+
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${a} and ${c}` }));
+
+    expect(listed()).toEqual(before);
+    expect(started().pendingPool[0]).toBe(waiting);
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    await userEvent.click(gap(3));
+    expect(marked()).toEqual([]);
+  });
+
+  it('puts a held item back with Escape or a tap on the pool', async () => {
+    screenWidth(true);
+    renderScreen();
+    await userEvent.click(gap(1));
+    const before = listed();
+    const [first, second] = started().rankedSlots.map(({ itemIds }) => textOf(itemIds[0]));
+    const pressed = () => screen.queryAllByRole('button', { pressed: true });
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${first}` }));
+    await userEvent.keyboard('{Escape}');
+    expect(pressed()).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${second}` }));
+    await userEvent.click(inPool() as HTMLElement);
+    expect(pressed()).toEqual([]);
+
+    expect(listed()).toEqual(before);
+    expect(started().pendingPool).toHaveLength(2);
+  });
+
   it('keeps both methods on a desktop-wide screen', async () => {
     screenWidth(false);
     renderScreen();

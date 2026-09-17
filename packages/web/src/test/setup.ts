@@ -9,6 +9,13 @@ afterEach(cleanup);
 // that never changes, and the ones about the phone layout swap in their own.
 // Node-environment tests have no window to put it on.
 if (typeof window !== 'undefined') {
+  // No layout either, so nothing would ever be observed resizing.
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+
   beforeEach(() => {
     window.matchMedia = (query: string) =>
       ({

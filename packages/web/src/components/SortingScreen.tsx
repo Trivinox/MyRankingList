@@ -94,6 +94,26 @@ function readDrag({ active, over }: Pick<DragEndEvent, 'active' | 'over'>) {
 
 type Placed = Extract<DragSource, { from: 'placed' }>;
 
+// The pool sticks right under the headline, and the headline is as tall as the
+// question makes it: up to 100 characters, which wrap to three lines on a
+// phone. A fixed offset left the pool covering the progress bar there, so the
+// height is measured and handed to the stylesheet on the screen element. A
+// module-level function so React keeps the same ref and the observer is not
+// rebuilt on every render.
+function measureHeadline(headline: HTMLElement | null) {
+  const screen = headline?.parentElement;
+  if (!headline || !screen) {
+    return;
+  }
+  const update = () => screen.style.setProperty('--headline-height', `${headline.offsetHeight}px`);
+  // Set once straight away as well: the observer only reports on the next
+  // frame, and the first scroll should not use the fallback.
+  update();
+  const observer = new ResizeObserver(update);
+  observer.observe(headline);
+  return () => observer.disconnect();
+}
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
@@ -357,7 +377,7 @@ export function SortingScreen() {
 
   return (
     <div className={styles.screen}>
-      <div className={styles.headline}>
+      <div ref={measureHeadline} className={styles.headline}>
         <h2 className={styles.question}>{criterion}</h2>
         <ProgressBar placed={placed} total={items.length} />
       </div>

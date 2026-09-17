@@ -33,10 +33,12 @@
 }
 
 /* Stays put while the list scrolls past it, clearing the header and the
-   headline stacked above it. */
+   headline stacked above it. The headline's height is measured, since the
+   question can wrap; the fallback is a one-line question. The extra space keeps
+   the gap the column had under the headline before it was measured. */
 .pool {
   position: sticky;
-  top: calc(var(--header-height) + 4.75rem);
+  top: calc(var(--header-height) + var(--headline-height, 4.15rem) + 0.6rem);
 }
 
 .list {
@@ -61,11 +63,10 @@
     gap: 0.75rem;
   }
 
-  /* The headline is shorter here, with the progress bar under a one-line
-     question, so the strip parks higher. It tucks into the headline's bottom
-     padding instead of leaving a seam the list shows through. */
+  /* Tucked a little into the headline's bottom padding: a seam there would
+     show the list scrolling past between the two. */
   .pool {
-    top: calc(var(--header-height) + 4rem);
+    top: calc(var(--header-height) + var(--headline-height, 4.15rem) - 0.15rem);
     z-index: 1;
     /* Hides the list as it scrolls up behind the strip. */
     background: #fff;
