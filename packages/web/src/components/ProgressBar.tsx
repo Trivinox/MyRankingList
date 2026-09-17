@@ -29,10 +29,6 @@ export function ProgressBar({ placed, total }: ProgressBarProps) {
         <div className={styles.rail}>
           <div className={styles.fill} />
         </div>
-        <svg className={styles.flag} viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="5" y="2" width="2.6" height="20" rx="1.3" />
-          <path d="M8.5 3.5h10.3c.9 0 1.4 1 .8 1.7L16.8 8.5l2.8 3.3c.6.7.1 1.7-.8 1.7H8.5z" />
-        </svg>
         <svg className={styles.rocket} viewBox="0 0 24 24" aria-hidden="true">
           <path
             className={styles.flame}
@@ -43,6 +39,10 @@ export function ProgressBar({ placed, total }: ProgressBarProps) {
           <circle className={styles.window} cx="15.5" cy="12" r="2.3" />
         </svg>
       </div>
+      <svg className={styles.flag} viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="2" width="2.6" height="20" rx="1.3" />
+        <path d="M8.5 3.5h10.3c.9 0 1.4 1 .8 1.7L16.8 8.5l2.8 3.3c.6.7.1 1.7-.8 1.7H8.5z" />
+      </svg>
       <span className={styles.count}>{label}</span>
     </div>
   );

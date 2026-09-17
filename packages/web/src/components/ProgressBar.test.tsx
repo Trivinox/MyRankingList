@@ -56,8 +56,11 @@ describe('ProgressBar', () => {
   it('keeps the rocket and the flag away from screen readers', () => {
     renderScreen();
 
-    expect(bar().querySelectorAll('svg')).toHaveLength(2);
-    for (const icon of bar().querySelectorAll('svg')) {
+    // The flag sits beside the track rather than on it.
+    const icons = bar().parentElement?.querySelectorAll('svg') ?? [];
+
+    expect(icons).toHaveLength(2);
+    for (const icon of icons) {
       expect(icon).toHaveAttribute('aria-hidden', 'true');
     }
   });

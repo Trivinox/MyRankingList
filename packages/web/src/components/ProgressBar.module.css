@@ -5,10 +5,10 @@
 }
 
 /* Tall enough for the rocket, which rides over the rail rather than inside it.
-   At phone width this row sits in the sticky headline, so the icon is kept
-   close to the height of the count beside it. */
+   At phone width this row sits in the sticky headline, and every rem added to
+   the icon comes out of the room left for the list. */
 .track {
-  --icon: 1.5rem;
+  --icon: 2.25rem;
   position: relative;
   flex: 1;
   height: var(--icon);
@@ -36,8 +36,8 @@
   transition: width 0.35s ease-out;
 }
 
-/* Offset by its own width: at 0 it sits inside the left edge, at 1 it covers
-   the flag instead of hanging past the end of the track. */
+/* Offset by its own width: at 0 it sits inside the left edge, at 1 its nose
+   meets the flag just past the end of the track. */
 .rocket {
   position: absolute;
   top: 0;
@@ -56,12 +56,13 @@
   fill: #fff;
 }
 
+/* Outside the track, so the rocket never covers it. Pulled in so the pole,
+   not the empty side of the icon, is what the rocket arrives at. */
 .flag {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: var(--icon);
-  height: var(--icon);
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: -0.95rem;
   fill: #f09aad;
 }
 
