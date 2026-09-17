@@ -28,6 +28,7 @@
 
 .handle {
   width: 100%;
+  transition: opacity 0.15s ease-out;
 }
 
 /* Only while dragging is on. The pointer sensor owns the gesture then; without
