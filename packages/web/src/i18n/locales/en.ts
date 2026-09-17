@@ -39,6 +39,12 @@ export const en = {
       gap: 'Put it at position {{position}}',
       tie: 'Tie it with {{item}}',
       refused: 'It cannot go there. The list is unchanged.',
+      move: 'Move',
+      moveItem: 'Move {{item}}',
+      held: 'Moving {{item}}. Choose where it goes.',
+      heldFromTie: 'Moving {{item}}. Only {{partner}} is left in that position.',
+      heldHint: 'Choose where {{item}} goes',
+      released: '{{item}} stays where it was. The list is unchanged.',
     },
     announce: {
       lifted: 'Picked up {{item}}.',

@@ -9,42 +9,57 @@ interface PoolItemProps {
   // Null once the pool runs out. There is nowhere to go from there yet, so the
   // area just says so.
   item: Item | null;
+  // A placed item picked up with its move button. The next tap in the list is
+  // for it, not for the pool item, and the hint has to say so.
+  held?: Item | null;
+  onRelease?: () => void;
 }
 
-export function PoolItem({ item }: PoolItemProps) {
+export function PoolItem({ item, held, onRelease }: PoolItemProps) {
   const { t } = useTranslation();
+  const hint = held ? t('sorting.select.heldHint', { item: held.text }) : t('sorting.poolHint');
 
+  // Tapping the area hands the next tap back to the pool item. It stays a
+  // pointer shortcut: from the keyboard, Escape or the move button again do
+  // the same.
   return (
-    <div className={styles.area}>
+    <div
+      className={held ? `${styles.area} ${styles.releasing}` : styles.area}
+      onClick={held ? onRelease : undefined}
+    >
       {item ? (
         <>
           {/* Keyed so a card that failed to load an image does not keep that
               verdict when the next pool item takes its place. */}
-          <Handle key={item.id} item={item} />
-          <p className={styles.hint}>{t('sorting.poolHint')}</p>
+          <Handle key={item.id} item={item} dimmed={Boolean(held)} />
+          <p className={styles.hint}>{hint}</p>
         </>
       ) : (
-        <p className={styles.done}>{t('sorting.allPlaced')}</p>
+        <>
+          <p className={styles.done}>{t('sorting.allPlaced')}</p>
+          {held ? <p className={styles.hint}>{hint}</p> : null}
+        </>
       )}
     </div>
   );
 }
 
 // The card stays in the area while it is dragged and the overlay is what
-// follows the cursor, so this dims rather than moves.
+// follows the cursor, so this dims rather than moves. It dims the same way
+// while a placed item is held, being out of play until that one is put down.
 //
 // dnd-kit's `attributes` are deliberately not spread on it: they turn the card
 // into a focusable button described by instructions for picking it up with the
 // space bar, and no sensor here would answer. Placing without a pointer means
 // clicking a position in the list, so it is never this card's job.
-function Handle({ item }: { item: Item }) {
+function Handle({ item, dimmed }: { item: Item; dimmed: boolean }) {
   const id = dragSourceId({ from: 'pool' });
   const { listeners, setNodeRef, isDragging } = useDraggable({ id });
 
   return (
     <div
       ref={setNodeRef}
-      className={isDragging ? `${styles.handle} ${styles.lifted}` : styles.handle}
+      className={isDragging || dimmed ? `${styles.handle} ${styles.lifted}` : styles.handle}
       data-drag-id={id}
       {...listeners}
     >
