@@ -25,8 +25,6 @@
   font-size: 1.3rem;
 }
 
-/* Desktop only for now: the mobile layout inverts the hierarchy and is a
-   separate piece of work. */
 .columns {
   display: grid;
   grid-template-columns: 5fr 6fr;
@@ -52,4 +50,24 @@
 .carried {
   width: max-content;
   max-width: 20rem;
+}
+
+/* Keep the width in step with useIsMobile.ts. On a phone the hierarchy flips:
+   one column, the list as the main element, and the pool reduced to a strip
+   above it that stays in view while the page scrolls down the list. */
+@media (max-width: 767px) {
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* The headline is shorter here, with the progress bar under a one-line
+     question, so the strip parks higher. It tucks into the headline's bottom
+     padding instead of leaving a seam the list shows through. */
+  .pool {
+    top: calc(var(--header-height) + 4rem);
+    z-index: 1;
+    /* Hides the list as it scrolls up behind the strip. */
+    background: #fff;
+  }
 }

@@ -28,6 +28,8 @@ interface RankedListProps {
   // otherwise, and nothing here needs to know which one that is.
   held?: string | null;
   onPickUp: (itemId: string) => void;
+  // Off on a phone, where a finger on a card has to scroll the page.
+  draggable?: boolean;
 }
 
 export function RankedList({
@@ -38,6 +40,7 @@ export function RankedList({
   onHover,
   held,
   onPickUp,
+  draggable = true,
 }: RankedListProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const entries = rankItems(slots);
@@ -70,6 +73,7 @@ export function RankedList({
               items={slot.itemIds.flatMap((id) => byId.get(id) ?? [])}
               held={held}
               onPickUp={onPickUp}
+              draggable={draggable}
               // Hovering the move button leaves the row, as far as the preview
               // goes: pressing it picks the card up, it never ties anything.
               moveHover={hoverHandlers(null, { kind: 'slot', index }, onHover)}
@@ -156,6 +160,7 @@ interface SlotProps extends TargetProps {
   items: Item[];
   held?: string | null;
   onPickUp: (itemId: string) => void;
+  draggable: boolean;
   moveHover: ReturnType<typeof hoverHandlers>;
 }
 
@@ -177,6 +182,7 @@ function Slot({
   hover,
   held,
   onPickUp,
+  draggable,
   moveHover,
 }: SlotProps) {
   const { t, i18n } = useTranslation();
@@ -214,6 +220,7 @@ function Slot({
             item={item}
             held={item.id === held}
             onPickUp={onPickUp}
+            draggable={draggable}
             hover={moveHover}
           />
         ))}
@@ -226,6 +233,7 @@ interface PlacedProps {
   item: Item;
   held: boolean;
   onPickUp: (itemId: string) => void;
+  draggable: boolean;
   hover: ReturnType<typeof hoverHandlers>;
 }
 
@@ -237,10 +245,10 @@ interface PlacedProps {
 // The move button is the way to pick a card up without dragging it. A tap on
 // the card itself already means tying the pool item with it, so the button
 // sits beside the card rather than on it, and its click stops before the row.
-function Placed({ item, held, onPickUp, hover }: PlacedProps) {
+function Placed({ item, held, onPickUp, draggable, hover }: PlacedProps) {
   const { t } = useTranslation();
   const id = dragSourceId({ from: 'placed', itemId: item.id });
-  const { listeners, setNodeRef, isDragging } = useDraggable({ id });
+  const { listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: !draggable });
 
   // Only the first click of a double-click counts, as on the targets. The
   // second would put the card straight back, and it would look as if the
@@ -256,7 +264,13 @@ function Placed({ item, held, onPickUp, hover }: PlacedProps) {
     <div className={styles.placed}>
       <div
         ref={setNodeRef}
-        className={isDragging || held ? `${styles.handle} ${styles.lifted}` : styles.handle}
+        className={[
+          styles.handle,
+          draggable && styles.draggable,
+          (isDragging || held) && styles.lifted,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         data-drag-id={id}
         {...listeners}
       >

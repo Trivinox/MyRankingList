@@ -31,6 +31,7 @@ import type { RankedSlot } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
+import { useIsMobile } from './useIsMobile.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
@@ -103,11 +104,16 @@ export function SortingScreen() {
   const [held, setHeld] = useState<Placed | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
   const list = useRef<HTMLElement>(null);
+  const mobile = useIsMobile();
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
   // pickup and then a drop outside the list.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } });
+  // On a phone a finger on the list is scrolling it, so tapping is the only
+  // way to place anything. The sensor is swapped for a null rather than left
+  // out, which keeps the argument count steady for the hook's memo.
+  const sensors = useSensors(mobile ? null : pointer);
   const { announcement, say } = useAnnouncer();
 
   const [next] = placement?.pendingPool ?? [];
@@ -372,7 +378,12 @@ export function SortingScreen() {
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
-            <PoolItem item={current} held={heldItem} onRelease={() => release(false)} />
+            <PoolItem
+              item={current}
+              held={heldItem}
+              onRelease={() => release(false)}
+              mobile={mobile}
+            />
           </aside>
           <section ref={list} className={styles.list} aria-label={t('sorting.listLabel')}>
             <RankedList
@@ -380,9 +391,12 @@ export function SortingScreen() {
               items={items}
               preview={preview}
               onSelect={current || held ? handleSelect : undefined}
-              onHover={current || held ? handleHover : undefined}
+              // The width decides, so a mouse on a narrow window gets no
+              // preview either: the phone layout is the same everywhere.
+              onHover={(current || held) && !mobile ? handleHover : undefined}
               held={held?.itemId}
               onPickUp={handlePickUp}
+              draggable={!mobile}
             />
           </section>
         </div>
@@ -390,7 +404,7 @@ export function SortingScreen() {
         {/* dnd-kit animates a drop back to the dragged node, and here that node
             stays where the item was picked up, not where it has just landed. */}
         <DragOverlay dropAnimation={null} modifiers={[keepGrabPoint]} style={unsized}>
-          {carried ? (
+          {carried && !mobile ? (
             <div className={styles.carried}>
               <ItemCard item={carried} />
             </div>

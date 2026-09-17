@@ -28,9 +28,13 @@
 
 .handle {
   width: 100%;
+}
+
+/* Only while dragging is on. The pointer sensor owns the gesture then; without
+   this the browser scrolls the page instead of starting a drag, and on a phone,
+   where nothing drags, that scroll is exactly what a swipe should do. */
+.draggable {
   cursor: grab;
-  /* The pointer sensor owns the gesture; without this the browser scrolls the
-     page instead of starting a drag. */
   touch-action: none;
 }
 
@@ -40,4 +44,22 @@
 
 .releasing {
   cursor: pointer;
+}
+
+/* Keep the width in step with useIsMobile.ts. The list is the main element on
+   a phone, so the pool shrinks to a strip showing the item being placed. */
+@media (max-width: 767px) {
+  .area {
+    gap: 0.4rem;
+    min-height: 0;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+  }
+
+  .done {
+    font-size: 1rem;
+  }
 }

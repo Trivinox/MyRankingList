@@ -13,9 +13,12 @@ interface PoolItemProps {
   // for it, not for the pool item, and the hint has to say so.
   held?: Item | null;
   onRelease?: () => void;
+  // On a phone the list is the main element, so the card shrinks to a row and
+  // is only ever placed by tapping.
+  mobile?: boolean;
 }
 
-export function PoolItem({ item, held, onRelease }: PoolItemProps) {
+export function PoolItem({ item, held, onRelease, mobile = false }: PoolItemProps) {
   const { t } = useTranslation();
   const hint = held ? t('sorting.select.heldHint', { item: held.text }) : t('sorting.poolHint');
 
@@ -31,7 +34,7 @@ export function PoolItem({ item, held, onRelease }: PoolItemProps) {
         <>
           {/* Keyed so a card that failed to load an image does not keep that
               verdict when the next pool item takes its place. */}
-          <Handle key={item.id} item={item} dimmed={Boolean(held)} />
+          <Handle key={item.id} item={item} dimmed={Boolean(held)} mobile={mobile} />
           <p className={styles.hint}>{hint}</p>
         </>
       ) : (
@@ -52,18 +55,21 @@ export function PoolItem({ item, held, onRelease }: PoolItemProps) {
 // into a focusable button described by instructions for picking it up with the
 // space bar, and no sensor here would answer. Placing without a pointer means
 // clicking a position in the list, so it is never this card's job.
-function Handle({ item, dimmed }: { item: Item; dimmed: boolean }) {
+function Handle({ item, dimmed, mobile }: { item: Item; dimmed: boolean; mobile: boolean }) {
   const id = dragSourceId({ from: 'pool' });
-  const { listeners, setNodeRef, isDragging } = useDraggable({ id });
+  const { listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: mobile });
+
+  const className = [
+    styles.handle,
+    !mobile && styles.draggable,
+    (isDragging || dimmed) && styles.lifted,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <div
-      ref={setNodeRef}
-      className={isDragging || dimmed ? `${styles.handle} ${styles.lifted}` : styles.handle}
-      data-drag-id={id}
-      {...listeners}
-    >
-      <ItemCard item={item} size="lead" />
+    <div ref={setNodeRef} className={className} data-drag-id={id} {...listeners}>
+      <ItemCard item={item} size={mobile ? 'row' : 'lead'} />
     </div>
   );
 }
