@@ -932,6 +932,74 @@ describe('moving a placed item with its move button', () => {
     expect(pressed()).toEqual([`Move ${textOf(a)}`]);
   });
 
+  it('hands over to another item when its move button is pressed while one is held', async () => {
+    const [a, b] = fill(3);
+    renderScreen();
+
+    await userEvent.click(moveButton(a));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(moveButton(b));
+
+    expect(pressed()).toEqual([`Move ${textOf(b)}`]);
+    expect(announced()).toBe(`Moving ${textOf(b)}. Choose where it goes.`);
+    expect(screen.getByText(`Choose where ${textOf(b)} goes`)).toBeInTheDocument();
+
+    await userEvent.click(gap(1));
+    expect(listed()[0]).toBe(row(b));
+  });
+
+  // The preview is worked out for what is in hand, not for the pool item: the
+  // pair is refused either way, but the held item's own position is refused
+  // only because it is the one being moved.
+  it('previews under the mouse what putting the held item down would do', async () => {
+    const [a, b, c, d] = fill(3);
+    act(() => {
+      usePlacement.getState().drop({ from: 'placed', itemId: b }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    expect(listed()).toEqual([row(a, b), row(c), row(d)]);
+
+    await userEvent.click(moveButton(d));
+
+    await userEvent.hover(screen.getByText(textOf(a)));
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    await userEvent.hover(screen.getByText(textOf(c)));
+    expect(marked()).toEqual([['slot:1', 'tie']]);
+
+    await userEvent.hover(screen.getByText(textOf(d)));
+    expect(marked()).toEqual([['slot:2', 'rejected']]);
+
+    await userEvent.hover(gap(1));
+    expect(marked()).toEqual([['gap:0', 'insert']]);
+  });
+
+  it('reads the tap wording in Spanish', async () => {
+    const [a] = fill(3);
+    const i18n = createI18n();
+    await i18n.changeLanguage('es');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <SortingScreen />
+      </I18nextProvider>,
+    );
+    const mover = () => screen.getByRole('button', { name: `Mover ${textOf(a)}` });
+
+    await userEvent.click(mover());
+    expect(announced()).toBe(`Moviendo ${textOf(a)}. Elige dónde va.`);
+    expect(screen.getByText(`Elige dónde va ${textOf(a)}`)).toBeInTheDocument();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.keyboard('{Escape}');
+    expect(announced()).toBe(`${textOf(a)} se queda donde estaba. La lista sigue igual.`);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(mover());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await userEvent.click(screen.getByRole('button', { name: 'Ponerlo en la posición 5' }));
+    expect(announced()).toBe('Movido a la posición 4.');
+  });
+
   describe('where the focus goes', () => {
     it('stays on the button that picked the item up, and follows the item once it lands', async () => {
       const [a] = fill(3);
@@ -944,6 +1012,26 @@ describe('moving a placed item with its move button', () => {
       gap(5).focus();
       await userEvent.keyboard('{Enter}');
       expect(document.activeElement).toBe(moveButton(a));
+    });
+
+    // Its button left the list with it, so it has to be found again in the
+    // render that puts the item down.
+    it('follows half a pair to its move button once it lands in a gap', async () => {
+      const [a, b, c, d] = fill(2);
+      act(() => {
+        usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+      });
+      renderScreen();
+
+      moveButton(d).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(listed()).toEqual([row(a), row(b), row(c)]);
+
+      gap(4).focus();
+      await userEvent.keyboard('{Enter}');
+
+      expect(listed()).toEqual([row(a), row(b), row(c), row(d)]);
+      expect(document.activeElement).toBe(moveButton(d));
     });
 
     it('goes back to the move button after Escape', async () => {
