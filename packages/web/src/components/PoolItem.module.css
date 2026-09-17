@@ -28,6 +28,8 @@
 
 .handle {
   width: 100%;
+  /* Fades out as it is picked up, and back in if the card returns. */
+  transition: opacity 0.15s ease-out;
 }
 
 /* Only while dragging is on. The pointer sensor owns the gesture then; without

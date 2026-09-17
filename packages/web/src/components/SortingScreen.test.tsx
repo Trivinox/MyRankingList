@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
+import type { DndContextProps, DragEndEvent, DragOverlayProps } from '@dnd-kit/core';
 import { I18nextProvider } from 'react-i18next';
 import App from '../App.tsx';
 import { parseDropTarget } from '../core/dropTargets.ts';
@@ -16,8 +16,12 @@ import { SortingScreen } from './SortingScreen.tsx';
 // jsdom gives dnd-kit neither layout nor pointer events, so no real drag ever
 // starts here. The context is still the real one, wrapped only to keep hold of
 // the handlers the screen gives it, which the tests below call the way dnd-kit
-// would once its own hit detection had settled on a target.
-const dnd = vi.hoisted(() => ({ props: {} as DndContextProps }));
+// would once its own hit detection had settled on a target. The overlay is
+// wrapped the same way, for the drop animation it is handed.
+const dnd = vi.hoisted(() => ({
+  props: {} as DndContextProps,
+  overlay: {} as DragOverlayProps,
+}));
 
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const dndKit = await importOriginal<typeof import('@dnd-kit/core')>();
@@ -27,6 +31,10 @@ vi.mock('@dnd-kit/core', async (importOriginal) => {
     DndContext: (props: DndContextProps) => {
       dnd.props = props;
       return createElement(dndKit.DndContext, props);
+    },
+    DragOverlay: (props: DragOverlayProps) => {
+      dnd.overlay = props;
+      return createElement(dndKit.DragOverlay, props);
     },
   };
 });
@@ -1268,9 +1276,120 @@ describe('what the live region says', () => {
   });
 });
 
+describe('what the list shows once something is put down', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  const gap = (position: number) =>
+    screen.getByRole('button', { name: `Put it at position ${position}` });
+
+  const bursts = () =>
+    [...document.querySelectorAll<HTMLElement>('[data-burst]')].map((burst) => [
+      burst.closest('[data-drop-target]')?.getAttribute('data-drop-target'),
+      burst.dataset.burst,
+    ]);
+
+  it('bursts on the position an item was placed in', async () => {
+    renderScreen();
+
+    await userEvent.click(gap(2));
+
+    expect(bursts()).toEqual([['slot:1', 'insert']]);
+  });
+
+  it('bursts differently for a tie', async () => {
+    renderScreen();
+
+    const [opener] = started().rankedSlots[0].itemIds;
+    await userEvent.click(screen.getByText(textOf(opener)));
+
+    expect(bursts()).toEqual([['slot:0', 'tie']]);
+  });
+
+  it('bursts for a drop the same as for a tap', () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'gap:0');
+
+    expect(bursts()).toEqual([['slot:0', 'insert']]);
+  });
+
+  it('does not burst for a refused item', async () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    const pair = started().rankedSlots[0].itemIds.map(textOf).join(' and ');
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${pair}` }));
+
+    expect(announced()).toBe('It cannot go there. The list is unchanged.');
+    expect(bursts()).toEqual([]);
+  });
+
+  // The second item lands on the same position the first one did, and a
+  // burst left over from the first would just stay there without playing.
+  it('bursts again for a second placement in the same spot', async () => {
+    renderScreen();
+
+    await userEvent.click(gap(1));
+    const first = document.querySelector('[data-burst]');
+    expect(first).not.toBeNull();
+    await userEvent.click(gap(1));
+    const second = document.querySelector('[data-burst]');
+
+    expect(bursts()).toEqual([['slot:0', 'insert']]);
+    expect(second).not.toBe(first);
+  });
+
+  // Half a tie picked up remounts the position it leaves, which would
+  // otherwise play the burst that tie got all over again.
+  it('lets go of the last burst once something is picked up', async () => {
+    renderScreen();
+
+    await userEvent.click(gap(1));
+    expect(bursts()).toHaveLength(1);
+    const [placed] = started().rankedSlots[0].itemIds;
+    pickUp(`placed:${placed}`);
+
+    expect(bursts()).toEqual([]);
+  });
+
+  it('flies a refused drop back and lets a landed one stay', () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'slot:0');
+    expect(dnd.overlay.dropAnimation).not.toBeNull();
+
+    pickUp('pool');
+    letGo('pool', 'gap:0');
+    expect(dnd.overlay.dropAnimation).toBeNull();
+  });
+
+  it('flies the item back when it is let go outside the list or the drag is cancelled', () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', null);
+    expect(dnd.overlay.dropAnimation).not.toBeNull();
+
+    pickUp('pool');
+    letGo('pool', 'gap:0');
+    pickUp('pool');
+    cancel('pool');
+    expect(dnd.overlay.dropAnimation).not.toBeNull();
+  });
+});
+
 describe('on a phone-wide screen', () => {
   // Stands in for the browser's media query, with a way to cross the
-  // breakpoint while the screen is up. Only the width is ever asked about.
+  // breakpoint while the screen is up. Only the width is ever asked about:
+  // Framer Motion asks after reduced motion too, but once per file, and the
+  // first test in here has long since answered it.
   const screenWidth = (mobile: boolean) => {
     const listeners = new Set<() => void>();
     let matches = mobile;

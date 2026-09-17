@@ -10,12 +10,16 @@ import {
 } from '@dnd-kit/core';
 import type {
   Announcements,
+  ClientRect,
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
+  DropAnimation,
   Modifier,
 } from '@dnd-kit/core';
-import { getEventCoordinates } from '@dnd-kit/utilities';
+import { CSS, getEventCoordinates } from '@dnd-kit/utilities';
+import type { Coordinates } from '@dnd-kit/utilities';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import {
   describeDrop,
@@ -36,7 +40,7 @@ import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
-import type { DropPreview } from './RankedList.tsx';
+import type { DropPreview, Feedback } from './RankedList.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit's stock instructions explain a keyboard drag, and only the pointer
@@ -60,6 +64,28 @@ const noAnnouncements: Announcements = {
 // meant to show, so the sizing is dropped and the card inside decides.
 const unsized = { width: 'auto', height: 'auto' };
 
+// Where a card was grabbed, as a share of its width and height.
+interface GrabPoint {
+  across: number;
+  down: number;
+}
+
+function grabPoint(pointer: Coordinates, rect: ClientRect): GrabPoint {
+  return {
+    across: (pointer.x - rect.left) / rect.width,
+    down: (pointer.y - rect.top) / rect.height,
+  };
+}
+
+// How far the overlay has to shift for that same share of it to line up with
+// the node it was picked up from.
+function grabOffset({ across, down }: GrabPoint, active: ClientRect, overlay: ClientRect) {
+  return {
+    x: across * (active.width - overlay.width),
+    y: down * (active.height - overlay.height),
+  };
+}
+
 // The overlay still starts at the picked-up node's corner, so once it is
 // smaller than that node the card would hang off away from the pointer. This
 // keeps the same spot of the card under it: grabbed by its middle, carried by
@@ -74,14 +100,32 @@ const keepGrabPoint: Modifier = ({
   if (!pointer || !activeNodeRect || !overlayNodeRect) {
     return transform;
   }
-  const across = (pointer.x - activeNodeRect.left) / activeNodeRect.width;
-  const down = (pointer.y - activeNodeRect.top) / activeNodeRect.height;
-  return {
-    ...transform,
-    x: transform.x + across * (activeNodeRect.width - overlayNodeRect.width),
-    y: transform.y + down * (activeNodeRect.height - overlayNodeRect.height),
-  };
+  const offset = grabOffset(grabPoint(pointer, activeNodeRect), activeNodeRect, overlayNodeRect);
+  return { ...transform, x: transform.x + offset.x, y: transform.y + offset.y };
 };
+
+// dnd-kit flies a refused card back to the corner of the node it left, and the
+// card is smaller than that node. It goes back to the spot it was grabbed by
+// instead, where keepGrabPoint had it on the way out. The grab is kept as a
+// share rather than as coordinates: the list may have scrolled since, and
+// half a tie comes back as a new node.
+function returnTo(grab: GrabPoint | null): DropAnimation {
+  return {
+    keyframes: ({ active, dragOverlay, transform: { initial, final } }) => {
+      const offset = grab ? grabOffset(grab, active.rect, dragOverlay.rect) : { x: 0, y: 0 };
+      return [
+        { transform: CSS.Transform.toString(initial) },
+        {
+          transform: CSS.Transform.toString({
+            ...final,
+            x: final.x + offset.x,
+            y: final.y + offset.y,
+          }),
+        },
+      ];
+    },
+  };
+}
 
 // Every drag event and every announcement starts by reading the same two ids.
 // Anything that is not one of ours comes back null, and so does no `over`.
@@ -120,8 +164,17 @@ export function SortingScreen() {
   // store: a half-finished tap is not progress worth saving.
   const [held, setHeld] = useState<Placed | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
+  // The last thing put down, for the list to show where it went. Cleared on
+  // the next pick-up: lifting half a tie remounts its position, and a burst
+  // still attached to it would play all over again.
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [grab, setGrab] = useState<GrabPoint | null>(null);
+  // Decided when the drag ends, since the overlay reads it on the render that
+  // lets go. The preview cannot be used: it is cleared in that same render.
+  const [returning, setReturning] = useState(false);
   const list = useRef<HTMLElement>(null);
   const mobile = useIsMobile();
+  const reduceMotion = useReducedMotion();
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
@@ -207,11 +260,16 @@ export function SortingScreen() {
       source,
     );
 
-  const handleDragStart = ({ active }: DragStartEvent) => {
+  const handleDragStart = ({ active, activatorEvent }: DragStartEvent) => {
     const source = parseDragSource(String(active.id));
     setDragged(source);
     // A drag takes over from whatever was held for a tap.
     setHeld(null);
+    setFeedback(null);
+    const pointer = activatorEvent && getEventCoordinates(activatorEvent);
+    const node =
+      activatorEvent?.target instanceof Element && activatorEvent.target.closest('[data-drag-id]');
+    setGrab(pointer && node ? grabPoint(pointer, node.getBoundingClientRect()) : null);
     const item = source?.from === 'placed' ? items.find(({ id }) => id === source.itemId) : current;
     if (!source || !item) {
       return;
@@ -258,6 +316,7 @@ export function SortingScreen() {
   };
 
   const handleDragCancel = () => {
+    setReturning(true);
     settle();
     say(t('sorting.announce.cancelled'));
   };
@@ -280,7 +339,14 @@ export function SortingScreen() {
   // Both methods end here, so whatever a drop does, a tap does too. The
   // message is read off the placement the drop was made against, before the
   // store swaps it for the one the drop produced.
+  //
+  // A refused item shakes the position that turned it away, where it is now.
+  // An accepted one marks the position it landed in, counted in the list the
+  // drop produces, which is the one about to be on screen.
   const putDown = (source: DragSource, target: DropTarget, refused: string) => {
+    const outcome = describeDrop(placement, source, target);
+    const slot = landingSlot(placement, source, target) ?? target.index;
+    setFeedback((last) => ({ outcome, slot, key: (last?.key ?? 0) + 1 }));
     say(landed(source, target) ?? refused);
     drop(source, target);
   };
@@ -288,6 +354,8 @@ export function SortingScreen() {
   const handleDragEnd = (event: DragEndEvent) => {
     settle();
     const { source, target } = readDrag(event);
+    // Over nothing counts as refused too: the list is unchanged either way.
+    setReturning(!source || !target || describeDrop(placement, source, target) === 'rejected');
     if (source && target) {
       putDown(source, target, t('sorting.announce.refused'));
     } else {
@@ -344,6 +412,7 @@ export function SortingScreen() {
     flushSync(() => {
       setHeld(source);
       setPreview(null);
+      setFeedback(null);
     });
     say(
       partner
@@ -407,6 +476,7 @@ export function SortingScreen() {
               slots={shown}
               items={items}
               preview={preview}
+              feedback={feedback}
               onSelect={current || held ? handleSelect : undefined}
               // Off by width, not by pointer: a mouse in a window narrower
               // than the breakpoint gets the phone behaviour too.
@@ -418,13 +488,25 @@ export function SortingScreen() {
           </section>
         </div>
 
-        {/* dnd-kit animates a drop back to the dragged node, and here that node
-            stays where the item was picked up, not where it has just landed. */}
-        <DragOverlay dropAnimation={null} modifiers={[keepGrabPoint]} style={unsized}>
+        {/* dnd-kit animates a drop back to the dragged node, and that node
+            stays where the item was picked up. Right for a card that was
+            turned away, wrong for one that has just landed somewhere else.
+            The OS setting is read by hand here: this animation is dnd-kit's,
+            and MotionConfig never sees it. */}
+        <DragOverlay
+          dropAnimation={returning && !reduceMotion ? returnTo(grab) : null}
+          modifiers={[keepGrabPoint]}
+          style={unsized}
+        >
           {carried && !mobile ? (
-            <div className={styles.carried}>
+            <motion.div
+              className={styles.carried}
+              initial={{ scale: 1, boxShadow: '0 1px 3px rgba(120, 100, 190, 0)' }}
+              animate={{ scale: 1.04, boxShadow: '0 12px 28px rgba(120, 100, 190, 0.3)' }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
               <ItemCard item={carried} />
-            </div>
+            </motion.div>
           ) : null}
         </DragOverlay>
       </DndContext>

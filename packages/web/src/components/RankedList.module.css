@@ -62,6 +62,8 @@
 }
 
 .cards {
+  /* Holds the burst of an item that has just landed. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -80,6 +82,7 @@
 .handle {
   flex: 1;
   min-width: 0;
+  transition: opacity 0.15s ease-out;
 }
 
 /* Left off on a phone, so a swipe that starts on a card scrolls the page. */

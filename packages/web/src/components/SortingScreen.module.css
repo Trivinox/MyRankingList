@@ -51,6 +51,8 @@
 .carried {
   width: max-content;
   max-width: 20rem;
+  /* The card's own, so the lifted shadow follows its corners. */
+  border-radius: 10px;
 }
 
 /* The breakpoint has to match useIsMobile.ts. On a phone the hierarchy flips:

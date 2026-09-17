@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from './components/LanguageSelector.tsx';
 import { ListInputForm } from './components/ListInputForm.tsx';
@@ -19,14 +20,18 @@ function App() {
         <h1 className={styles.title}>{t('app.title')}</h1>
         <LanguageSelector />
       </header>
-      {screen === 'list-input' ? (
-        <>
-          <p>{t('app.tagline')}</p>
-          <ListInputForm />
-        </>
-      ) : (
-        <SortingScreen />
-      )}
+      {/* With reduce motion on in the OS, anything that moves or scales jumps
+          straight to where it ends, and fades still play. */}
+      <MotionConfig reducedMotion="user">
+        {screen === 'list-input' ? (
+          <>
+            <p>{t('app.tagline')}</p>
+            <ListInputForm />
+          </>
+        ) : (
+          <SortingScreen />
+        )}
+      </MotionConfig>
     </div>
   );
 }

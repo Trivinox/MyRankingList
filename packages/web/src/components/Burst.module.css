@@ -1,0 +1,17 @@
+/* Over the cards and out past them, without catching the pointer on its way
+   to the next target. */
+.burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.25rem 0 0 -0.25rem;
+  border-radius: 50%;
+}
