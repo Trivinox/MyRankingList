@@ -4,23 +4,76 @@
   gap: 0.6rem;
 }
 
+/* Tall enough for the rocket, which rides over the rail rather than inside it.
+   At phone width this row sits in the sticky headline, so the icon is kept
+   close to the height of the count beside it. */
 .track {
+  --icon: 1.5rem;
+  position: relative;
   flex: 1;
+  height: var(--icon);
+}
+
+.rail {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
   height: 0.5rem;
+  transform: translateY(-50%);
   border-radius: 999px;
   background: #e6e6ee;
   overflow: hidden;
 }
 
+/* Ends under the middle of the rocket, so the colour never runs ahead of it or
+   leaves a gap behind it. */
 .fill {
   height: 100%;
+  width: calc(var(--progress) * (100% - var(--icon)) + var(--icon) / 2);
   border-radius: inherit;
-  /* Flat colour for now: the icon that travels along the bar is a later step. */
-  background: #33333f;
+  background: #b7a8e8;
+  transition: width 0.35s ease-out;
+}
+
+/* Offset by its own width: at 0 it sits inside the left edge, at 1 it covers
+   the flag instead of hanging past the end of the track. */
+.rocket {
+  position: absolute;
+  top: 0;
+  left: calc(var(--progress) * (100% - var(--icon)));
+  width: var(--icon);
+  height: var(--icon);
+  fill: #9a86dc;
+  transition: left 0.35s ease-out;
+}
+
+.flame {
+  fill: #ffb870;
+}
+
+.window {
+  fill: #fff;
+}
+
+.flag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--icon);
+  height: var(--icon);
+  fill: #f09aad;
 }
 
 .count {
   color: #6b6b76;
   font-size: 0.85rem;
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill,
+  .rocket {
+    transition: none;
+  }
 }
