@@ -31,6 +31,7 @@ import type { RankedSlot } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
+import { useIsMobile } from './useIsMobile.ts';
 import { ItemCard } from './ItemCard.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
@@ -93,6 +94,23 @@ function readDrag({ active, over }: Pick<DragEndEvent, 'active' | 'over'>) {
 
 type Placed = Extract<DragSource, { from: 'placed' }>;
 
+// The pool sticks right under the headline, whose height depends on the
+// question: a long one wraps to three lines on a phone, and a guessed offset
+// would park the pool over the progress bar. Declared outside the component so
+// the ref stays the same and the observer is not rebuilt on every render.
+function measureHeadline(headline: HTMLElement | null) {
+  const screen = headline?.parentElement;
+  if (!headline || !screen) {
+    return;
+  }
+  const update = () => screen.style.setProperty('--headline-height', `${headline.offsetHeight}px`);
+  // The observer only reports on the next frame, too late for a first scroll.
+  update();
+  const observer = new ResizeObserver(update);
+  observer.observe(headline);
+  return () => observer.disconnect();
+}
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
@@ -103,11 +121,16 @@ export function SortingScreen() {
   const [held, setHeld] = useState<Placed | null>(null);
   const [preview, setPreview] = useState<DropPreview | null>(null);
   const list = useRef<HTMLElement>(null);
+  const mobile = useIsMobile();
 
   // A few pixels of travel before the gesture counts as a drag. Without them the
   // sensor starts one on press, and a plain click on the card would announce a
   // pickup and then a drop outside the list.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } });
+  // On a phone a finger on the list scrolls the page, so tapping is the only
+  // way to place anything. Null rather than no argument: useSensors memoizes on
+  // its arguments and their count must not change between renders.
+  const sensors = useSensors(mobile ? null : pointer);
   const { announcement, say } = useAnnouncer();
 
   const [next] = placement?.pendingPool ?? [];
@@ -351,7 +374,7 @@ export function SortingScreen() {
 
   return (
     <div className={styles.screen}>
-      <div className={styles.headline}>
+      <div ref={measureHeadline} className={styles.headline}>
         <h2 className={styles.question}>{criterion}</h2>
         <ProgressBar placed={placed} total={items.length} />
       </div>
@@ -372,7 +395,12 @@ export function SortingScreen() {
       >
         <div className={styles.columns}>
           <aside className={styles.pool}>
-            <PoolItem item={current} held={heldItem} onRelease={() => release(false)} />
+            <PoolItem
+              item={current}
+              held={heldItem}
+              onRelease={() => release(false)}
+              mobile={mobile}
+            />
           </aside>
           <section ref={list} className={styles.list} aria-label={t('sorting.listLabel')}>
             <RankedList
@@ -380,9 +408,12 @@ export function SortingScreen() {
               items={items}
               preview={preview}
               onSelect={current || held ? handleSelect : undefined}
-              onHover={current || held ? handleHover : undefined}
+              // Off by width, not by pointer: a mouse in a window narrower
+              // than the breakpoint gets the phone behaviour too.
+              onHover={(current || held) && !mobile ? handleHover : undefined}
               held={held?.itemId}
               onPickUp={handlePickUp}
+              draggable={!mobile}
             />
           </section>
         </div>
@@ -390,7 +421,7 @@ export function SortingScreen() {
         {/* dnd-kit animates a drop back to the dragged node, and here that node
             stays where the item was picked up, not where it has just landed. */}
         <DragOverlay dropAnimation={null} modifiers={[keepGrabPoint]} style={unsized}>
-          {carried ? (
+          {carried && !mobile ? (
             <div className={styles.carried}>
               <ItemCard item={carried} />
             </div>

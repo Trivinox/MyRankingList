@@ -80,6 +80,10 @@
 .handle {
   flex: 1;
   min-width: 0;
+}
+
+/* Left off on a phone, so a swipe that starts on a card scrolls the page. */
+.draggable {
   cursor: grab;
   touch-action: none;
 }

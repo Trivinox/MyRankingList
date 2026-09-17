@@ -1267,3 +1267,152 @@ describe('what the live region says', () => {
     expect(theirs?.onDragCancel(event)).toBeUndefined();
   });
 });
+
+describe('on a phone-wide screen', () => {
+  // Stands in for the browser's media query, with a way to cross the
+  // breakpoint while the screen is up. Only the width is ever asked about.
+  const screenWidth = (mobile: boolean) => {
+    const listeners = new Set<() => void>();
+    let matches = mobile;
+    window.matchMedia = (query: string) =>
+      ({
+        get matches() {
+          return matches;
+        },
+        media: query,
+        addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+      }) as unknown as MediaQueryList;
+
+    return (next: boolean) => {
+      matches = next;
+      act(() => listeners.forEach((listener) => listener()));
+    };
+  };
+
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  const gap = (position: number) =>
+    screen.getByRole('button', { name: `Put it at position ${position}` });
+  const handles = () => [...document.querySelectorAll('[data-drag-id]')];
+
+  it('starts no drag and leaves every card free to scroll the page', () => {
+    screenWidth(true);
+    renderScreen();
+
+    expect(dnd.props.sensors).toEqual([]);
+    expect(handles()).toHaveLength(2);
+    for (const handle of handles()) {
+      expect(handle.className).not.toMatch(/draggable/);
+    }
+  });
+
+  it('puts the pool above the list', () => {
+    screenWidth(true);
+    renderScreen();
+
+    const pool = inPool() as HTMLElement;
+    const list = screen.getByRole('list');
+
+    expect(pool.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no preview under the mouse', async () => {
+    screenWidth(true);
+    renderScreen();
+
+    await userEvent.hover(gap(1));
+
+    expect(marked()).toEqual([]);
+  });
+
+  it('sorts the whole list by tapping alone', async () => {
+    screenWidth(true);
+    renderScreen();
+
+    const [opener] = started().rankedSlots[0].itemIds;
+    const [first, second, third] = started().pendingPool;
+
+    await userEvent.click(gap(1));
+    await userEvent.click(screen.getByText(textOf(opener)));
+    await userEvent.click(gap(3));
+    expect(listed()).toEqual([row(first), row(opener, second), row(third)]);
+
+    // Half the pair goes to the top, and the rest closes up behind it.
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(second)}` }));
+    await userEvent.click(gap(1));
+
+    expect(listed()).toEqual([row(second), row(first), row(opener), row(third)]);
+    expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
+  });
+
+  it('refuses a tap on a position holding two and marks it until the next tap', async () => {
+    screenWidth(true);
+    const { drop } = usePlacement.getState();
+    act(() => {
+      drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+      drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    });
+    renderScreen();
+    const before = listed();
+    const [waiting] = started().pendingPool;
+    const [a, c] = started().rankedSlots[0].itemIds.map(textOf);
+
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${a} and ${c}` }));
+
+    expect(listed()).toEqual(before);
+    expect(started().pendingPool[0]).toBe(waiting);
+    expect(marked()).toEqual([['slot:0', 'rejected']]);
+
+    await userEvent.click(gap(3));
+    expect(marked()).toEqual([]);
+  });
+
+  it('puts a held item back with Escape or a tap on the pool', async () => {
+    screenWidth(true);
+    renderScreen();
+    await userEvent.click(gap(1));
+    const before = listed();
+    const [first, second] = started().rankedSlots.map(({ itemIds }) => textOf(itemIds[0]));
+    const pressed = () => screen.queryAllByRole('button', { pressed: true });
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${first}` }));
+    await userEvent.keyboard('{Escape}');
+    expect(pressed()).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${second}` }));
+    await userEvent.click(inPool() as HTMLElement);
+    expect(pressed()).toEqual([]);
+
+    expect(listed()).toEqual(before);
+    expect(started().pendingPool).toHaveLength(2);
+  });
+
+  it('keeps both methods on a desktop-wide screen', async () => {
+    screenWidth(false);
+    renderScreen();
+
+    expect(dnd.props.sensors).toHaveLength(1);
+    for (const handle of handles()) {
+      expect(handle.className).toMatch(/draggable/);
+    }
+
+    await userEvent.hover(gap(1));
+    expect(marked()).toEqual([['gap:0', 'insert']]);
+  });
+
+  it('switches mode when the screen crosses the breakpoint', () => {
+    const resize = screenWidth(false);
+    renderScreen();
+
+    resize(true);
+    expect(dnd.props.sensors).toEqual([]);
+    expect(inPool()?.className).not.toMatch(/draggable/);
+
+    resize(false);
+    expect(dnd.props.sensors).toHaveLength(1);
+    expect(inPool()?.className).toMatch(/draggable/);
+  });
+});

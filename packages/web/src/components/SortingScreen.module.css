@@ -25,8 +25,6 @@
   font-size: 1.3rem;
 }
 
-/* Desktop only for now: the mobile layout inverts the hierarchy and is a
-   separate piece of work. */
 .columns {
   display: grid;
   grid-template-columns: 5fr 6fr;
@@ -35,10 +33,11 @@
 }
 
 /* Stays put while the list scrolls past it, clearing the header and the
-   headline stacked above it. */
+   headline stacked above it. The headline height comes from the screen, which
+   measures it because a long question wraps; the fallback fits one line. */
 .pool {
   position: sticky;
-  top: calc(var(--header-height) + 4.75rem);
+  top: calc(var(--header-height) + var(--headline-height, 4.15rem) + 0.6rem);
 }
 
 .list {
@@ -52,4 +51,23 @@
 .carried {
   width: max-content;
   max-width: 20rem;
+}
+
+/* The breakpoint has to match useIsMobile.ts. On a phone the hierarchy flips:
+   one column, the list as the main element, and the pool reduced to a strip
+   above it that stays in view while the page scrolls down the list. */
+@media (max-width: 767px) {
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Tucked a little into the headline's bottom padding: a seam there would
+     show the list scrolling past between the two. */
+  .pool {
+    top: calc(var(--header-height) + var(--headline-height, 4.15rem) - 0.15rem);
+    z-index: 1;
+    /* Hides the list as it scrolls up behind the strip. */
+    background: #fff;
+  }
 }
