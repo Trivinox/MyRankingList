@@ -39,6 +39,25 @@ vi.mock('@dnd-kit/core', async (importOriginal) => {
   };
 });
 
+// Framer Motion runs in jsdom, but nothing it moves there can be read back
+// reliably. What the list asks it to animate, and on which element, can.
+const motion = vi.hoisted(() => ({
+  calls: [] as { element: Element; keyframes: object }[],
+}));
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const framer = await importOriginal<typeof import('framer-motion')>();
+  // One function for every render, as the real one is, so an effect that
+  // depends on it does not run again on each render.
+  const animate = (element: Element, keyframes: object) => {
+    motion.calls.push({ element, keyframes });
+  };
+  return {
+    ...framer,
+    useAnimate: () => [framer.useAnimate()[0], animate],
+  };
+});
+
 const items: Item[] = ['Sushi', 'Ramen', 'Curry', 'Tacos'].map((text) => ({
   id: text.toLowerCase(),
   text,
@@ -1279,7 +1298,16 @@ describe('what the live region says', () => {
 describe('what the list shows once something is put down', () => {
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
+    motion.calls = [];
   });
+
+  // The position each animation was asked for, and what it moves: x for a
+  // shake, scale for a settle.
+  const animated = () =>
+    motion.calls.map(({ element, keyframes }) => [
+      element.closest('[data-drop-target]')?.getAttribute('data-drop-target'),
+      Object.keys(keyframes),
+    ]);
 
   const gap = (position: number) =>
     screen.getByRole('button', { name: `Put it at position ${position}` });
@@ -1352,6 +1380,47 @@ describe('what the list shows once something is put down', () => {
     expect(bursts()).toHaveLength(1);
     const [placed] = started().rankedSlots[0].itemIds;
     pickUp(`placed:${placed}`);
+
+    expect(bursts()).toEqual([]);
+  });
+
+  it('settles the position an item landed in', async () => {
+    renderScreen();
+
+    await userEvent.click(gap(2));
+
+    expect(animated()).toEqual([['slot:1', ['scale']]]);
+  });
+
+  it('shakes a position that turns a tap away', async () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    const pair = started().rankedSlots[0].itemIds.map(textOf).join(' and ');
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${pair}` }));
+
+    expect(animated()).toEqual([['slot:0', ['x']]]);
+  });
+
+  it('shakes a position that turns a drag away', () => {
+    const { drop } = usePlacement.getState();
+    drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'slot:0');
+
+    expect(animated()).toEqual([['slot:0', ['x']]]);
+  });
+
+  it('lets go of the last burst once the move button picks something up', async () => {
+    renderScreen();
+
+    await userEvent.click(gap(1));
+    expect(bursts()).toHaveLength(1);
+    const [placed] = started().rankedSlots[0].itemIds;
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(placed)}` }));
 
     expect(bursts()).toEqual([]);
   });
