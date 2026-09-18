@@ -188,10 +188,13 @@ export function SortingScreen() {
   // sensor starts one on press, and a plain click on the card would announce a
   // pickup and then a drop outside the list.
   const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } });
-  // On a phone a finger on the list scrolls the page, so tapping is the only
-  // way to place anything. Null rather than no argument: useSensors memoizes on
-  // its arguments and their count must not change between renders.
-  const sensors = useSensors(mobile ? null : pointer);
+  // Mounted at every width. On a phone a finger on the list scrolls the page, so
+  // tapping is the only way to place anything, but that is switched off on the
+  // cards themselves (`draggable` and `mobile` disable their useDraggable, which
+  // drops their listeners). Leaving the sensor out instead would change the
+  // length of the list dnd-kit keeps as effect dependencies, and React logs an
+  // error each time the screen crossed the breakpoint.
+  const sensors = useSensors(pointer);
   const { announcement, say } = useAnnouncer();
 
   const [next] = placement?.pendingPool ?? [];

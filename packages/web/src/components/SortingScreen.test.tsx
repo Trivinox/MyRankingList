@@ -1588,7 +1588,6 @@ describe('on a phone-wide screen', () => {
     screenWidth(true);
     renderScreen();
 
-    expect(dnd.props.sensors).toEqual([]);
     expect(handles()).toHaveLength(2);
     for (const handle of handles()) {
       expect(handle.className).not.toMatch(/draggable/);
@@ -1680,7 +1679,6 @@ describe('on a phone-wide screen', () => {
     screenWidth(false);
     renderScreen();
 
-    expect(dnd.props.sensors).toHaveLength(1);
     for (const handle of handles()) {
       expect(handle.className).toMatch(/draggable/);
     }
@@ -1694,11 +1692,29 @@ describe('on a phone-wide screen', () => {
     renderScreen();
 
     resize(true);
-    expect(dnd.props.sensors).toEqual([]);
     expect(inPool()?.className).not.toMatch(/draggable/);
 
     resize(false);
-    expect(dnd.props.sensors).toHaveLength(1);
     expect(inPool()?.className).toMatch(/draggable/);
+  });
+
+  // dnd-kit keeps the sensors as effect dependencies, and React logs an error
+  // when their count changes between renders. The drag is turned off on the
+  // cards instead, so the list stays the same on both sides of the breakpoint.
+  it('keeps the same sensors on both sides of the breakpoint', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const resize = screenWidth(false);
+    renderScreen();
+    const counts = [dnd.props.sensors?.length];
+
+    resize(true);
+    counts.push(dnd.props.sensors?.length);
+    resize(false);
+    counts.push(dnd.props.sensors?.length);
+    const logged = errors.mock.calls.length;
+    errors.mockRestore();
+
+    expect(counts).toEqual([1, 1, 1]);
+    expect(logged).toBe(0);
   });
 });
