@@ -8,6 +8,9 @@ export const en = {
     en: 'English',
     es: 'Spanish',
   },
+  sound: {
+    mute: 'Mute sounds',
+  },
   form: {
     criterionLabel: 'What are you comparing them by?',
     criterionPlaceholder: 'Which one do you like more?',

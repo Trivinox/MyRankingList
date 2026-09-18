@@ -33,6 +33,12 @@
   background: #fff;
 }
 
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .title {
   margin: 0;
   font-size: 1.5rem;

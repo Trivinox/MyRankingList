@@ -12,6 +12,9 @@ export const es: typeof en = {
     en: 'Inglés',
     es: 'Español',
   },
+  sound: {
+    mute: 'Silenciar sonidos',
+  },
   form: {
     criterionLabel: '¿Con qué criterio los comparas?',
     criterionPlaceholder: '¿Cuál te gusta más?',
