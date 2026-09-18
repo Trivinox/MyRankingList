@@ -164,6 +164,14 @@ function measureHeadline(headline: HTMLElement | null) {
   return () => observer.disconnect();
 }
 
+// The button that opened this screen, Continue or Sort again, is gone with the
+// screen it was on, and the focus would otherwise fall back to the page.
+// Declared outside, like measureHeadline, so it runs when the heading mounts
+// and not again on every render.
+function focusOnArrival(heading: HTMLHeadingElement | null) {
+  heading?.focus();
+}
+
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
@@ -467,7 +475,9 @@ export function SortingScreen() {
   return (
     <div className={styles.screen}>
       <div ref={measureHeadline} className={styles.headline}>
-        <h2 className={styles.question}>{criterion}</h2>
+        <h2 ref={focusOnArrival} className={styles.question} tabIndex={-1}>
+          {criterion}
+        </h2>
         <ProgressBar placed={placed} total={items.length} />
       </div>
 

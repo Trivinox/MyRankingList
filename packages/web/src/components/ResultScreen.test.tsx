@@ -129,6 +129,7 @@ describe('ResultScreen', () => {
     expect(placement?.rankedSlots).toHaveLength(1);
     expect(placement?.pendingPool).toHaveLength(4);
     expect(screen.getByText('1 of 5 placed')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: draft.criterion })).toHaveFocus();
   });
 
   it('goes back to the form with the draft as it was', async () => {
@@ -139,7 +140,7 @@ describe('ResultScreen', () => {
     expect(useListDraft.getState().screen).toBe('list-input');
     expect(screen.getByRole('textbox', { name: 'Item 1' })).toHaveValue('Sushi');
     expect(screen.getByRole('textbox', { name: 'Item 6' })).toHaveValue('');
-    expect(screen.getByDisplayValue(draft.criterion)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(draft.criterion)).toHaveFocus();
   });
 
   it('switches its strings with the language', async () => {

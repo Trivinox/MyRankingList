@@ -31,10 +31,9 @@
   cursor: pointer;
 }
 
-/* Still a pointer: a click on it puts the held item back, like the rest of
-   the area. */
 .finish[aria-disabled='true'] {
   background: #c9c9d1;
+  cursor: default;
 }
 
 .finish:focus-visible {

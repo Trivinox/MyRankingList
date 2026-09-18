@@ -926,7 +926,7 @@ describe('moving a placed item with its move button', () => {
     expect(pressed()).toEqual([]);
 
     await userEvent.click(moveButton(c));
-    await userEvent.click(screen.getByRole('button', { name: en.sorting.seeResult }));
+    await userEvent.click(screen.getByText(`Choose where ${textOf(c)} goes`));
     expect(listed()).toEqual(before);
     expect(pressed()).toEqual([]);
 
@@ -1179,17 +1179,29 @@ describe('once the pool is empty', () => {
     expect(seeResult()).toBeInTheDocument();
   });
 
-  it('holds the result back while an item is in hand', async () => {
+  it('holds the result back while an item is in hand, and leaves the item there', async () => {
     const [a] = fill(3);
     renderApp();
+    const moveA = screen.getByRole('button', { name: `Move ${textOf(a)}` });
 
-    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(a)}` }));
+    await userEvent.click(moveA);
     expect(seeResult()).toHaveAttribute('aria-disabled', 'true');
 
-    // The click reaches the pool area, which puts the item back.
     await userEvent.click(seeResult()!);
+    seeResult()!.focus();
+    await userEvent.keyboard('{Enter}');
+
     expect(useListDraft.getState().screen).toBe('sorting');
+    expect(moveA).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.keyboard('{Escape}');
     expect(seeResult()).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('starts with the focus on the question, since Continue is gone', async () => {
+    renderScreen();
+
+    expect(screen.getByRole('heading', { name: 'Which one do you like more?' })).toHaveFocus();
   });
 
   it('opens the result', async () => {

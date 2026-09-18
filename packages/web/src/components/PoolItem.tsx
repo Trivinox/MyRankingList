@@ -41,13 +41,20 @@ export function PoolItem({ item, held, onRelease, onFinish, mobile = false }: Po
         <>
           {/* Leaving now would drop the held item without a word, so the
               button waits for it to be put down. aria-disabled rather than
-              disabled keeps it in the tab order, and a click on it still
-              reaches the area and puts the item back. */}
+              disabled keeps it in the tab order. Its click stops here: left
+              to reach the area it would put the item back, which a button
+              that says it is off should not do. */}
           <button
             type="button"
             className={styles.finish}
             aria-disabled={Boolean(held)}
-            onClick={held ? undefined : onFinish}
+            onClick={(event) => {
+              if (held) {
+                event.stopPropagation();
+                return;
+              }
+              onFinish?.();
+            }}
           >
             {t('sorting.seeResult')}
           </button>

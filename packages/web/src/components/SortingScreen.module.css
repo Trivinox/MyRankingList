@@ -25,6 +25,11 @@
   font-size: 1.3rem;
 }
 
+/* Focused by code on arrival, not by the user, so no ring for it. */
+.question:focus {
+  outline: none;
+}
+
 .columns {
   display: grid;
   grid-template-columns: 5fr 6fr;

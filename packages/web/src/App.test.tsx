@@ -22,6 +22,13 @@ describe('App', () => {
     expect(screen.getByText(en.app.tagline)).toBeInTheDocument();
   });
 
+  // Nothing has been sorted yet, so this is a first visit and not a return.
+  it('leaves the focus alone on arrival', () => {
+    renderApp();
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('swaps the visible strings when switching to Spanish and back', async () => {
     renderApp();
 
