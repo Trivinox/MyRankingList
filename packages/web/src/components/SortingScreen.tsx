@@ -189,9 +189,10 @@ export function SortingScreen() {
   // pickup and then a drop outside the list.
   const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 4 } });
   // On a phone a finger on the list scrolls the page, so tapping is the only
-  // way to place anything. Null rather than no argument: useSensors memoizes on
-  // its arguments and their count must not change between renders.
-  const sensors = useSensors(mobile ? null : pointer);
+  // way to place anything. The cards turn their own dragging off there. The
+  // sensor stays, since dnd-kit uses the sensors as effect dependencies and
+  // React complains if their number changes between renders.
+  const sensors = useSensors(pointer);
   const { announcement, say } = useAnnouncer();
 
   const [next] = placement?.pendingPool ?? [];
