@@ -13,6 +13,8 @@
 }
 
 .criterion input {
+  /* Clears the sticky header when the focus scrolls the field into view. */
+  scroll-margin-top: calc(var(--header-height) + 2.5rem);
   padding: 0.5rem 0.65rem;
   border: 1px solid #d5d5de;
   border-radius: 6px;

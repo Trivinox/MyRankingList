@@ -6,19 +6,19 @@ import { ItemCard } from './ItemCard.tsx';
 import styles from './PoolItem.module.css';
 
 interface PoolItemProps {
-  // Null once the pool runs out. There is nowhere to go from there yet, so the
-  // area just says so.
+  // Null once the pool runs out, when the area offers the result instead.
   item: Item | null;
   // A placed item picked up with its move button. The next tap in the list is
   // for it, not for the pool item, and the hint has to say so.
   held?: Item | null;
   onRelease?: () => void;
+  onFinish?: () => void;
   // On a phone the list is the main element, so the card shrinks to a row and
   // is only ever placed by tapping.
   mobile?: boolean;
 }
 
-export function PoolItem({ item, held, onRelease, mobile = false }: PoolItemProps) {
+export function PoolItem({ item, held, onRelease, onFinish, mobile = false }: PoolItemProps) {
   const { t } = useTranslation();
   const hint = held ? t('sorting.select.heldHint', { item: held.text }) : t('sorting.poolHint');
 
@@ -39,7 +39,25 @@ export function PoolItem({ item, held, onRelease, mobile = false }: PoolItemProp
         </>
       ) : (
         <>
-          <p className={styles.done}>{t('sorting.allPlaced')}</p>
+          {/* Leaving now would drop the held item without a word, so the
+              button waits for it to be put down. aria-disabled rather than
+              disabled keeps it in the tab order. Its click stops here: left
+              to reach the area it would put the item back, which a button
+              that says it is off should not do. */}
+          <button
+            type="button"
+            className={styles.finish}
+            aria-disabled={Boolean(held)}
+            onClick={(event) => {
+              if (held) {
+                event.stopPropagation();
+                return;
+              }
+              onFinish?.();
+            }}
+          >
+            {t('sorting.seeResult')}
+          </button>
           {held ? <p className={styles.hint}>{hint}</p> : null}
         </>
       )}

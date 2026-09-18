@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findDuplicates } from '../core/duplicates.ts';
@@ -26,6 +27,16 @@ export function ListInputForm() {
     setScreen,
   } = useListDraft();
   const start = usePlacement((state) => state.start);
+  const criterionField = useRef<HTMLInputElement>(null);
+
+  // A placement already made means the user is back from a result, and the
+  // New list button they pressed is gone. On a first visit nothing is
+  // focused, so a phone does not open its keyboard over an empty form.
+  useEffect(() => {
+    if (usePlacement.getState().placement) {
+      criterionField.current?.focus();
+    }
+  }, []);
 
   const duplicateRows = new Set(
     findDuplicates(items.map((item) => item.text)).flatMap((group) => group.indexes),
@@ -49,6 +60,7 @@ export function ListInputForm() {
       <label className={styles.criterion}>
         <span className={styles.label}>{t('form.criterionLabel')}</span>
         <input
+          ref={criterionField}
           type="text"
           value={criterion}
           maxLength={CRITERION_LIMIT}

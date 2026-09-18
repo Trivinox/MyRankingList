@@ -35,7 +35,7 @@ export const en = {
   sorting: {
     listLabel: 'Your list so far',
     poolHint: 'Add it to the list',
-    allPlaced: 'All items placed',
+    seeResult: 'See result',
     progress: '{{placed}} of {{total}} placed',
     tied: 'Tied',
     select: {
@@ -61,6 +61,13 @@ export const en = {
       refused: 'It cannot be dropped there. The list is unchanged.',
       outside: 'Dropped outside the list. The list is unchanged.',
       cancelled: 'Drag cancelled. The list is unchanged.',
+      allPlaced: 'Every item is placed. You can still move them, or press See result.',
     },
+  },
+  result: {
+    title: 'Your final list',
+    tied: 'Tied',
+    sortAgain: 'Sort again',
+    newList: 'New list',
   },
 };

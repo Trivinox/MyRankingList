@@ -25,6 +25,12 @@
   font-size: 1.3rem;
 }
 
+/* Only the screen itself ever focuses it, on arrival. A ring there would
+   mark something nobody tabbed to. */
+.question:focus {
+  outline: none;
+}
+
 .columns {
   display: grid;
   grid-template-columns: 5fr 6fr;
