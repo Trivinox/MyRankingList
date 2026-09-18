@@ -58,6 +58,11 @@ vi.mock('framer-motion', async (importOriginal) => {
   };
 });
 
+// jsdom plays no audio. Which sound each event asks for is what can be checked.
+const sounds = vi.hoisted(() => ({ play: vi.fn(), preload: vi.fn() }));
+
+vi.mock('../sound/sounds.ts', () => sounds);
+
 const items: Item[] = ['Sushi', 'Ramen', 'Curry', 'Tacos'].map((text) => ({
   id: text.toLowerCase(),
   text,
@@ -1451,6 +1456,99 @@ describe('what the list shows once something is put down', () => {
     pickUp('pool');
     cancel('pool');
     expect(dnd.overlay.dropAnimation).not.toBeNull();
+  });
+});
+
+describe('what it sounds like', () => {
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+    sounds.play.mockClear();
+    sounds.preload.mockClear();
+  });
+
+  const played = () => sounds.play.mock.calls.map(([name]) => name);
+
+  it('fetches the sounds on arrival, before anything asks for one', () => {
+    renderScreen();
+
+    expect(sounds.preload).toHaveBeenCalledTimes(1);
+    expect(played()).toEqual([]);
+  });
+
+  const gap = (position: number) =>
+    screen.getByRole('button', { name: `Put it at position ${position}` });
+
+  const pairUp = () => {
+    usePlacement.getState().drop({ from: 'pool' }, { kind: 'slot', index: 0 });
+    return started().rankedSlots[0].itemIds.map(textOf).join(' and ');
+  };
+
+  it('picks up with a sound, by drag and by the move button', async () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'gap:0');
+    const [placed] = started().rankedSlots[0].itemIds;
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(placed)}` }));
+
+    expect(played()).toEqual(['pickup', 'drop', 'pickup']);
+  });
+
+  it('plays the drop sound for a drop and for a tap into a gap', async () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'gap:1');
+    await userEvent.click(gap(1));
+
+    expect(played()).toEqual(['pickup', 'drop', 'drop']);
+  });
+
+  it('sounds a tie apart from a placement, by drag and by tap', async () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', 'slot:0');
+    await userEvent.click(gap(2));
+    const [single] = started().rankedSlots[1].itemIds;
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${textOf(single)}` }));
+
+    expect(played()).toEqual(['pickup', 'tie', 'drop', 'tie']);
+  });
+
+  it('plays the error sound when a pair turns the item away', async () => {
+    const pair = pairUp();
+    renderScreen();
+
+    await userEvent.click(screen.getByRole('button', { name: `Tie it with ${pair}` }));
+    pickUp('pool');
+    letGo('pool', 'slot:0');
+
+    expect(played()).toEqual(['error', 'pickup', 'error']);
+  });
+
+  it('counts a drop over nothing as an error', () => {
+    renderScreen();
+
+    pickUp('pool');
+    letGo('pool', null);
+
+    expect(played()).toEqual(['pickup', 'error']);
+  });
+
+  it('stays quiet when a held item is put back or a drag is cancelled', async () => {
+    renderScreen();
+
+    const [opener] = started().rankedSlots[0].itemIds;
+    const move = screen.getByRole('button', { name: `Move ${textOf(opener)}` });
+    await userEvent.click(move);
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(move);
+    await userEvent.click(move);
+    pickUp('pool');
+    cancel('pool');
+
+    expect(played()).toEqual(['pickup', 'pickup', 'pickup']);
   });
 });
 

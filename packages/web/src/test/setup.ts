@@ -1,9 +1,18 @@
-import { afterEach, beforeEach } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 // Testing Library only registers its own cleanup when Vitest runs with globals.
 afterEach(cleanup);
+
+// jsdom has no audio, and Howler falling back to an <audio> element there
+// fills the run with "not implemented" errors. A test that cares which sound
+// plays mocks it its own way.
+vi.mock('howler', () => ({
+  Howl: class {
+    play() {}
+  },
+}));
 
 // jsdom has neither matchMedia nor ResizeObserver, and the node-environment
 // tests have no window at all.

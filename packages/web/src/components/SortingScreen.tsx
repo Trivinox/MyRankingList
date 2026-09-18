@@ -30,8 +30,10 @@ import {
   parseDragSource,
   parseDropTarget,
 } from '../core/dropTargets.ts';
-import type { DragSource, DropTarget } from '../core/dropTargets.ts';
+import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
+import { play, preload } from '../sound/sounds.ts';
+import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
@@ -63,6 +65,12 @@ const noAnnouncements: Announcements = {
 // Carried at that size the card covered the very target whose preview it was
 // meant to show, so the sizing is dropped and the card inside decides.
 const unsized = { width: 'auto', height: 'auto' };
+
+const soundOf: Record<DropOutcome, SoundName> = {
+  insert: 'drop',
+  tie: 'tie',
+  rejected: 'error',
+};
 
 // Where a card was grabbed, as a share of its width and height.
 interface GrabPoint {
@@ -227,6 +235,8 @@ export function SortingScreen() {
     return () => document.removeEventListener('keydown', onKeyDown);
   });
 
+  useEffect(preload, []);
+
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
   if (!placement) {
@@ -274,6 +284,7 @@ export function SortingScreen() {
     if (!source || !item) {
       return;
     }
+    play('pickup');
     const partner = source.from === 'placed' ? leftBehind(source) : undefined;
     say(
       partner
@@ -315,6 +326,8 @@ export function SortingScreen() {
     setPreview(null);
   };
 
+  // Silent, as is putting a held item back: both are the user changing their
+  // mind, and the error sound is for a drop that was turned away.
   const handleDragCancel = () => {
     setReturning(true);
     settle();
@@ -347,6 +360,7 @@ export function SortingScreen() {
     const outcome = describeDrop(placement, source, target);
     const slot = landingSlot(placement, source, target) ?? target.index;
     setFeedback((last) => ({ outcome, slot, key: (last?.key ?? 0) + 1 }));
+    play(soundOf[outcome]);
     say(landed(source, target) ?? refused);
     drop(source, target);
   };
@@ -358,6 +372,7 @@ export function SortingScreen() {
     if (source && target) {
       putDown(source, target, t('sorting.announce.refused'));
     } else {
+      play('error');
       say(t('sorting.announce.outside'));
     }
   };
@@ -413,6 +428,7 @@ export function SortingScreen() {
       setPreview(null);
       setFeedback(null);
     });
+    play('pickup');
     say(
       partner
         ? t('sorting.select.heldFromTie', { item: item?.text, partner })

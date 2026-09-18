@@ -2,6 +2,7 @@ import { MotionConfig } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from './components/LanguageSelector.tsx';
 import { ListInputForm } from './components/ListInputForm.tsx';
+import { MuteButton } from './components/MuteButton.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
 import { useListDraft } from './state/listDraftStore.ts';
 import styles from './App.module.css';
@@ -18,7 +19,10 @@ function App() {
     <div className={wrapper}>
       <header className={styles.header}>
         <h1 className={styles.title}>{t('app.title')}</h1>
-        <LanguageSelector />
+        <div className={styles.controls}>
+          <MuteButton />
+          <LanguageSelector />
+        </div>
       </header>
       {/* With reduce motion on in the OS, anything that moves or scales jumps
           straight to where it ends, and fades still play. */}
