@@ -1698,9 +1698,7 @@ describe('on a phone-wide screen', () => {
     expect(inPool()?.className).toMatch(/draggable/);
   });
 
-  // dnd-kit keeps the sensors as effect dependencies, and React logs an error
-  // when their count changes between renders. The drag is turned off on the
-  // cards instead, so the list stays the same on both sides of the breakpoint.
+  // A shorter list on a phone would have React log an error on every resize.
   it('keeps the same sensors on both sides of the breakpoint', () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     const resize = screenWidth(false);
