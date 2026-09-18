@@ -27,7 +27,7 @@ beforeEach(() => {
   howler.play.mockClear();
 });
 
-describe('play', () => {
+describe('sounds', () => {
   it('fetches all four up front, and plays from what was fetched', async () => {
     const { play, preload } = await load();
 

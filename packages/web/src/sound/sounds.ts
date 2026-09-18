@@ -1,9 +1,9 @@
 import { Howl } from 'howler';
 import { useSound } from '../state/soundStore.ts';
 
-export type SoundName = 'pickup' | 'drop' | 'tie' | 'error';
+const names = ['pickup', 'drop', 'tie', 'error'] as const;
 
-const names: SoundName[] = ['pickup', 'drop', 'tie', 'error'];
+export type SoundName = (typeof names)[number];
 
 const loaded = new Map<SoundName, Howl>();
 

@@ -1504,7 +1504,7 @@ describe('what it sounds like', () => {
     expect(played()).toEqual(['pickup', 'drop', 'drop']);
   });
 
-  it('plays the tie sound for a tie, by drag and by tap', async () => {
+  it('sounds a tie apart from a placement, by drag and by tap', async () => {
     renderScreen();
 
     pickUp('pool');
@@ -1527,7 +1527,7 @@ describe('what it sounds like', () => {
     expect(played()).toEqual(['error', 'pickup', 'error']);
   });
 
-  it('plays the error sound for a drop over nothing', () => {
+  it('counts a drop over nothing as an error', () => {
     renderScreen();
 
     pickUp('pool');
