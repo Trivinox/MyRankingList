@@ -25,7 +25,8 @@
   font-size: 1.3rem;
 }
 
-/* Focused by code on arrival, not by the user, so no ring for it. */
+/* Only the screen itself ever focuses it, on arrival. A ring there would
+   mark something nobody tabbed to. */
 .question:focus {
   outline: none;
 }

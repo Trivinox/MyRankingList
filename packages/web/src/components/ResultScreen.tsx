@@ -18,8 +18,7 @@ export function ResultScreen() {
   const setScreen = useListDraft((state) => state.setScreen);
   const heading = useRef<HTMLHeadingElement>(null);
 
-  // The button that opened this screen is gone with the sorting screen, and
-  // the focus would otherwise fall back to the page.
+  // See result unmounted along with the sorting screen.
   useEffect(() => {
     heading.current?.focus();
   }, []);
@@ -44,7 +43,6 @@ export function ResultScreen() {
     return null;
   }
 
-  // Same items, same question, a new shuffle.
   const sortAgain = () => {
     start(items, criterion);
     setScreen('sorting');
