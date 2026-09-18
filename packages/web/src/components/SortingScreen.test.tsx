@@ -59,7 +59,7 @@ vi.mock('framer-motion', async (importOriginal) => {
 });
 
 // jsdom plays no audio. Which sound each event asks for is what can be checked.
-const sounds = vi.hoisted(() => ({ play: vi.fn() }));
+const sounds = vi.hoisted(() => ({ play: vi.fn(), preload: vi.fn() }));
 
 vi.mock('../sound/sounds.ts', () => sounds);
 
@@ -1463,9 +1463,17 @@ describe('what it sounds like', () => {
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
     sounds.play.mockClear();
+    sounds.preload.mockClear();
   });
 
   const played = () => sounds.play.mock.calls.map(([name]) => name);
+
+  it('fetches the sounds on arrival, before anything asks for one', () => {
+    renderScreen();
+
+    expect(sounds.preload).toHaveBeenCalledTimes(1);
+    expect(played()).toEqual([]);
+  });
 
   const gap = (position: number) =>
     screen.getByRole('button', { name: `Put it at position ${position}` });

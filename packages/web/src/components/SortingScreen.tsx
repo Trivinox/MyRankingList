@@ -32,7 +32,7 @@ import {
 } from '../core/dropTargets.ts';
 import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
-import { play } from '../sound/sounds.ts';
+import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { Announcer } from './Announcer.tsx';
@@ -234,6 +234,8 @@ export function SortingScreen() {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   });
+
+  useEffect(preload, []);
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.

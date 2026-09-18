@@ -16,9 +16,9 @@ vi.mock('howler', () => ({
 // already sitting in the cache.
 const load = async () => {
   vi.resetModules();
-  const { play } = await import('./sounds.ts');
+  const { play, preload } = await import('./sounds.ts');
   const { useSound } = await import('../state/soundStore.ts');
-  return { play, useSound };
+  return { play, preload, useSound };
 };
 
 beforeEach(() => {
@@ -28,7 +28,23 @@ beforeEach(() => {
 });
 
 describe('play', () => {
-  it('fetches each sound the first time it plays, and only then', async () => {
+  it('fetches all four up front, and plays from what was fetched', async () => {
+    const { play, preload } = await load();
+
+    preload();
+    play('tie');
+    play('tie');
+
+    expect(howler.files).toEqual([
+      '/sounds/pickup.wav',
+      '/sounds/drop.wav',
+      '/sounds/tie.wav',
+      '/sounds/error.wav',
+    ]);
+    expect(howler.play).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches a sound on first play if nothing preloaded it', async () => {
     const { play } = await load();
 
     expect(howler.files).toEqual([]);
