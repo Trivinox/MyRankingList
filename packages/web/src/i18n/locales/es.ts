@@ -39,7 +39,7 @@ export const es: typeof en = {
   sorting: {
     listLabel: 'Tu lista por ahora',
     poolHint: 'Añádelo a la lista',
-    allPlaced: 'Todos los elementos están colocados',
+    seeResult: 'Ver resultado',
     progress: '{{placed}} de {{total}} colocados',
     tied: 'Empatado',
     select: {
@@ -65,6 +65,13 @@ export const es: typeof en = {
       refused: 'Ahí no se puede soltar. La lista sigue igual.',
       outside: 'Lo has soltado fuera de la lista. La lista sigue igual.',
       cancelled: 'Arrastre cancelado. La lista sigue igual.',
+      allPlaced: 'Ya están todos colocados. Aún puedes moverlos, o pulsa Ver resultado.',
     },
+  },
+  result: {
+    title: 'Tu lista final',
+    tied: 'Empate',
+    sortAgain: 'Ordenar de nuevo',
+    newList: 'Nueva lista',
   },
 };

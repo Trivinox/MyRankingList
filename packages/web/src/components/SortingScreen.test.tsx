@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { DndContextProps, DragEndEvent, DragOverlayProps } from '@dnd-kit/core';
 import { I18nextProvider } from 'react-i18next';
@@ -353,7 +353,7 @@ describe('moving an item that is already in the list', () => {
     move(0, 4);
 
     expect(screen.getByText('4 of 4 placed')).toBeInTheDocument();
-    expect(screen.getByText(en.sorting.allPlaced)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en.sorting.seeResult })).toBeInTheDocument();
   });
 });
 
@@ -707,7 +707,7 @@ describe('clicking where the pool item goes', () => {
     renderScreen();
 
     // The move buttons stay live: reordering goes on after the pool is empty.
-    const targets = screen
+    const targets = within(screen.getByRole('list'))
       .getAllByRole('button')
       .filter((button) => !button.hasAttribute('aria-pressed'));
 
@@ -926,7 +926,7 @@ describe('moving a placed item with its move button', () => {
     expect(pressed()).toEqual([]);
 
     await userEvent.click(moveButton(c));
-    await userEvent.click(screen.getByText(en.sorting.allPlaced));
+    await userEvent.click(screen.getByRole('button', { name: en.sorting.seeResult }));
     expect(listed()).toEqual(before);
     expect(pressed()).toEqual([]);
 
@@ -1134,6 +1134,75 @@ describe('moving a placed item with its move button', () => {
 // region read twice in one frame is heard once, so the screen holds each
 // message for a beat. These step the clock a beat at a time and read the
 // region in between.
+describe('once the pool is empty', () => {
+  // Rendered on its own or inside the app, and the app has to find the
+  // sorting screen open.
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+    useListDraft.setState({ screen: 'sorting' });
+  });
+
+  const fill = (count: number) => {
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index <= count; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    return started().shuffledOrder;
+  };
+
+  const seeResult = () => screen.queryByRole('button', { name: en.sorting.seeResult });
+  const renderApp = () =>
+    render(
+      <I18nextProvider i18n={createI18n()}>
+        <App />
+      </I18nextProvider>,
+    );
+
+  it('offers the result only after the last placement', async () => {
+    fill(2);
+    renderScreen();
+    expect(seeResult()).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Put it at position 1' }));
+
+    expect(seeResult()).toBeInTheDocument();
+  });
+
+  it('keeps the list open to changes until the result is asked for', async () => {
+    const [a, b, c, d] = fill(3);
+    renderScreen();
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(a)}` }));
+    await userEvent.click(screen.getByRole('button', { name: 'Put it at position 5' }));
+
+    expect(listed()).toEqual([row(b), row(c), row(d), row(a)]);
+    expect(seeResult()).toBeInTheDocument();
+  });
+
+  it('holds the result back while an item is in hand', async () => {
+    const [a] = fill(3);
+    renderApp();
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(a)}` }));
+    expect(seeResult()).toHaveAttribute('aria-disabled', 'true');
+
+    // The click reaches the pool area, which puts the item back.
+    await userEvent.click(seeResult()!);
+    expect(useListDraft.getState().screen).toBe('sorting');
+    expect(seeResult()).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('opens the result', async () => {
+    fill(3);
+    renderApp();
+
+    await userEvent.click(seeResult()!);
+
+    expect(useListDraft.getState().screen).toBe('result');
+    expect(screen.getByText(en.result.title)).toBeInTheDocument();
+  });
+});
+
 describe('what the live region says', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -1228,6 +1297,20 @@ describe('what the live region says', () => {
     beat();
     beat();
     expect(announced()).toBe(`Tied with ${textOf(opener)}.`);
+  });
+
+  it('says the list is done after the last placement, and only then', () => {
+    usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index: 1 });
+    renderScreen();
+
+    letGo('pool', 'gap:0');
+    beat();
+    expect(announced()).toBe('Placed at position 1.');
+
+    letGo('pool', 'gap:0');
+    expect(announced()).toBe('Placed at position 1.');
+    beat();
+    expect(announced()).toBe(en.sorting.announce.allPlaced);
   });
 
   // Two clicks on the same gap a while apart are two placements, and both are

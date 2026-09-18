@@ -14,6 +14,12 @@ vi.mock('howler', () => ({
   },
 }));
 
+// No canvas in jsdom either. The result tests swap in their own mock to see
+// what the burst was asked for.
+vi.mock('canvas-confetti', () => ({
+  default: Object.assign(() => null, { reset() {} }),
+}));
+
 // jsdom has neither matchMedia nor ResizeObserver, and the node-environment
 // tests have no window at all.
 if (typeof window !== 'undefined') {

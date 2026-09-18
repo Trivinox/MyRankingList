@@ -34,6 +34,7 @@ import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts
 import type { RankedSlot } from '../core/types.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
+import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
@@ -166,6 +167,7 @@ function measureHeadline(headline: HTMLElement | null) {
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
+  const setScreen = useListDraft((state) => state.setScreen);
   const [dragged, setDragged] = useState<DragSource | null>(null);
   // A placed item picked up with its move button, waiting for the tap that puts
   // it down. Null means a tap places the pool item. Kept here and not in the
@@ -363,6 +365,11 @@ export function SortingScreen() {
     setFeedback((last) => ({ outcome, slot, key: (last?.key ?? 0) + 1 }));
     play(soundOf[outcome]);
     say(landed(source, target) ?? refused);
+    // The pool card is gone after this one, and the button that takes its
+    // place is out of sight for someone on the list.
+    if (source.from === 'pool' && outcome !== 'rejected' && placement.pendingPool.length === 1) {
+      say(t('sorting.announce.allPlaced'));
+    }
     drop(source, target);
   };
 
@@ -484,6 +491,7 @@ export function SortingScreen() {
               item={current}
               held={heldItem}
               onRelease={() => release(false)}
+              onFinish={() => setScreen('result')}
               mobile={mobile}
             />
           </aside>

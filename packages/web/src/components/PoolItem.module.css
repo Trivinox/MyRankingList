@@ -19,11 +19,27 @@
   text-align: center;
 }
 
-.done {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  text-align: center;
+/* Same dark button as the form's Continue until the design system lands. */
+.finish {
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: 6px;
+  background: #33333f;
+  color: #fff;
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* Still a pointer: a click on it puts the held item back, like the rest of
+   the area. */
+.finish[aria-disabled='true'] {
+  background: #c9c9d1;
+}
+
+.finish:focus-visible {
+  outline: 2px solid #6b6bd6;
+  outline-offset: 2px;
 }
 
 .handle {
@@ -60,7 +76,8 @@
     font-size: 0.8rem;
   }
 
-  .done {
+  .finish {
+    padding: 0.5rem 1.2rem;
     font-size: 1rem;
   }
 }
