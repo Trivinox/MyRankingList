@@ -88,8 +88,12 @@ test('sorts a list with a tie and sorts it again', async ({ page, isMobile }) =>
     const name = await nameIn(page.locator('aside'));
     const target = targetFor(page, list, name);
 
-    // Dragging is off below 768px, so the phone only ever taps.
-    if (placed === 1 && !isMobile) {
+    // Dragging is off below 768px, so the phone only ever taps. A tap is not
+    // a click with a narrower window: it goes through touch events, which is
+    // where two placements into one position turned into a double-tap.
+    if (isMobile) {
+      await target.button.tap();
+    } else if (placed === 1) {
       await drag(page, target.button, target.tie ? 'tie' : 'insert');
     } else {
       await target.button.click();

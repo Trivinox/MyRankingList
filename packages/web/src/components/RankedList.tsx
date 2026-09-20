@@ -103,9 +103,19 @@ export function RankedList({
 // The first click of a double-click places the item and the list moves under
 // the pointer, so the second would land on whatever took its place and put the
 // next pool item there as well. A keyboard press counts no clicks at all.
+//
+// Only the mouse is held to that. A finger has to leave the screen and come
+// back for the second tap, which makes it a placement the user meant, and the
+// browser counts two quick taps on the same spot as a double-tap all the same:
+// the item after this one often goes into the same position, and it was being
+// dropped without a word.
 function selectHandler(target: DropTarget, onSelect: (target: DropTarget) => void) {
   return (event: MouseEvent) => {
-    if (event.detail <= 1) {
+    // Read off the click rather than a pointer event of its own: a click with
+    // no pointer behind it, from the keyboard or a test, counts no taps and
+    // is left to the rule above.
+    const { pointerType } = event.nativeEvent as globalThis.PointerEvent;
+    if (event.detail <= 1 || pointerType === 'touch' || pointerType === 'pen') {
       onSelect(target);
     }
   };
