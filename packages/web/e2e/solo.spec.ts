@@ -23,7 +23,8 @@ async function fillForm(page: Page) {
   await page.getByRole('button', { name: 'Continue' }).click();
 }
 
-// Whichever of the five names the locator's text contains.
+// Which item is in hand is never known in advance, so it is read back from
+// wherever it is on screen.
 async function nameIn(locator: Locator) {
   const text = await locator.innerText();
   const name = typed.find((candidate) => text.includes(candidate));
@@ -88,9 +89,9 @@ test('sorts a list with a tie and sorts it again', async ({ page, isMobile }) =>
     const name = await nameIn(page.locator('aside'));
     const target = targetFor(page, list, name);
 
-    // Dragging is off below 768px, so the phone only ever taps. A tap is not
-    // a click with a narrower window: it goes through touch events, which is
-    // where two placements into one position turned into a double-tap.
+    // Dragging is off below 768px, so the phone only ever taps. It has to be
+    // tap() and not click(): a click on a touch profile still arrives as a
+    // mouse event, and the touch path would go untested.
     if (isMobile) {
       await target.button.tap();
     } else if (placed === 1) {
