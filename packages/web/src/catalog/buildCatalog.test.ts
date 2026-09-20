@@ -128,7 +128,7 @@ describe('buildCatalog', () => {
     expect(buildCatalog(atTheLimit, categories, 'en')[0].lists).toHaveLength(1);
   });
 
-  it('ignores an image_url that is not a string', () => {
+  it('drops a file whose image_url is not text', () => {
     const odd = {
       '/src/lists/en/food/fruits.json': {
         title: 'Fruits',

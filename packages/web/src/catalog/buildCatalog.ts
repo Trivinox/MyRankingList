@@ -62,9 +62,9 @@ function readCategoryNames(files: CatalogFiles, lang: string): Map<string, strin
   return names;
 }
 
-// Both arguments are the tree as it comes off disk, keyed by path. Categories
-// come out in the order categories.json names them, which is the curated one;
-// the lists inside each come out by title.
+// Both arguments are the tree as it comes off disk, keyed by path. Category
+// order is whatever categories.json gives, a curated decision rather than an
+// alphabetical one.
 export function buildCatalog(
   lists: CatalogFiles,
   categories: CatalogFiles,
