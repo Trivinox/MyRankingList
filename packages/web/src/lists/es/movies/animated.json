@@ -1,0 +1,12 @@
+{
+  "title": "Películas de animación",
+  "items": [
+    { "text": "El viaje de Chihiro" },
+    { "text": "Toy Story" },
+    { "text": "El rey león" },
+    { "text": "Shrek" },
+    { "text": "Spider-Man: Un nuevo universo" },
+    { "text": "Ratatouille" },
+    { "text": "Mi vecino Totoro" }
+  ]
+}

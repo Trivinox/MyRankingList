@@ -1,0 +1,11 @@
+{
+  "title": "Fruits",
+  "items": [
+    { "text": "Apple", "image_url": "https://picsum.photos/seed/apple/320.jpg" },
+    { "text": "Banana", "image_url": "https://picsum.photos/seed/banana/320.jpg" },
+    { "text": "Orange", "image_url": "https://picsum.photos/seed/orange/320.jpg" },
+    { "text": "Strawberry", "image_url": "https://picsum.photos/seed/strawberry/320.jpg" },
+    { "text": "Watermelon", "image_url": "https://picsum.photos/seed/watermelon/320.jpg" },
+    { "text": "Grapes", "image_url": "https://picsum.photos/seed/grapes/320.jpg" }
+  ]
+}
