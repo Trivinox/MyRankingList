@@ -1,4 +1,12 @@
-import type { CatalogCategory, CatalogFiles, PresetItem, PresetList } from './types.ts';
+import type {
+  CatalogCategory,
+  CatalogFiles,
+  PresetItem,
+  PresetList,
+  RawCategories,
+  RawItem,
+  RawList,
+} from './types.ts';
 
 // Mirrors the form's per-item limit. A file is written by hand, so nothing
 // stops it going over and nothing in the form would catch it later.
@@ -13,7 +21,7 @@ const categoriesPath = /lists\/([^/]+)\/categories\.json$/;
 function readItem(raw: unknown): PresetItem | null {
   if (typeof raw !== 'object' || raw === null) return null;
 
-  const { text, image_url: imageUrl } = raw as { text?: unknown; image_url?: unknown };
+  const { text, image_url: imageUrl } = raw as RawItem;
   if (typeof text !== 'string' || text.trim() === '' || text.length > TEXT_LIMIT) return null;
   if (imageUrl !== undefined && typeof imageUrl !== 'string') return null;
 
@@ -25,7 +33,7 @@ function readItem(raw: unknown): PresetItem | null {
 function readList(raw: unknown, id: string): PresetList | null {
   if (typeof raw !== 'object' || raw === null) return null;
 
-  const { title, items } = raw as { title?: unknown; items?: unknown };
+  const { title, items } = raw as RawList;
   if (typeof title !== 'string' || title.trim() === '') return null;
   if (!Array.isArray(items) || items.length === 0) return null;
 
@@ -46,7 +54,7 @@ function readCategoryNames(files: CatalogFiles, lang: string): Map<string, strin
     if (categoriesPath.exec(path)?.[1] !== lang) continue;
     if (typeof raw !== 'object' || raw === null) continue;
 
-    for (const [id, name] of Object.entries(raw)) {
+    for (const [id, name] of Object.entries(raw as RawCategories)) {
       if (typeof name === 'string' && name.trim() !== '') names.set(id, name);
     }
   }

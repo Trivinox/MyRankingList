@@ -17,5 +17,19 @@ export interface CatalogCategory {
   lists: PresetList[];
 }
 
-// What the JSON files hand over, before anything has been checked.
+// The tree keyed by file path, the way the glob hands it over.
 export type CatalogFiles = Record<string, unknown>;
+
+// The shapes as they come off disk: nothing about them is settled until the
+// builder has looked. snake_case is the JSON's vocabulary, not the app's.
+export interface RawItem {
+  text?: unknown;
+  image_url?: unknown;
+}
+
+export interface RawList {
+  title?: unknown;
+  items?: unknown;
+}
+
+export type RawCategories = Record<string, unknown>;
