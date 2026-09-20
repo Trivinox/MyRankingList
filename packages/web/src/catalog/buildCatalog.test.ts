@@ -23,8 +23,28 @@ describe('buildCatalog', () => {
     const catalog = buildCatalog(lists, categories, 'en');
 
     expect(catalog.map((category) => category.id)).toEqual(['food', 'movies']);
-    expect(titlesOf(catalog[0].lists)).toEqual(['Fruits', 'Desserts']);
+    expect(titlesOf(catalog[0].lists)).toEqual(['Desserts', 'Fruits']);
     expect(titlesOf(catalog[1].lists)).toEqual(['Classics']);
+  });
+
+  it('orders the lists by title in the language on screen', () => {
+    const spanish = {
+      '/src/lists/es/movies/animated.json': {
+        title: 'Películas de animación',
+        items: [{ text: 'Shrek' }],
+      },
+      '/src/lists/es/movies/classics.json': {
+        title: 'Películas clásicas',
+        items: [{ text: 'Psicosis' }],
+      },
+    };
+
+    // The file names would put animated first; the accented title sorts before
+    // it, which is the order a Spanish reader expects.
+    expect(titlesOf(buildCatalog(spanish, categories, 'es')[0].lists)).toEqual([
+      'Películas clásicas',
+      'Películas de animación',
+    ]);
   });
 
   it('names the categories in the language asked for', () => {
@@ -92,8 +112,8 @@ describe('buildCatalog', () => {
     };
 
     expect(titlesOf(buildCatalog(broken, categories, 'en')[0].lists)).toEqual([
-      'Fruits',
       'Desserts',
+      'Fruits',
     ]);
   });
 

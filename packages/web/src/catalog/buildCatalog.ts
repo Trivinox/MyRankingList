@@ -63,8 +63,8 @@ function readCategoryNames(files: CatalogFiles, lang: string): Map<string, strin
 }
 
 // Both arguments are the tree as it comes off disk, keyed by path. Categories
-// come out in the order categories.json names them, and the lists inside each
-// one in the order the paths arrive.
+// come out in the order categories.json names them, which is the curated one;
+// the lists inside each come out by title.
 export function buildCatalog(
   lists: CatalogFiles,
   categories: CatalogFiles,
@@ -95,6 +95,11 @@ export function buildCatalog(
 
   return [...names].flatMap(([id, name]) => {
     const lists = grouped.get(id);
-    return lists === undefined ? [] : [{ id, name, lists }];
+    if (lists === undefined) return [];
+
+    // By title, not by file name: the files are named in English, so the path
+    // order would sort the Spanish catalog on words nobody ever sees.
+    lists.sort((a, b) => a.title.localeCompare(b.title, lang));
+    return [{ id, name, lists }];
   });
 }
