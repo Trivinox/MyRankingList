@@ -1,0 +1,11 @@
+{
+  "title": "Películas clásicas",
+  "items": [
+    { "text": "Casablanca" },
+    { "text": "El padrino" },
+    { "text": "Psicosis" },
+    { "text": "Cantando bajo la lluvia" },
+    { "text": "Doce hombres sin piedad" },
+    { "text": "Los siete samuráis" }
+  ]
+}

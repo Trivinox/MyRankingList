@@ -1,0 +1,11 @@
+{
+  "title": "Tapas",
+  "items": [
+    { "text": "Tortilla de patatas" },
+    { "text": "Croquetas de jamón" },
+    { "text": "Patatas bravas" },
+    { "text": "Pulpo a la gallega" },
+    { "text": "Pimientos de Padrón" },
+    { "text": "Boquerones en vinagre" }
+  ]
+}

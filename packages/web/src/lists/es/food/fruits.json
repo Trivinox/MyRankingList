@@ -1,0 +1,11 @@
+{
+  "title": "Frutas",
+  "items": [
+    { "text": "Manzana", "image_url": "https://picsum.photos/seed/apple/320.jpg" },
+    { "text": "Plátano", "image_url": "https://picsum.photos/seed/banana/320.jpg" },
+    { "text": "Naranja", "image_url": "https://picsum.photos/seed/orange/320.jpg" },
+    { "text": "Fresa", "image_url": "https://picsum.photos/seed/strawberry/320.jpg" },
+    { "text": "Sandía", "image_url": "https://picsum.photos/seed/watermelon/320.jpg" },
+    { "text": "Uvas", "image_url": "https://picsum.photos/seed/grapes/320.jpg" }
+  ]
+}
