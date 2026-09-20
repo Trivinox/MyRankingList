@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DndContext } from '@dnd-kit/core';
 import { I18nextProvider } from 'react-i18next';
@@ -175,6 +175,19 @@ describe('RankedList', () => {
     await userEvent.dblClick(screen.getByRole('button', { name: 'Put it at position 1' }));
 
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  // Two items in a row often belong in the same position, and on a phone the
+  // second tap arrives inside the window the browser counts double-taps in.
+  it('takes a second tap on the same gap', () => {
+    const onSelect = vi.fn();
+    renderList(undefined, { onSelect });
+
+    const gap = screen.getByRole('button', { name: 'Put it at position 1' });
+    fireEvent(gap, new PointerEvent('click', { bubbles: true, detail: 1, pointerType: 'touch' }));
+    fireEvent(gap, new PointerEvent('click', { bubbles: true, detail: 2, pointerType: 'touch' }));
+
+    expect(onSelect).toHaveBeenCalledTimes(2);
   });
 
   it('reports the target under the mouse and clears it on the way out', async () => {

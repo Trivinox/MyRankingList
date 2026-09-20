@@ -6,3 +6,7 @@ package-lock.json
 # Prettier still reads the file off disk and fails format:check on a machine
 # that has one, which CI never reproduces.
 .claude
+
+# Playwright output
+playwright-report
+test-results
