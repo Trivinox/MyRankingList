@@ -39,6 +39,7 @@ export const en = {
     searchPlaceholder: 'A title, or something in the list',
     resultsLabel: 'Lists that match',
     noResults: 'Nothing in the catalog says that. Try another word, or write your own list.',
+    empty: 'There are no preset lists in this language yet.',
     itemCount_one: '{{count}} item',
     itemCount_other: '{{count}} items',
     hasImages: 'With images',

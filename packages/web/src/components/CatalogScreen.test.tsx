@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { loadCatalog } from '../catalog/catalog.ts';
+import { iconFor } from '../catalog/icons.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { es } from '../i18n/locales/es.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { CatalogScreen } from './CatalogScreen.tsx';
+
+// Real content everywhere except the one state the content cannot produce:
+// a language whose categories.json has nothing left in it.
+vi.mock('../catalog/catalog.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../catalog/catalog.ts')>();
+  return { loadCatalog: vi.fn(actual.loadCatalog) };
+});
 
 // The real files are the fixture: the builder is tested on fake trees of its
 // own, and what this screen has to get right is the content that ships. The
@@ -22,9 +30,16 @@ const withImages = english.flatMap((category) =>
   category.lists.filter((list) => list.items.some((item) => item.imageUrl)),
 )[0];
 const englishIds = new Set(english.flatMap((category) => category.lists.map((list) => list.id)));
+const accented = spanish
+  .flatMap((category) => category.lists)
+  .find((list) => strip(list.title) !== list.title);
 const spanishOnly = spanish
   .flatMap((category) => category.lists)
   .find((list) => !englishIds.has(list.id));
+
+function strip(text: string) {
+  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
 
 const renderCatalog = () => {
   const i18n = createI18n();
@@ -60,6 +75,24 @@ describe('CatalogScreen', () => {
         expect(within(lists).getByText(list.title)).toBeInTheDocument();
       }
     }
+  });
+
+  it('puts an icon next to each category name and keeps it out of the name', () => {
+    renderCatalog();
+
+    for (const category of english) {
+      const heading = screen.getByRole('heading', { name: category.name });
+      const icon = within(heading).getByText(iconFor(category.id));
+
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  // What a category added later without an entry of its own falls back to. It
+  // has to be an icon, and not the icon of whatever category came first.
+  it('has an icon left for a category nobody mapped', () => {
+    expect(iconFor('board-games')).not.toBe('');
+    expect(iconFor('board-games')).not.toBe(iconFor(english[0].id));
   });
 
   it('counts the items and marks the lists that carry images', () => {
@@ -103,6 +136,19 @@ describe('CatalogScreen', () => {
     expect(screen.getByText(anyList.title)).toBeInTheDocument();
   });
 
+  it('finds an accented title typed without the accents', async () => {
+    expect(accented).toBeDefined();
+    const i18n = renderCatalog();
+    await act(() => i18n.changeLanguage('es'));
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: es.catalog.searchLabel }),
+      strip(accented!.title),
+    );
+
+    expect(screen.getByText(accented!.title)).toBeInTheDocument();
+  });
+
   it('says so when nothing matches', async () => {
     renderCatalog();
 
@@ -130,6 +176,14 @@ describe('CatalogScreen', () => {
     expect(screen.getByText(es.catalog.heading)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: spanish[0].name })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: english[0].name })).not.toBeInTheDocument();
+  });
+
+  it('says the language has no lists rather than showing an empty page', () => {
+    vi.mocked(loadCatalog).mockReturnValueOnce([]);
+    renderCatalog();
+
+    expect(screen.getByText(en.catalog.empty)).toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
   it('keeps a list with no English file out of the English catalog', async () => {

@@ -44,6 +44,7 @@ export const es: typeof en = {
     resultsLabel: 'Listas que coinciden',
     noResults:
       'En el catálogo no hay nada que diga eso. Prueba con otra palabra, o escribe tu lista.',
+    empty: 'Todavía no hay listas preparadas en este idioma.',
     itemCount_one: '{{count}} elemento',
     itemCount_other: '{{count}} elementos',
     hasImages: 'Con imágenes',

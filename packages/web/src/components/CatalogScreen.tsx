@@ -1,24 +1,25 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { loadCatalog } from '../catalog/catalog.ts';
+import { iconFor } from '../catalog/icons.ts';
 import type { CatalogCategory, PresetList } from '../catalog/types.ts';
 import { normalizeItemText } from '../core/duplicates.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import styles from './CatalogScreen.module.css';
 
-// Emoji stand in until the real icon set arrives; only the values change then.
-const categoryIcon: Record<string, string> = {
-  food: '\u{1F34E}',
-  movies: '\u{1F3AC}',
-};
+// The duplicate check keeps accents apart on purpose, since two spellings are
+// two items. Searching is the other case: somebody typing "peliculas" in a
+// hurry still has to land on "Peliculas clasicas", so the marks come off both
+// sides on top of what normalizeItemText already does.
+function forSearch(text: string) {
+  return normalizeItemText(text)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+}
 
-const fallbackIcon = '\u{1F4CB}';
-
-// The same normalizer the duplicate check uses, on both sides of the compare,
-// so "  Apple" from a paste finds the same lists "apple" does.
 function matches(list: PresetList, query: string) {
-  if (normalizeItemText(list.title).includes(query)) return true;
-  return list.items.some((item) => normalizeItemText(item.text).includes(query));
+  if (forSearch(list.title).includes(query)) return true;
+  return list.items.some((item) => forSearch(item.text).includes(query));
 }
 
 export function CatalogScreen() {
@@ -34,7 +35,7 @@ export function CatalogScreen() {
   // screen would rerender against a different catalog on every keystroke.
   const categories = useMemo(() => loadCatalog(lang), [lang]);
 
-  const search = normalizeItemText(query);
+  const search = forSearch(query);
   const found = search === '' ? null : flatten(categories, search);
 
   return (
@@ -56,12 +57,17 @@ export function CatalogScreen() {
         />
       </label>
 
-      {found === null ? (
+      {categories.length === 0 ? (
+        // Reachable through categories.json alone: a language whose file lost
+        // its entries builds nothing, and a bare search box over an empty page
+        // reads as a catalog that broke rather than as one with no lists.
+        <p className={styles.empty}>{t('catalog.empty')}</p>
+      ) : found === null ? (
         categories.map((category) => (
           <section key={category.id} className={styles.category}>
             <h3 className={styles.categoryName}>
               <span aria-hidden="true" className={styles.icon}>
-                {categoryIcon[category.id] ?? fallbackIcon}
+                {iconFor(category.id)}
               </span>
               {category.name}
             </h3>
