@@ -18,6 +18,10 @@ vi.mock('../catalog/catalog.ts', async (importOriginal) => {
   return { loadCatalog: vi.fn(actual.loadCatalog) };
 });
 
+function strip(text: string) {
+  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
 // The real files are the fixture: the builder is tested on fake trees of its
 // own, and what this screen has to get right is the content that ships. The
 // expectations are read back out of the catalog rather than written down, so
@@ -36,10 +40,6 @@ const accented = spanish
 const spanishOnly = spanish
   .flatMap((category) => category.lists)
   .find((list) => !englishIds.has(list.id));
-
-function strip(text: string) {
-  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '');
-}
 
 const renderCatalog = () => {
   const i18n = createI18n();
@@ -66,11 +66,7 @@ describe('CatalogScreen', () => {
       const heading = screen.getByRole('heading', { name: category.name });
       const lists = within(heading.parentElement as HTMLElement).getByRole('list');
 
-      expect(
-        within(lists)
-          .getAllByRole('listitem')
-          .map((row) => row.textContent),
-      ).toHaveLength(category.lists.length);
+      expect(within(lists).getAllByRole('listitem')).toHaveLength(category.lists.length);
       for (const list of category.lists) {
         expect(within(lists).getByText(list.title)).toBeInTheDocument();
       }
@@ -88,11 +84,12 @@ describe('CatalogScreen', () => {
     }
   });
 
-  // What a category added later without an entry of its own falls back to. It
-  // has to be an icon, and not the icon of whatever category came first.
+  // Where a category added later, before anyone draws it an icon, ends up.
   it('has an icon left for a category nobody mapped', () => {
-    expect(iconFor('board-games')).not.toBe('');
-    expect(iconFor('board-games')).not.toBe(iconFor(english[0].id));
+    const icon = iconFor('board-games');
+
+    expect(icon).not.toBe('');
+    expect(icon).not.toBe(iconFor(english[0].id));
   });
 
   it('counts the items and marks the lists that carry images', () => {
@@ -119,13 +116,12 @@ describe('CatalogScreen', () => {
   it('finds a list by something written inside it', async () => {
     renderCatalog();
     const needle = anyList.items[0].text;
+    // Otherwise the title could be what matched and the test proves nothing.
+    expect(anyList.title.toLowerCase()).not.toContain(needle.toLowerCase());
 
     await typeSearch(needle);
 
     expect(screen.getByText(anyList.title)).toBeInTheDocument();
-    // The word is in an item, not in the title, so the title cannot be what
-    // matched unless the content happens to repeat it.
-    expect(anyList.title.toLowerCase()).not.toContain(needle.toLowerCase());
   });
 
   it('ignores case and the spaces around the query', async () => {

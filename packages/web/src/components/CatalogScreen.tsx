@@ -35,9 +35,6 @@ export function CatalogScreen() {
   // screen would rerender against a different catalog on every keystroke.
   const categories = useMemo(() => loadCatalog(lang), [lang]);
 
-  const search = forSearch(query);
-  const found = search === '' ? null : flatten(categories, search);
-
   return (
     <section className={styles.screen}>
       <div className={styles.top}>
@@ -57,47 +54,62 @@ export function CatalogScreen() {
         />
       </label>
 
-      {categories.length === 0 ? (
-        // Reachable through categories.json alone: a language whose file lost
-        // its entries builds nothing, and a bare search box over an empty page
-        // reads as a catalog that broke rather than as one with no lists.
-        <p className={styles.empty}>{t('catalog.empty')}</p>
-      ) : found === null ? (
-        categories.map((category) => (
-          <section key={category.id} className={styles.category}>
-            <h3 className={styles.categoryName}>
-              <span aria-hidden="true" className={styles.icon}>
-                {iconFor(category.id)}
-              </span>
-              {category.name}
-            </h3>
-            <ul className={styles.lists}>
-              {category.lists.map((list) => (
-                <ListRow key={list.id} list={list} />
-              ))}
-            </ul>
-          </section>
-        ))
-      ) : found.length === 0 ? (
-        <p className={styles.empty}>{t('catalog.noResults')}</p>
-      ) : (
-        <ul className={styles.lists} aria-label={t('catalog.resultsLabel')}>
-          {found.map(({ category, list }) => (
-            <ListRow key={`${category}/${list.id}`} list={list} category={category} />
-          ))}
-        </ul>
-      )}
+      <Listings categories={categories} query={forSearch(query)} />
     </section>
   );
 }
 
-// Searching drops the tree: a word found inside the items reads as "these four
-// lists have it", not as a set of categories waiting to be opened one by one.
-function flatten(categories: CatalogCategory[], query: string) {
-  return categories.flatMap((category) =>
+interface ListingsProps {
+  categories: CatalogCategory[];
+  query: string;
+}
+
+function Listings({ categories, query }: ListingsProps) {
+  const { t } = useTranslation();
+
+  // Reachable through categories.json alone: a language whose file lost its
+  // entries builds nothing, and a bare search box over an empty page reads as
+  // a catalog that broke rather than as one with no lists.
+  if (categories.length === 0) {
+    return <p className={styles.empty}>{t('catalog.empty')}</p>;
+  }
+
+  if (query === '') {
+    return categories.map((category) => (
+      <section key={category.id} className={styles.category}>
+        <h3 className={styles.categoryName}>
+          <span aria-hidden="true" className={styles.icon}>
+            {iconFor(category.id)}
+          </span>
+          {category.name}
+        </h3>
+        <ul className={styles.lists}>
+          {category.lists.map((list) => (
+            <ListRow key={list.id} list={list} />
+          ))}
+        </ul>
+      </section>
+    ));
+  }
+
+  // Searching drops the tree: a word found inside the items reads as "these
+  // lists have it", not as a set of categories waiting to be opened one by one.
+  const found = categories.flatMap((category) =>
     category.lists
       .filter((list) => matches(list, query))
       .map((list) => ({ category: category.name, list })),
+  );
+
+  if (found.length === 0) {
+    return <p className={styles.empty}>{t('catalog.noResults')}</p>;
+  }
+
+  return (
+    <ul className={styles.lists} aria-label={t('catalog.resultsLabel')}>
+      {found.map(({ category, list }) => (
+        <ListRow key={`${category}/${list.id}`} list={list} category={category} />
+      ))}
+    </ul>
   );
 }
 
