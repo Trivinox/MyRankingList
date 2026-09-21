@@ -4,7 +4,7 @@ import type { Item } from '../core/types.ts';
 // App decides what to render off this instead of pulling in a router. The
 // result screen still fits here; the room screens, with values of their own,
 // are what will push it out of the draft store.
-export type Screen = 'list-input' | 'sorting' | 'result';
+export type Screen = 'list-input' | 'catalog' | 'sorting' | 'result';
 
 interface ListDraft {
   screen: Screen;

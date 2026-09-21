@@ -32,7 +32,7 @@ const renderForm = () => {
 // The store is a module singleton, so each test starts it back at the three
 // empty rows the app opens with.
 beforeEach(() => {
-  useListDraft.setState({ items: blankRows(3), criterion: '' });
+  useListDraft.setState({ screen: 'list-input', items: blankRows(3), criterion: '' });
 });
 
 describe('ListInputForm', () => {
@@ -198,6 +198,14 @@ describe('ListInputForm', () => {
     await userEvent.type(screen.getByLabelText('Item 1'), 'Alien');
 
     expect(screen.getByText('1 item')).toBeInTheDocument();
+  });
+
+  it('opens the catalog', async () => {
+    renderForm();
+
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.browse }));
+
+    expect(useListDraft.getState().screen).toBe('catalog');
   });
 
   it('translates its own labels when the language changes', async () => {

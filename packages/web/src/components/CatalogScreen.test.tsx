@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it } from 'vitest';
+import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { I18nextProvider } from 'react-i18next';
+import { loadCatalog } from '../catalog/catalog.ts';
+import { createI18n } from '../i18n/index.ts';
+import { en } from '../i18n/locales/en.ts';
+import { es } from '../i18n/locales/es.ts';
+import { useListDraft } from '../state/listDraftStore.ts';
+import { CatalogScreen } from './CatalogScreen.tsx';
+
+// The real files are the fixture: the builder is tested on fake trees of its
+// own, and what this screen has to get right is the content that ships. The
+// expectations are read back out of the catalog rather than written down, so
+// rewriting the list content does not rewrite the suite.
+const english = loadCatalog('en');
+const spanish = loadCatalog('es');
+
+const anyList = english[0].lists[0];
+const withImages = english.flatMap((category) =>
+  category.lists.filter((list) => list.items.some((item) => item.imageUrl)),
+)[0];
+const englishIds = new Set(english.flatMap((category) => category.lists.map((list) => list.id)));
+const spanishOnly = spanish
+  .flatMap((category) => category.lists)
+  .find((list) => !englishIds.has(list.id));
+
+const renderCatalog = () => {
+  const i18n = createI18n();
+  render(
+    <I18nextProvider i18n={i18n}>
+      <CatalogScreen />
+    </I18nextProvider>,
+  );
+  return i18n;
+};
+
+const typeSearch = (text: string) =>
+  userEvent.type(screen.getByRole('searchbox', { name: en.catalog.searchLabel }), text);
+
+beforeEach(() => {
+  useListDraft.setState({ screen: 'catalog' });
+});
+
+describe('CatalogScreen', () => {
+  it('shows every category with its lists under it', () => {
+    renderCatalog();
+
+    for (const category of english) {
+      const heading = screen.getByRole('heading', { name: category.name });
+      const lists = within(heading.parentElement as HTMLElement).getByRole('list');
+
+      expect(
+        within(lists)
+          .getAllByRole('listitem')
+          .map((row) => row.textContent),
+      ).toHaveLength(category.lists.length);
+      for (const list of category.lists) {
+        expect(within(lists).getByText(list.title)).toBeInTheDocument();
+      }
+    }
+  });
+
+  it('counts the items and marks the lists that carry images', () => {
+    const i18n = renderCatalog();
+
+    const row = screen.getByText(withImages.title).closest('li') as HTMLElement;
+
+    expect(
+      within(row).getByText(i18n.t('catalog.itemCount', { count: withImages.items.length })),
+    ).toBeInTheDocument();
+    expect(within(row).getByText(en.catalog.hasImages)).toBeInTheDocument();
+  });
+
+  it('flattens to the matching lists once the box has text', async () => {
+    renderCatalog();
+
+    await typeSearch(anyList.title);
+
+    const results = screen.getByRole('list', { name: en.catalog.resultsLabel });
+    expect(within(results).getByText(anyList.title)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: english[0].name })).not.toBeInTheDocument();
+  });
+
+  it('finds a list by something written inside it', async () => {
+    renderCatalog();
+    const needle = anyList.items[0].text;
+
+    await typeSearch(needle);
+
+    expect(screen.getByText(anyList.title)).toBeInTheDocument();
+    // The word is in an item, not in the title, so the title cannot be what
+    // matched unless the content happens to repeat it.
+    expect(anyList.title.toLowerCase()).not.toContain(needle.toLowerCase());
+  });
+
+  it('ignores case and the spaces around the query', async () => {
+    renderCatalog();
+
+    await typeSearch(`  ${anyList.title.toUpperCase()} `);
+
+    expect(screen.getByText(anyList.title)).toBeInTheDocument();
+  });
+
+  it('says so when nothing matches', async () => {
+    renderCatalog();
+
+    await typeSearch('qwertyuiop');
+
+    expect(screen.getByText(en.catalog.noResults)).toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('goes back to the form', async () => {
+    renderCatalog();
+
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.back }));
+
+    expect(useListDraft.getState().screen).toBe('list-input');
+  });
+
+  it('translates the interface and the catalog together', async () => {
+    const i18n = renderCatalog();
+
+    expect(screen.getByRole('heading', { name: english[0].name })).toBeInTheDocument();
+
+    await act(() => i18n.changeLanguage('es'));
+
+    expect(screen.getByText(es.catalog.heading)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: spanish[0].name })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: english[0].name })).not.toBeInTheDocument();
+  });
+
+  it('keeps a list with no English file out of the English catalog', async () => {
+    expect(spanishOnly).toBeDefined();
+    const i18n = renderCatalog();
+
+    expect(screen.queryByText(spanishOnly!.title)).not.toBeInTheDocument();
+
+    await act(() => i18n.changeLanguage('es'));
+
+    expect(screen.getByText(spanishOnly!.title)).toBeInTheDocument();
+  });
+});

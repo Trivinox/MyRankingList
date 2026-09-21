@@ -107,10 +107,25 @@
   font-size: 0.78rem;
 }
 
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .add {
-  align-self: flex-start;
   padding: 0.4rem 0.8rem;
   border: 1px dashed #b8b8c2;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.browse {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #b8b8c2;
   border-radius: 6px;
   background: none;
   font: inherit;
