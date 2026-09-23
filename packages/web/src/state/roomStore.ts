@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Item } from '../core/types.ts';
 import type { Participant } from '../room/hostRoom.ts';
 
 export type Role = 'host' | 'guest';
@@ -20,6 +21,9 @@ interface Room {
   you: string | null;
   participants: Participant[];
   criterion: string;
+  // The host's copy of the list, taken when the room opened. Guests have none
+  // until sorting starts.
+  items: Item[];
   status: RoomStatus;
   error: RoomError | null;
   connect: (role: Role) => void;
@@ -28,6 +32,7 @@ interface Room {
     you: string;
     criterion: string;
     participants: Participant[];
+    items?: Item[];
   }) => void;
   setParticipants: (participants: Participant[]) => void;
   fail: (error: RoomError) => void;
@@ -41,6 +46,7 @@ const empty = {
   you: null,
   participants: [],
   criterion: '',
+  items: [],
   status: 'idle',
   error: null,
 } satisfies Partial<Room>;
