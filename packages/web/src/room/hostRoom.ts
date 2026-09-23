@@ -3,8 +3,9 @@ import { uniqueNickname } from './nicknames.ts';
 // Creator included. It is the most connections one browser is asked to hold.
 export const ROOM_LIMIT = 20;
 
-// The id is the host's own, never the peer ID behind it: guests only ever
-// learn this one, so they have nothing to connect to each other with.
+// The id is the host's own, never the peer ID behind it. A guest who knew
+// another's peer ID could open a channel straight to them, and the star would
+// stop being one.
 export interface Participant {
   id: string;
   nickname: string;

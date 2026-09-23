@@ -3,8 +3,7 @@ import { NICKNAME_LIMIT } from './nicknames.ts';
 
 export type GuestMessage = { type: 'join'; nickname: string };
 
-// `you` is the guest's own participant id, so its lobby can tell which name is
-// theirs.
+// `you` tells the guest which of the participants is them.
 export type HostMessage =
   | { type: 'welcome'; you: string; criterion: string; participants: Participant[] }
   | { type: 'participants'; participants: Participant[] }
@@ -19,7 +18,7 @@ type Fields = Record<string, unknown>;
 const isRecord = (value: unknown): value is Fields =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-function readParticipants(value: unknown): Participant[] | null {
+function toParticipants(value: unknown): Participant[] | null {
   if (!Array.isArray(value)) return null;
   const participants: Participant[] = [];
   for (const entry of value) {
@@ -52,14 +51,14 @@ export function parseHostMessage(data: unknown): HostMessage | null {
 
   switch (data.type) {
     case 'welcome': {
-      const participants = readParticipants(data.participants);
+      const participants = toParticipants(data.participants);
       if (typeof data.you !== 'string' || typeof data.criterion !== 'string' || !participants) {
         return null;
       }
       return { type: 'welcome', you: data.you, criterion: data.criterion, participants };
     }
     case 'participants': {
-      const participants = readParticipants(data.participants);
+      const participants = toParticipants(data.participants);
       return participants && { type: 'participants', participants };
     }
     case 'full':

@@ -17,7 +17,6 @@ export type RoomError =
 interface Room {
   role: Role | null;
   code: string | null;
-  // Own participant id, which is how the lobby finds "you" in the list.
   you: string | null;
   participants: Participant[];
   criterion: string;

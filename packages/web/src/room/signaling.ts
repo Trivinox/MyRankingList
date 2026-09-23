@@ -10,7 +10,7 @@ export type FoundRoom =
 // Anything that is not an answer this server gives counts as not reaching it:
 // a failed request, a proxy's error page, Vite's index.html for a path it does
 // not know.
-async function readField(response: Response, field: string): Promise<string | null> {
+async function stringField(response: Response, field: string): Promise<string | null> {
   try {
     const body: unknown = await response.json();
     if (typeof body !== 'object' || body === null || !(field in body)) return null;
@@ -21,7 +21,7 @@ async function readField(response: Response, field: string): Promise<string | nu
   }
 }
 
-// `fetch` is passed in so the tests can answer for the server.
+// The tests pass their own `fetch` and answer for the server.
 export function createSignaling(baseUrl: string, fetcher: typeof fetch = fetch) {
   async function request(path: string, init?: RequestInit) {
     try {
@@ -32,9 +32,9 @@ export function createSignaling(baseUrl: string, fetcher: typeof fetch = fetch) 
   }
 
   return {
-    // The server only gives a code to a peer it has connected, so the Peer has
-    // to be open before this is asked. A 409 or a 503 is the server saying no
-    // rather than not being there.
+    // The server only gives a code to a peer it has connected: the Peer has to
+    // be open before this is asked. A 409 or a 503 is the server saying no,
+    // which is not the same as the server being gone.
     async openRoom(peerId: string): Promise<OpenedRoom> {
       const response = await request('/rooms', {
         method: 'POST',
@@ -43,7 +43,7 @@ export function createSignaling(baseUrl: string, fetcher: typeof fetch = fetch) 
       });
       if (response?.status === 409 || response?.status === 503) return { kind: 'refused' };
       if (response?.status !== 201) return { kind: 'unreachable' };
-      const code = await readField(response, 'code');
+      const code = await stringField(response, 'code');
       return code === null ? { kind: 'unreachable' } : { kind: 'opened', code };
     },
 
@@ -55,7 +55,7 @@ export function createSignaling(baseUrl: string, fetcher: typeof fetch = fetch) 
         return retryAfter > 0 ? { kind: 'rate-limited', retryAfter } : { kind: 'unreachable' };
       }
       if (response?.status !== 200) return { kind: 'unreachable' };
-      const peerId = await readField(response, 'peerId');
+      const peerId = await stringField(response, 'peerId');
       return peerId === null ? { kind: 'unreachable' } : { kind: 'found', peerId };
     },
   };
