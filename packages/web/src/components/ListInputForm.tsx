@@ -29,11 +29,12 @@ export function ListInputForm() {
   const start = usePlacement((state) => state.start);
   const criterionField = useRef<HTMLInputElement>(null);
 
-  // A placement already made means the user is back from a result, and the
-  // New list button they pressed is gone. On a first visit nothing is
-  // focused, so a phone does not open its keyboard over an empty form.
+  // Rows that already hold text mean the user came from somewhere, a result
+  // or the catalog, and the button they pressed there is gone. The criterion
+  // is what is left to write in both cases. An empty form is a first visit and
+  // nothing is focused, so a phone does not open its keyboard over it.
   useEffect(() => {
-    if (usePlacement.getState().placement) {
+    if (useListDraft.getState().items.some((item) => item.text.trim() !== '')) {
       criterionField.current?.focus();
     }
   }, []);

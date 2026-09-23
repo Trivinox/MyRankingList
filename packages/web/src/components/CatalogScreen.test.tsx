@@ -8,6 +8,7 @@ import { iconFor } from '../catalog/icons.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { es } from '../i18n/locales/es.ts';
+import type { Item } from '../core/types.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { CatalogScreen } from './CatalogScreen.tsx';
 
@@ -41,21 +42,36 @@ const spanishOnly = spanish
   .flatMap((category) => category.lists)
   .find((list) => !englishIds.has(list.id));
 
+const announce = vi.fn();
+
 const renderCatalog = () => {
   const i18n = createI18n();
   render(
     <I18nextProvider i18n={i18n}>
-      <CatalogScreen />
+      <CatalogScreen announce={announce} />
     </I18nextProvider>,
   );
   return i18n;
 };
 
+const blankRows = (count: number): Item[] =>
+  Array.from({ length: count }, () => ({ id: crypto.randomUUID(), text: '' }));
+
+const pickButton = (list: { title: string }) =>
+  screen.getByRole('button', { name: en.catalog.use, description: list.title });
+
+// What a row of the draft holds once the id minted for it is set aside.
+const contents = () =>
+  useListDraft.getState().items.map(({ text, imageUrl }) => ({ text, imageUrl }));
+const asFile = (list: { items: { text: string; imageUrl?: string }[] }) =>
+  list.items.map(({ text, imageUrl }) => ({ text, imageUrl }));
+
 const typeSearch = (text: string) =>
   userEvent.type(screen.getByRole('searchbox', { name: en.catalog.searchLabel }), text);
 
 beforeEach(() => {
-  useListDraft.setState({ screen: 'catalog' });
+  useListDraft.setState({ screen: 'catalog', items: blankRows(3), criterion: '' });
+  announce.mockClear();
 });
 
 describe('CatalogScreen', () => {
@@ -191,5 +207,125 @@ describe('CatalogScreen', () => {
     await act(() => i18n.changeLanguage('es'));
 
     expect(screen.getByText(spanishOnly!.title)).toBeInTheDocument();
+  });
+
+  it('fills the form with the list it picks, in order and with its images', async () => {
+    const i18n = renderCatalog();
+
+    await userEvent.click(pickButton(withImages));
+
+    expect(contents()).toEqual(asFile(withImages));
+    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(announce).toHaveBeenCalledWith(
+      i18n.t('catalog.copied', { count: withImages.items.length, title: withImages.title }),
+    );
+  });
+
+  it('picks straight away when the draft has nothing written', async () => {
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+
+    expect(screen.queryByText(en.catalog.confirmReplace)).not.toBeInTheDocument();
+    expect(useListDraft.getState().screen).toBe('list-input');
+  });
+
+  // The criterion is the user's to write, and a title is not one.
+  it('leaves the criterion alone', async () => {
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+
+    expect(useListDraft.getState().criterion).toBe('');
+  });
+
+  it('asks before replacing rows the user wrote, and keeps them when told to', async () => {
+    const written = [{ id: crypto.randomUUID(), text: 'Churros' }, ...blankRows(2)];
+    useListDraft.setState({ items: written });
+    const i18n = renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+
+    const prompt = screen.getByRole('group', {
+      name: i18n.t('catalog.confirmPrompt', { title: anyList.title }),
+    });
+    expect(within(prompt).getByRole('button', { name: en.catalog.confirmKeep })).toHaveFocus();
+
+    await userEvent.click(within(prompt).getByRole('button', { name: en.catalog.confirmKeep }));
+
+    expect(useListDraft.getState().items).toEqual(written);
+    expect(useListDraft.getState().screen).toBe('catalog');
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    expect(pickButton(anyList)).toHaveFocus();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('replaces the rows once the prompt is accepted', async () => {
+    useListDraft.setState({ items: [{ id: crypto.randomUUID(), text: 'Churros' }] });
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.confirmReplace }));
+
+    expect(contents()).toEqual(asFile(anyList));
+    expect(useListDraft.getState().screen).toBe('list-input');
+  });
+
+  it('counts an image link on its own as something written', async () => {
+    useListDraft.setState({
+      items: [{ id: crypto.randomUUID(), text: '', imageUrl: 'https://example.com/a.png' }],
+    });
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+
+    expect(screen.getByRole('button', { name: en.catalog.confirmReplace })).toBeInTheDocument();
+  });
+
+  // The catalog this screen holds is built once per language, so a draft row
+  // that shared an object with it would carry an edit back into every later
+  // pick of the same list.
+  it('hands over a copy that editing cannot reach back through', async () => {
+    const i18n = renderCatalog();
+    await userEvent.click(pickButton(withImages));
+
+    const draft = useListDraft.getState();
+    draft.updateItemText(draft.items[0].id, 'Edited');
+    draft.updateItemImageUrl(draft.items[1].id, '');
+    draft.removeItem(draft.items[2].id);
+    draft.setScreen('catalog');
+
+    const row = screen.getByText(withImages.title).closest('li') as HTMLElement;
+    expect(
+      within(row).getByText(i18n.t('catalog.itemCount', { count: withImages.items.length })),
+    ).toBeInTheDocument();
+
+    await userEvent.click(pickButton(withImages));
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.confirmReplace }));
+
+    expect(contents()).toEqual(asFile(withImages));
+  });
+
+  it('mints new ids on every pick', async () => {
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+    const first = useListDraft.getState().items.map((item) => item.id);
+    useListDraft.setState({ screen: 'catalog' });
+    await userEvent.click(pickButton(anyList));
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.confirmReplace }));
+    const second = useListDraft.getState().items.map((item) => item.id);
+
+    expect(new Set([...first, ...second]).size).toBe(first.length + second.length);
+  });
+
+  it('drops an open prompt when the search changes', async () => {
+    useListDraft.setState({ items: [{ id: crypto.randomUUID(), text: 'Churros' }] });
+    renderCatalog();
+
+    await userEvent.click(pickButton(anyList));
+    await typeSearch(anyList.title);
+
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
 });

@@ -200,6 +200,21 @@ describe('ListInputForm', () => {
     expect(screen.getByText('1 item')).toBeInTheDocument();
   });
 
+  // Arriving with rows written, from the catalog or from a result, leaves the
+  // criterion as the one thing to do.
+  it('focuses the criterion when the rows already hold text', () => {
+    useListDraft.setState({ items: filledRows(3) });
+    renderForm();
+
+    expect(screen.getByLabelText(en.form.criterionLabel)).toHaveFocus();
+  });
+
+  it('leaves the focus alone on a form with nothing written', () => {
+    renderForm();
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('opens the catalog', async () => {
     renderForm();
 
