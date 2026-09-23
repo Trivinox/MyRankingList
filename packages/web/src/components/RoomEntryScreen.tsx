@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { forgetRoomLink, linkedCode } from '../room/link.ts';
+import { forgetRoomLink, linkedCode, rememberRoomLink } from '../room/link.ts';
 import { NICKNAME_LIMIT } from '../room/nicknames.ts';
 import { readRoomCode } from '../room/roomCode.ts';
 import { createRoom, joinRoom, leaveRoom } from '../room/session.ts';
@@ -18,7 +18,7 @@ interface Props {
 export function RoomEntryScreen({ mode }: Props) {
   const { t } = useTranslation();
   const setScreen = useScreen((state) => state.setScreen);
-  const { status, error } = useRoom();
+  const { status, error, code: roomCode } = useRoom();
   const joining = mode === 'join';
 
   // A link with a code of the wrong shape leaves the field empty rather than
@@ -30,8 +30,10 @@ export function RoomEntryScreen({ mode }: Props) {
   const [badCode, setBadCode] = useState(false);
 
   useEffect(() => {
-    if (status === 'lobby') setScreen('lobby');
-  }, [status, setScreen]);
+    if (status !== 'lobby') return;
+    if (joining && roomCode) rememberRoomLink(roomCode);
+    setScreen('lobby');
+  }, [status, joining, roomCode, setScreen]);
 
   const connecting = status === 'connecting';
   const ready = nickname.trim() !== '' && (!joining || code.trim() !== '') && !connecting;

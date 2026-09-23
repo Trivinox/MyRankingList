@@ -60,6 +60,7 @@ test('people join a room by code and by link and see each other come and go', as
   await juan.getByRole('button', { name: 'Join a room' }).click();
   await juan.getByLabel('Room code').fill(code!.toLowerCase());
   await join(juan, 'Juan');
+  await expect(juan).toHaveURL(`/?room=${code}`);
 
   for (const page of [ana, juan]) {
     await expect(person(page, 'Ana')).toBeVisible();

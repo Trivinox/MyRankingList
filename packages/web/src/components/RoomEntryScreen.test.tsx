@@ -205,6 +205,26 @@ describe('RoomEntryScreen', () => {
     expect(useScreen.getState().screen).toBe('lobby');
   });
 
+  it('puts the code in the address of a guest who typed it', () => {
+    renderEntry('join');
+
+    act(() =>
+      useRoom.getState().enterLobby({ code: 'AB3K', you: 'j', criterion: 'x', participants: [] }),
+    );
+
+    expect(window.location.search).toBe('?room=AB3K');
+  });
+
+  it('leaves the address of the host alone', () => {
+    renderEntry('create');
+
+    act(() =>
+      useRoom.getState().enterLobby({ code: 'AB3K', you: 'a', criterion: 'x', participants: [] }),
+    );
+
+    expect(window.location.search).toBe('');
+  });
+
   describe('opened from a link', () => {
     it('arrives with the code filled in and the nickname to write', () => {
       window.history.replaceState(null, '', '/?room=ab3k');
