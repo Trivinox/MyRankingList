@@ -1,11 +1,14 @@
+import { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { Announcer } from './components/Announcer.tsx';
 import { CatalogScreen } from './components/CatalogScreen.tsx';
 import { LanguageSelector } from './components/LanguageSelector.tsx';
 import { ListInputForm } from './components/ListInputForm.tsx';
 import { MuteButton } from './components/MuteButton.tsx';
 import { ResultScreen } from './components/ResultScreen.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
+import { useAnnouncer } from './components/useAnnouncer.ts';
 import { useListDraft } from './state/listDraftStore.ts';
 import type { Screen } from './state/listDraftStore.ts';
 import styles from './App.module.css';
@@ -23,6 +26,20 @@ const widths: Record<Screen, string> = {
 function App() {
   const { t } = useTranslation();
   const screen = useListDraft((state) => state.screen);
+  // For a message sent as the screen changes under it. A region that arrives
+  // with the new screen is already holding its text when it shows up, and a
+  // screen reader only reads a region it has seen change.
+  const { announcement, say, clear } = useAnnouncer();
+  // What it says is about the catalog and the form, the only two screens it
+  // is kept on. The sorting screen has a region of its own, and a stale "copied"
+  // there would be one more thing to trip over while reading the page.
+  const announcing = screen === 'catalog' || screen === 'list-input';
+
+  useEffect(() => {
+    if (!announcing) {
+      clear();
+    }
+  }, [announcing, clear]);
 
   return (
     <div className={widths[screen]}>
@@ -42,10 +59,11 @@ function App() {
             <ListInputForm />
           </>
         )}
-        {screen === 'catalog' && <CatalogScreen />}
+        {screen === 'catalog' && <CatalogScreen announce={say} />}
         {screen === 'sorting' && <SortingScreen />}
         {screen === 'result' && <ResultScreen />}
       </MotionConfig>
+      {announcing && <Announcer announcement={announcement} />}
     </div>
   );
 }

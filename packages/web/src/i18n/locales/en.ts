@@ -43,6 +43,12 @@ export const en = {
     itemCount_one: '{{count}} item',
     itemCount_other: '{{count}} items',
     hasImages: 'With images',
+    use: 'Use this list',
+    confirmPrompt: 'Replace the items you have written with {{title}}?',
+    confirmReplace: 'Replace them',
+    confirmKeep: 'Keep mine',
+    copied_one: 'Copied {{count}} item from {{title}}.',
+    copied_other: 'Copied {{count}} items from {{title}}.',
     back: 'Back to my list',
   },
   sorting: {

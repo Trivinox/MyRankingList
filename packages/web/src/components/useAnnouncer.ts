@@ -54,5 +54,15 @@ export function useAnnouncer() {
     [next],
   );
 
-  return { announcement, say };
+  // Empties the region without saying anything, for a message that would
+  // otherwise sit in it, readable, long after it stopped being true.
+  const clear = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+    waiting.current = undefined;
+    shown.current = '';
+    setAnnouncement(({ count }) => ({ text: '', count }));
+  }, []);
+
+  return { announcement, say, clear };
 }

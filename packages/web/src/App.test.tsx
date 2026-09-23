@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from './i18n/index.ts';
 import { en } from './i18n/locales/en.ts';
 import { es } from './i18n/locales/es.ts';
+import { loadCatalog } from './catalog/catalog.ts';
+import { useListDraft } from './state/listDraftStore.ts';
 import App from './App.tsx';
 
 const renderApp = () =>
@@ -14,6 +16,16 @@ const renderApp = () =>
       <App />
     </I18nextProvider>,
   );
+
+// The draft store outlives each render, and the flows below leave rows
+// written that would put the next test past a first visit.
+beforeEach(() => {
+  useListDraft.setState({
+    screen: 'list-input',
+    items: Array.from({ length: 3 }, () => ({ id: crypto.randomUUID(), text: '' })),
+    criterion: '',
+  });
+});
 
 describe('App', () => {
   it('starts in English', () => {
@@ -73,5 +85,55 @@ describe('App', () => {
 
     expect(screen.getByLabelText(en.form.criterionLabel)).toHaveValue('Best noodle');
     expect(screen.getByRole('textbox', { name: 'Item 3' })).toHaveValue('Ramen');
+  });
+
+  // Read out of the catalog rather than named, so rewriting the content does
+  // not rewrite the test. A list with images, so the links are checked too.
+  it('goes from the form to the catalog and back with a list to sort', async () => {
+    const list = loadCatalog('en')
+      .flatMap((category) => category.lists)
+      .find((candidate) => candidate.items.some((item) => item.imageUrl))!;
+    renderApp();
+
+    await userEvent.click(screen.getByRole('button', { name: en.catalog.browse }));
+    await userEvent.click(
+      screen.getByRole('button', { name: en.catalog.use, description: list.title }),
+    );
+
+    const criterion = screen.getByLabelText(en.form.criterionLabel);
+    expect(criterion).toHaveFocus();
+    expect(criterion).toHaveValue('');
+    expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
+    for (const [index, item] of list.items.entries()) {
+      expect(screen.getByRole('textbox', { name: `Item ${index + 1}` })).toHaveValue(item.text);
+      expect(screen.getByRole('textbox', { name: `Image URL for item ${index + 1}` })).toHaveValue(
+        item.imageUrl ?? '',
+      );
+    }
+    expect(screen.getByRole('status')).toHaveTextContent(list.title);
+
+    await userEvent.type(criterion, 'Which one first?');
+    await userEvent.click(screen.getByRole('button', { name: en.form.continue }));
+
+    // The sorting screen's own region is the only one of ours left, next to the
+    // one dnd-kit always adds, and neither has heard about the copy.
+    expect(document.querySelectorAll('[data-announcer]')).toHaveLength(1);
+    for (const region of screen.getAllByRole('status')) {
+      expect(region).not.toHaveTextContent(list.title);
+    }
+
+    for (let placed = 1; placed < list.items.length; placed++) {
+      await userEvent.click(screen.getByRole('button', { name: 'Put it at position 1' }));
+    }
+    await userEvent.click(screen.getByRole('button', { name: en.sorting.seeResult }));
+
+    expect(screen.getByRole('heading', { name: 'Which one first?' })).toHaveFocus();
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(
+      list.items.length,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: en.result.newList }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
   });
 });

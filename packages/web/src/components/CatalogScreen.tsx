@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { loadCatalog } from '../catalog/catalog.ts';
 import { iconFor } from '../catalog/icons.ts';
@@ -22,10 +22,27 @@ function matches(list: PresetList, query: string) {
   return list.items.some((item) => forSearch(item.text).includes(query));
 }
 
-export function CatalogScreen() {
+// Handed down to every row, so a row can start a pick and draw the prompt
+// that belongs to it without knowing about the draft.
+interface Picker {
+  pending: PresetList | null;
+  use: (list: PresetList) => void;
+  replace: (list: PresetList) => void;
+  keep: () => void;
+}
+
+interface CatalogScreenProps {
+  // This screen is gone by the time the rows are copied, so whatever says so
+  // has to live in a region that outlasts it.
+  announce: (message: string) => void;
+}
+
+export function CatalogScreen({ announce }: CatalogScreenProps) {
   const { t, i18n } = useTranslation();
   const setScreen = useListDraft((state) => state.setScreen);
+  const seedItems = useListDraft((state) => state.seedItems);
   const [query, setQuery] = useState('');
+  const [pending, setPending] = useState<PresetList | null>(null);
 
   // resolvedLanguage rather than language: a tag with no folder of its own
   // resolves to the one it falls back to, instead of building nothing and
@@ -34,6 +51,30 @@ export function CatalogScreen() {
   // Every call rebuilds and returns new arrays, so without this the whole
   // screen would rerender against a different catalog on every keystroke.
   const categories = useMemo(() => loadCatalog(lang), [lang]);
+
+  // The criterion is left as it is. The title stays behind in the catalog: a
+  // list the user sorts has no title, only what it is being compared by.
+  const replace = (list: PresetList) => {
+    seedItems(list.items);
+    setScreen('list-input');
+    announce(t('catalog.copied', { count: list.items.length, title: list.title }));
+  };
+
+  // Three blank rows are what the form opens with and nothing is lost by
+  // replacing them. Anything written, a lone image link included, is asked
+  // about first.
+  const use = (list: PresetList) => {
+    const written = useListDraft
+      .getState()
+      .items.some((item) => item.text.trim() !== '' || item.imageUrl);
+    if (written) {
+      setPending(list);
+    } else {
+      replace(list);
+    }
+  };
+
+  const picker: Picker = { pending, use, replace, keep: () => setPending(null) };
 
   return (
     <section className={styles.screen}>
@@ -50,11 +91,14 @@ export function CatalogScreen() {
           type="search"
           value={query}
           placeholder={t('catalog.searchPlaceholder')}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPending(null);
+          }}
         />
       </label>
 
-      <Listings categories={categories} query={forSearch(query)} />
+      <Listings categories={categories} query={forSearch(query)} picker={picker} />
     </section>
   );
 }
@@ -62,9 +106,10 @@ export function CatalogScreen() {
 interface ListingsProps {
   categories: CatalogCategory[];
   query: string;
+  picker: Picker;
 }
 
-function Listings({ categories, query }: ListingsProps) {
+function Listings({ categories, query, picker }: ListingsProps) {
   const { t } = useTranslation();
 
   // Reachable through categories.json alone: a language whose file lost its
@@ -85,7 +130,7 @@ function Listings({ categories, query }: ListingsProps) {
         </h3>
         <ul className={styles.lists}>
           {category.lists.map((list) => (
-            <ListRow key={list.id} list={list} />
+            <ListRow key={list.id} list={list} picker={picker} />
           ))}
         </ul>
       </section>
@@ -107,7 +152,7 @@ function Listings({ categories, query }: ListingsProps) {
   return (
     <ul className={styles.lists} aria-label={t('catalog.resultsLabel')}>
       {found.map(({ category, list }) => (
-        <ListRow key={`${category}/${list.id}`} list={list} category={category} />
+        <ListRow key={`${category}/${list.id}`} list={list} category={category} picker={picker} />
       ))}
     </ul>
   );
@@ -116,20 +161,73 @@ function Listings({ categories, query }: ListingsProps) {
 interface ListRowProps {
   list: PresetList;
   category?: string;
+  picker: Picker;
 }
 
-function ListRow({ list, category }: ListRowProps) {
+function ListRow({ list, category, picker }: ListRowProps) {
   const { t } = useTranslation();
+  const titleId = useId();
+  const promptId = useId();
+  const pickButton = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const backToPick = useRef(false);
+  const confirming = picker.pending === list;
   const withImages = list.items.some((item) => item.imageUrl);
+
+  // The prompt takes the place of the button that opened it, so the focus is
+  // moved by hand both ways, or it would drop to the page. It lands on keeping
+  // the rows, the choice that loses nothing. It only goes back to the button
+  // when this prompt was declined; a prompt closed by another row's pick
+  // leaves the focus where that row put it.
+  useEffect(() => {
+    if (confirming) {
+      keepButton.current?.focus();
+    } else if (backToPick.current) {
+      backToPick.current = false;
+      pickButton.current?.focus();
+    }
+  }, [confirming]);
+
+  const keep = () => {
+    backToPick.current = true;
+    picker.keep();
+  };
 
   return (
     <li className={styles.list}>
-      <span className={styles.title}>{list.title}</span>
+      <span id={titleId} className={styles.title}>
+        {list.title}
+      </span>
       <span className={styles.meta}>
         {category && <span className={styles.from}>{category}</span>}
         <span>{t('catalog.itemCount', { count: list.items.length })}</span>
         {withImages && <span className={styles.images}>{t('catalog.hasImages')}</span>}
       </span>
+      {confirming ? (
+        <div role="group" aria-labelledby={promptId} className={styles.confirm}>
+          <p id={promptId} className={styles.prompt}>
+            {t('catalog.confirmPrompt', { title: list.title })}
+          </p>
+          <div className={styles.choices}>
+            <button type="button" className={styles.pick} onClick={() => picker.replace(list)}>
+              {t('catalog.confirmReplace')}
+            </button>
+            <button ref={keepButton} type="button" className={styles.pick} onClick={keep}>
+              {t('catalog.confirmKeep')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          ref={pickButton}
+          type="button"
+          className={styles.pick}
+          aria-describedby={titleId}
+          onClick={() => picker.use(list)}
+        >
+          {t('catalog.use')}
+        </button>
+      )}
     </li>
   );
 }

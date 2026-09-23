@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { PresetItem } from '../catalog/types.ts';
 import type { Item } from '../core/types.ts';
 
 // App decides what to render off this instead of pulling in a router. The
@@ -14,6 +15,7 @@ interface ListDraft {
   removeItem: (id: string) => void;
   updateItemText: (id: string, text: string) => void;
   updateItemImageUrl: (id: string, imageUrl: string) => void;
+  seedItems: (items: PresetItem[]) => void;
   setCriterion: (criterion: string) => void;
   setScreen: (screen: Screen) => void;
 }
@@ -40,6 +42,17 @@ export const useListDraft = create<ListDraft>((set) => ({
   // so an item without an image reads the same however it got there.
   updateItemImageUrl: (id, imageUrl) =>
     set((state) => ({ items: patch(state.items, id, { imageUrl: imageUrl || undefined }) })),
+
+  // Fresh ids and fresh objects: the rows are the user's from here on, and
+  // nothing typed into them may reach back into the catalog they came from.
+  seedItems: (items) =>
+    set({
+      items: items.map(({ text, imageUrl }) => ({
+        id: crypto.randomUUID(),
+        text,
+        ...(imageUrl && { imageUrl }),
+      })),
+    }),
 
   setCriterion: (criterion) => set({ criterion }),
 

@@ -48,6 +48,12 @@ export const es: typeof en = {
     itemCount_one: '{{count}} elemento',
     itemCount_other: '{{count}} elementos',
     hasImages: 'Con imágenes',
+    use: 'Usar esta lista',
+    confirmPrompt: '¿Cambiar los elementos que has escrito por los de {{title}}?',
+    confirmReplace: 'Cambiarlos',
+    confirmKeep: 'Dejar los míos',
+    copied_one: 'Copiado {{count}} elemento de {{title}}.',
+    copied_other: 'Copiados {{count}} elementos de {{title}}.',
     back: 'Volver a mi lista',
   },
   sorting: {
