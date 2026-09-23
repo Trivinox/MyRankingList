@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import type { Locator } from '@playwright/test';
 
 // Read from the file the catalog ships, so the test follows the content when

@@ -6,6 +6,7 @@
     "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": ["e2e", "playwright.config.ts"]
