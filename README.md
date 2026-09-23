@@ -82,7 +82,7 @@ GitHub Actions runs the format check, lint, type-check, the test suites of both 
 
 ## Deployment
 
-Planned for a later phase: `packages/web` on Vercel as a static build with the function in `api/`, and `packages/signaling-server` on Render as a persistent Node service (required to keep the WebSocket connections open). The signaling server runs locally but is not deployed; on Render it will need `ALLOWED_ORIGIN` set to the app's URL and `PROXIED` to match Render's proxies. `packages/web/vercel.json` already exists with the security headers and nothing deploys from it yet; to try the image check locally, run `vercel dev` from `packages/web`, since `vite dev` does not serve `api/`.
+Planned for a later phase: `packages/web` on Vercel as a static build with the function in `api/`, and `packages/signaling-server` on Render as a persistent Node service (required to keep the WebSocket connections open). The signaling server runs locally but is not deployed; on Render it will need `ALLOWED_ORIGIN` set to the app's URL, `PROXIED` to match Render's proxies and `NODE_ENV` set to `production`, without which Express answers a malformed request with its stack trace. `packages/web/vercel.json` already exists with the security headers and nothing deploys from it yet; to try the image check locally, run `vercel dev` from `packages/web`, since `vite dev` does not serve `api/`.
 
 ## License
 
