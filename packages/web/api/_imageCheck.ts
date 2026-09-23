@@ -42,7 +42,7 @@ function isPrivateIPv4(octets: number[]): boolean {
     a === 0 ||
     a === 10 ||
     a === 127 ||
-    // Carrier-grade NAT, which cloud networks use internally.
+    // The shared address space of carrier-grade NAT, not routable on the internet.
     (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||

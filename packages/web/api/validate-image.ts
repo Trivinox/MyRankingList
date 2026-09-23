@@ -3,8 +3,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { publicLookup, verifyImage } from './_imageCheck.ts';
 import type { Probe } from './_imageCheck.ts';
 
-// Vercel cuts a function off at ten seconds, and the whole check, redirects
-// included, has to answer before that.
+// One deadline for the whole check, redirects included. It is shorter than the
+// eight seconds the form waits for the function, so a slow image host comes
+// back as not an image instead of as a function that never answered.
 const TIMEOUT_MS = 6000;
 
 const lookup = publicLookup();
