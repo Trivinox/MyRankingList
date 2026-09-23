@@ -5,6 +5,7 @@ import { iconFor } from '../catalog/icons.ts';
 import type { CatalogCategory, PresetList } from '../catalog/types.ts';
 import { normalizeItemText } from '../core/duplicates.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import styles from './CatalogScreen.module.css';
 
 // The duplicate check keeps accents apart on purpose, since two spellings are
@@ -39,7 +40,7 @@ interface CatalogScreenProps {
 
 export function CatalogScreen({ announce }: CatalogScreenProps) {
   const { t, i18n } = useTranslation();
-  const setScreen = useListDraft((state) => state.setScreen);
+  const setScreen = useScreen((state) => state.setScreen);
   const seedItems = useListDraft((state) => state.seedItems);
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState<PresetList | null>(null);

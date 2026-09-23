@@ -8,6 +8,7 @@ import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { LONG_LIST_THRESHOLD, ListInputForm } from './ListInputForm.tsx';
 import { PROBE_DELAY } from './useRejectedImages.ts';
 
@@ -38,7 +39,8 @@ const renderForm = () => {
 // The store is a module singleton, so each test starts it back at the three
 // empty rows the app opens with.
 beforeEach(() => {
-  useListDraft.setState({ screen: 'list-input', items: blankRows(3), criterion: '' });
+  useScreen.setState({ screen: 'list-input' });
+  useListDraft.setState({ items: blankRows(3), criterion: '' });
   vi.mocked(probeImage).mockReset().mockResolvedValue(null);
 });
 
@@ -347,7 +349,7 @@ describe('ListInputForm', () => {
 
     await userEvent.click(screen.getByRole('button', { name: en.catalog.browse }));
 
-    expect(useListDraft.getState().screen).toBe('catalog');
+    expect(useScreen.getState().screen).toBe('catalog');
   });
 
   it('translates its own labels when the language changes', async () => {

@@ -9,8 +9,8 @@ import { MuteButton } from './components/MuteButton.tsx';
 import { ResultScreen } from './components/ResultScreen.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
 import { useAnnouncer } from './components/useAnnouncer.ts';
-import { useListDraft } from './state/listDraftStore.ts';
-import type { Screen } from './state/listDraftStore.ts';
+import { useScreen } from './state/screenStore.ts';
+import type { Screen } from './state/screenStore.ts';
 import styles from './App.module.css';
 
 // The sorting screen needs the room the form does not: a pool taking close to
@@ -25,7 +25,7 @@ const widths: Record<Screen, string> = {
 
 function App() {
   const { t } = useTranslation();
-  const screen = useListDraft((state) => state.screen);
+  const screen = useScreen((state) => state.screen);
   // For a message sent as the screen changes under it. A region that arrives
   // with the new screen is already holding its text when it shows up, and a
   // screen reader only reads a region it has seen change.

@@ -10,6 +10,7 @@ import { en } from '../i18n/locales/en.ts';
 import { es } from '../i18n/locales/es.ts';
 import type { Item } from '../core/types.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { CatalogScreen } from './CatalogScreen.tsx';
 
 // Real content everywhere except the one state the content cannot produce:
@@ -70,7 +71,8 @@ const typeSearch = (text: string) =>
   userEvent.type(screen.getByRole('searchbox', { name: en.catalog.searchLabel }), text);
 
 beforeEach(() => {
-  useListDraft.setState({ screen: 'catalog', items: blankRows(3), criterion: '' });
+  useScreen.setState({ screen: 'catalog' });
+  useListDraft.setState({ items: blankRows(3), criterion: '' });
   announce.mockClear();
 });
 
@@ -175,7 +177,7 @@ describe('CatalogScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: en.catalog.back }));
 
-    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(useScreen.getState().screen).toBe('list-input');
   });
 
   it('translates the interface and the catalog together', async () => {
@@ -215,7 +217,7 @@ describe('CatalogScreen', () => {
     await userEvent.click(pickButton(withImages));
 
     expect(contents()).toEqual(asFile(withImages));
-    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(useScreen.getState().screen).toBe('list-input');
     expect(announce).toHaveBeenCalledWith(
       i18n.t('catalog.copied', { count: withImages.items.length, title: withImages.title }),
     );
@@ -227,7 +229,7 @@ describe('CatalogScreen', () => {
     await userEvent.click(pickButton(anyList));
 
     expect(screen.queryByText(en.catalog.confirmReplace)).not.toBeInTheDocument();
-    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(useScreen.getState().screen).toBe('list-input');
   });
 
   // The criterion is the user's to write, and a title is not one.
@@ -254,7 +256,7 @@ describe('CatalogScreen', () => {
     await userEvent.click(within(prompt).getByRole('button', { name: en.catalog.confirmKeep }));
 
     expect(useListDraft.getState().items).toEqual(written);
-    expect(useListDraft.getState().screen).toBe('catalog');
+    expect(useScreen.getState().screen).toBe('catalog');
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
     expect(pickButton(anyList)).toHaveFocus();
     expect(announce).not.toHaveBeenCalled();
@@ -268,7 +270,7 @@ describe('CatalogScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: en.catalog.confirmReplace }));
 
     expect(contents()).toEqual(asFile(anyList));
-    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(useScreen.getState().screen).toBe('list-input');
   });
 
   it('counts an image link on its own as something written', async () => {
@@ -292,7 +294,7 @@ describe('CatalogScreen', () => {
     draft.updateItemText(draft.items[0].id, 'Edited');
     draft.updateItemImageUrl(draft.items[1].id, '');
     draft.removeItem(draft.items[2].id);
-    draft.setScreen('catalog');
+    useScreen.getState().setScreen('catalog');
 
     const row = screen.getByText(withImages.title).closest('li') as HTMLElement;
     expect(

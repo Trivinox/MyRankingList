@@ -34,8 +34,8 @@ import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts
 import type { RankedSlot } from '../core/types.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
-import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import { useIsMobile } from './useIsMobile.ts';
@@ -175,7 +175,7 @@ function focusOnArrival(heading: HTMLHeadingElement | null) {
 export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
-  const setScreen = useListDraft((state) => state.setScreen);
+  const setScreen = useScreen((state) => state.setScreen);
   const [dragged, setDragged] = useState<DragSource | null>(null);
   // A placed item picked up with its move button, waiting for the tap that puts
   // it down. Null means a tap places the pool item. Kept here and not in the

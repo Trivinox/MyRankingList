@@ -8,6 +8,7 @@ import { en } from './i18n/locales/en.ts';
 import { es } from './i18n/locales/es.ts';
 import { loadCatalog } from './catalog/catalog.ts';
 import { useListDraft } from './state/listDraftStore.ts';
+import { useScreen } from './state/screenStore.ts';
 import App from './App.tsx';
 
 const renderApp = () =>
@@ -20,8 +21,8 @@ const renderApp = () =>
 // The draft store outlives each render, and the flows below leave rows
 // written that would put the next test past a first visit.
 beforeEach(() => {
+  useScreen.setState({ screen: 'list-input' });
   useListDraft.setState({
-    screen: 'list-input',
     items: Array.from({ length: 3 }, () => ({ id: crypto.randomUUID(), text: '' })),
     criterion: '',
   });

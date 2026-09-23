@@ -10,6 +10,7 @@ import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { SortingScreen } from './SortingScreen.tsx';
 
@@ -129,7 +130,7 @@ const renderScreen = () =>
 
 beforeEach(() => {
   usePlacement.setState({ items: [], criterion: '', placement: null });
-  useListDraft.setState({ screen: 'list-input' });
+  useScreen.setState({ screen: 'list-input' });
 });
 
 describe('SortingScreen', () => {
@@ -188,8 +189,8 @@ describe('SortingScreen', () => {
 
 describe('continuing from the form', () => {
   it('carries only the filled rows onto the sorting screen', async () => {
+    useScreen.setState({ screen: 'list-input' });
     useListDraft.setState({
-      screen: 'list-input',
       criterion: 'Best noodle',
       items: [
         { id: 'a', text: 'Sushi' },
@@ -208,7 +209,7 @@ describe('continuing from the form', () => {
 
     await userEvent.click(screen.getByRole('button', { name: en.form.continue }));
 
-    expect(useListDraft.getState().screen).toBe('sorting');
+    expect(useScreen.getState().screen).toBe('sorting');
     expect(usePlacement.getState().items.map((item) => item.text)).toEqual([
       'Sushi',
       'Ramen',
@@ -1139,7 +1140,7 @@ describe('once the pool is empty', () => {
   // sorting screen open.
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
-    useListDraft.setState({ screen: 'sorting' });
+    useScreen.setState({ screen: 'sorting' });
   });
 
   const fill = (count: number) => {
@@ -1191,7 +1192,7 @@ describe('once the pool is empty', () => {
     seeResult()!.focus();
     await userEvent.keyboard('{Enter}');
 
-    expect(useListDraft.getState().screen).toBe('sorting');
+    expect(useScreen.getState().screen).toBe('sorting');
     expect(moveA).toHaveAttribute('aria-pressed', 'true');
 
     await userEvent.keyboard('{Escape}');
@@ -1210,7 +1211,7 @@ describe('once the pool is empty', () => {
 
     await userEvent.click(seeResult()!);
 
-    expect(useListDraft.getState().screen).toBe('result');
+    expect(useScreen.getState().screen).toBe('result');
     expect(screen.getByText(en.result.title)).toBeInTheDocument();
   });
 });
