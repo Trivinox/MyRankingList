@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
+import { probeImage } from '../core/imageProbe.ts';
 import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { LONG_LIST_THRESHOLD, ListInputForm } from './ListInputForm.tsx';
+import { PROBE_DELAY } from './useRejectedImages.ts';
+
+// The probe has its own suite, and a real one here would put the network and
+// the debounce timer into every test that types a link.
+vi.mock('../core/imageProbe.ts', () => ({ probeImage: vi.fn() }));
 
 const blankRows = (count: number): Item[] =>
   Array.from({ length: count }, () => ({ id: crypto.randomUUID(), text: '' }));
@@ -33,7 +39,25 @@ const renderForm = () => {
 // empty rows the app opens with.
 beforeEach(() => {
   useListDraft.setState({ screen: 'list-input', items: blankRows(3), criterion: '' });
+  vi.mocked(probeImage).mockReset().mockResolvedValue(null);
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+// Three rows that pass every check of the form, the first with a link in it.
+const withImage = (imageUrl: string) => {
+  useListDraft.setState({
+    items: filledRows(3).map((item, index) => (index === 0 ? { ...item, imageUrl } : item)),
+    criterion: 'Which one do you like more?',
+  });
+};
+
+// Lets the debounce run out and the mocked answers come back.
+const settleProbe = async () => {
+  await act(() => vi.advanceTimersByTimeAsync(PROBE_DELAY));
+};
 
 describe('ListInputForm', () => {
   it('stops item text at 80 characters', async () => {
@@ -237,6 +261,85 @@ describe('ListInputForm', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove item 3' }));
     expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
+  });
+
+  describe('image check by the server', () => {
+    const link = 'https://example.com/pizza.png';
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    it('marks a row whose link the server says is not an image, without blocking Continue', async () => {
+      vi.mocked(probeImage).mockResolvedValue(false);
+      withImage(link);
+      renderForm();
+
+      await settleProbe();
+
+      expect(screen.getByText(en.form.imageUrlUnreachable)).toBeInTheDocument();
+      expect(screen.getByLabelText('Image URL for item 1')).toHaveAccessibleDescription(
+        en.form.imageUrlUnreachable,
+      );
+      expect(screen.getByRole('button', { name: en.form.continue })).toBeEnabled();
+    });
+
+    it('leaves the row alone when the server confirms an image', async () => {
+      vi.mocked(probeImage).mockResolvedValue(true);
+      withImage(link);
+      renderForm();
+
+      await settleProbe();
+
+      expect(probeImage).toHaveBeenCalledWith(link);
+      expect(screen.queryByText(en.form.imageUrlUnreachable)).not.toBeInTheDocument();
+    });
+
+    it('leaves the row alone when the check could not be made', async () => {
+      vi.mocked(probeImage).mockResolvedValue(null);
+      withImage(link);
+      renderForm();
+
+      await settleProbe();
+
+      expect(probeImage).toHaveBeenCalled();
+      expect(screen.queryByText(en.form.imageUrlUnreachable)).not.toBeInTheDocument();
+      expect(screen.queryByText(en.form.imageUrlRejected)).not.toBeInTheDocument();
+    });
+
+    it('does not ask about a link the text rule already turns down', async () => {
+      withImage('http://example.com/pizza.png');
+      renderForm();
+
+      await settleProbe();
+
+      expect(probeImage).not.toHaveBeenCalled();
+      expect(screen.getByText(en.form.imageUrlRejected)).toBeInTheDocument();
+    });
+
+    it('does not ask before the typing has paused', async () => {
+      withImage(link);
+      renderForm();
+
+      await act(() => vi.advanceTimersByTimeAsync(PROBE_DELAY - 1));
+
+      expect(probeImage).not.toHaveBeenCalled();
+    });
+
+    it('drops the mark once the link is edited', async () => {
+      vi.mocked(probeImage).mockImplementation(async (url) => url !== link);
+      withImage(link);
+      renderForm();
+      await settleProbe();
+      expect(screen.getByText(en.form.imageUrlUnreachable)).toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText('Image URL for item 1'), {
+        target: { value: 'https://example.com/other.png' },
+      });
+      await settleProbe();
+
+      expect(screen.queryByText(en.form.imageUrlUnreachable)).not.toBeInTheDocument();
+    });
   });
 
   it('opens the catalog', async () => {
