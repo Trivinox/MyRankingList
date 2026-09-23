@@ -282,9 +282,8 @@ describe('CatalogScreen', () => {
     expect(screen.getByRole('button', { name: en.catalog.confirmReplace })).toBeInTheDocument();
   });
 
-  // The catalog this screen holds is built once per language, so a draft row
-  // that shared an object with it would carry an edit back into every later
-  // pick of the same list.
+  // What the user can see of it. The store test is the one that holds the rows
+  // to not sharing an object with the catalog.
   it('hands over a copy that editing cannot reach back through', async () => {
     const i18n = renderCatalog();
     await userEvent.click(pickButton(withImages));
