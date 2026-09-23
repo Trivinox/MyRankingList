@@ -6,6 +6,6 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
     // The default would also pick up e2e/*.spec.ts, which is Playwright's.
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'api/**/*.test.ts'],
   },
 });
