@@ -25,6 +25,9 @@ export type SignalingOptions = Omit<Config, 'port'> & {
 function allowOrigin(origin: string): RequestHandler {
   return (req, res, next) => {
     res.set('Access-Control-Allow-Origin', origin);
+    // A page on another origin only sees a handful of headers unless it is told
+    // it may read more, and the app needs this one to say how long to wait.
+    res.set('Access-Control-Expose-Headers', 'Retry-After');
     if (req.method !== 'OPTIONS') return next();
     res.set('Access-Control-Allow-Methods', 'GET, POST');
     res.set('Access-Control-Allow-Headers', 'Content-Type');

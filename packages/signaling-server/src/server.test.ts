@@ -178,6 +178,8 @@ describe('rate limit', () => {
     const blocked = await lookup(base, code);
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get('Retry-After')).toBe(String(MISS_WINDOW_MS / 1000));
+    // Without this the browser hides the header from the app, which runs on another origin.
+    expect(blocked.headers.get('Access-Control-Expose-Headers')).toBe('Retry-After');
 
     time += MISS_WINDOW_MS;
     expect((await lookup(base, code)).status).toBe(200);
