@@ -9,7 +9,13 @@ import react from '@vitejs/plugin-react';
 const { headers: rules } = JSON.parse(
   readFileSync(new URL('./vercel.json', import.meta.url), 'utf8'),
 );
-const policy: string = rules[0].headers[0].value;
+// Plus the signaling server the E2E starts next to the preview, under both
+// schemes: peerjs asks it for an ID over http before opening the WebSocket,
+// and Chrome does not let a ws source cover the http call.
+const policy: string = rules[0].headers[0].value.replace(
+  "connect-src 'self'",
+  "connect-src 'self' http://localhost:9000 ws://localhost:9000",
+);
 
 // https://vite.dev/config/
 export default defineConfig({
