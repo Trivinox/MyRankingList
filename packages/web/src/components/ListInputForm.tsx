@@ -6,6 +6,7 @@ import { isAllowedImageUrl } from '../core/images.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import styles from './ListInputForm.module.css';
+import { useRejectedImages } from './useRejectedImages.ts';
 
 // Adjustable: past this many rows the warning shows up, without blocking.
 export const LONG_LIST_THRESHOLD = 30;
@@ -38,6 +39,11 @@ export function ListInputForm() {
       criterionField.current?.focus();
     }
   }, []);
+
+  // Only links the text rule lets through are worth a request.
+  const rejectedByServer = useRejectedImages(
+    items.map((item) => item.imageUrl ?? '').filter(isAllowedImageUrl),
+  );
 
   const duplicateRows = new Set(
     findDuplicates(items.map((item) => item.text)).flatMap((group) => group.indexes),
@@ -90,6 +96,7 @@ export function ListInputForm() {
           const number = index + 1;
           const imageUrl = item.imageUrl ?? '';
           const badImage = imageUrl !== '' && !isAllowedImageUrl(imageUrl);
+          const unreachableImage = rejectedByServer.has(imageUrl);
           const duplicated = duplicateRows.has(index);
           const duplicateNoticeId = `duplicate-notice-${item.id}`;
           const imageNoticeId = `image-notice-${item.id}`;
@@ -111,7 +118,7 @@ export function ListInputForm() {
                 className={styles.image}
                 value={imageUrl}
                 aria-label={t('form.imageUrlLabel', { number })}
-                aria-describedby={badImage ? imageNoticeId : undefined}
+                aria-describedby={badImage || unreachableImage ? imageNoticeId : undefined}
                 placeholder={t('form.imageUrlPlaceholder')}
                 onChange={(event) => updateItemImageUrl(item.id, event.target.value)}
               />
@@ -128,9 +135,9 @@ export function ListInputForm() {
                   {t('form.duplicateFlag')}
                 </span>
               )}
-              {badImage && (
+              {(badImage || unreachableImage) && (
                 <span id={imageNoticeId} className={styles.flag}>
-                  {t('form.imageUrlRejected')}
+                  {badImage ? t('form.imageUrlRejected') : t('form.imageUrlUnreachable')}
                 </span>
               )}
             </li>

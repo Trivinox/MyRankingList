@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import type { Locator, Page } from '@playwright/test';
 
 const criterion = 'Which fruit do you like more?';

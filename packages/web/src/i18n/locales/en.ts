@@ -22,6 +22,7 @@ export const en = {
     imageUrlLabel: 'Image URL for item {{number}}',
     imageUrlPlaceholder: 'https://example.com/photo.jpg',
     imageUrlRejected: 'This link will not be shown as an image.',
+    imageUrlUnreachable: 'This link did not answer with an image when it was checked.',
     addItem: 'Add item',
     removeItem: 'Remove item {{number}}',
     duplicateFlag: 'Repeated',

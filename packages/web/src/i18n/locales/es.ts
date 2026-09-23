@@ -26,6 +26,7 @@ export const es: typeof en = {
     imageUrlLabel: 'URL de imagen del elemento {{number}}',
     imageUrlPlaceholder: 'https://ejemplo.com/foto.jpg',
     imageUrlRejected: 'Este enlace no se mostrará como imagen.',
+    imageUrlUnreachable: 'Este enlace no respondió con una imagen al comprobarlo.',
     addItem: 'Añadir elemento',
     removeItem: 'Quitar el elemento {{number}}',
     duplicateFlag: 'Repetido',
