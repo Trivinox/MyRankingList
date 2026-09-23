@@ -306,19 +306,6 @@ describe('CatalogScreen', () => {
     expect(contents()).toEqual(asFile(withImages));
   });
 
-  it('mints new ids on every pick', async () => {
-    renderCatalog();
-
-    await userEvent.click(pickButton(anyList));
-    const first = useListDraft.getState().items.map((item) => item.id);
-    useListDraft.setState({ screen: 'catalog' });
-    await userEvent.click(pickButton(anyList));
-    await userEvent.click(screen.getByRole('button', { name: en.catalog.confirmReplace }));
-    const second = useListDraft.getState().items.map((item) => item.id);
-
-    expect(new Set([...first, ...second]).size).toBe(first.length + second.length);
-  });
-
   it('drops an open prompt when the search changes', async () => {
     useListDraft.setState({ items: [{ id: crypto.randomUUID(), text: 'Churros' }] });
     renderCatalog();

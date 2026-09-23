@@ -215,6 +215,30 @@ describe('ListInputForm', () => {
     expect(document.activeElement).toBe(document.body);
   });
 
+  // A picked list turns into ordinary rows, so the form holds it to the same
+  // rules as one typed by hand.
+  it('checks a picked list the way it checks a typed one', async () => {
+    useListDraft
+      .getState()
+      .seedItems([
+        { text: 'Apple', imageUrl: 'http://example.com/apple.jpg' },
+        { text: 'Banana' },
+        { text: 'Cherry' },
+      ]);
+    useListDraft.setState({ criterion: 'Which one do you like more?' });
+    renderForm();
+
+    expect(screen.getByText(en.form.imageUrlRejected)).toBeInTheDocument();
+
+    const second = screen.getByLabelText('Item 2');
+    await userEvent.clear(second);
+    await userEvent.type(second, 'apple');
+    expect(screen.getAllByText(en.form.duplicateFlag)).toHaveLength(2);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove item 3' }));
+    expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
+  });
+
   it('opens the catalog', async () => {
     renderForm();
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Announcer } from './components/Announcer.tsx';
@@ -28,7 +29,17 @@ function App() {
   // For a message sent as the screen changes under it. A region that arrives
   // with the new screen is already holding its text when it shows up, and a
   // screen reader only reads a region it has seen change.
-  const { announcement, say } = useAnnouncer();
+  const { announcement, say, clear } = useAnnouncer();
+  // What it says is about the catalog and the form, the only two screens it
+  // is kept on. The sorting screen has a region of its own, and a stale "copied"
+  // there would be one more thing to trip over while reading the page.
+  const announcing = screen === 'catalog' || screen === 'list-input';
+
+  useEffect(() => {
+    if (!announcing) {
+      clear();
+    }
+  }, [announcing, clear]);
 
   return (
     <div className={widths[screen]}>
@@ -52,7 +63,7 @@ function App() {
         {screen === 'sorting' && <SortingScreen />}
         {screen === 'result' && <ResultScreen />}
       </MotionConfig>
-      <Announcer announcement={announcement} />
+      {announcing && <Announcer announcement={announcement} />}
     </div>
   );
 }

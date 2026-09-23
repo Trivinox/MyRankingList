@@ -88,9 +88,11 @@ describe('App', () => {
   });
 
   // Read out of the catalog rather than named, so rewriting the content does
-  // not rewrite the test.
+  // not rewrite the test. A list with images, so the links are checked too.
   it('goes from the form to the catalog and back with a list to sort', async () => {
-    const [list] = loadCatalog('en')[0].lists;
+    const list = loadCatalog('en')
+      .flatMap((category) => category.lists)
+      .find((candidate) => candidate.items.some((item) => item.imageUrl))!;
     renderApp();
 
     await userEvent.click(screen.getByRole('button', { name: en.catalog.browse }));
@@ -104,11 +106,21 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: en.form.continue })).toBeDisabled();
     for (const [index, item] of list.items.entries()) {
       expect(screen.getByRole('textbox', { name: `Item ${index + 1}` })).toHaveValue(item.text);
+      expect(screen.getByRole('textbox', { name: `Image URL for item ${index + 1}` })).toHaveValue(
+        item.imageUrl ?? '',
+      );
     }
     expect(screen.getByRole('status')).toHaveTextContent(list.title);
 
     await userEvent.type(criterion, 'Which one first?');
     await userEvent.click(screen.getByRole('button', { name: en.form.continue }));
+
+    // The sorting screen's own region is the only one of ours left, next to the
+    // one dnd-kit always adds, and neither has heard about the copy.
+    expect(document.querySelectorAll('[data-announcer]')).toHaveLength(1);
+    for (const region of screen.getAllByRole('status')) {
+      expect(region).not.toHaveTextContent(list.title);
+    }
 
     for (let placed = 1; placed < list.items.length; placed++) {
       await userEvent.click(screen.getByRole('button', { name: 'Put it at position 1' }));
@@ -119,5 +131,9 @@ describe('App', () => {
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(
       list.items.length,
     );
+
+    await userEvent.click(screen.getByRole('button', { name: en.result.newList }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
   });
 });
