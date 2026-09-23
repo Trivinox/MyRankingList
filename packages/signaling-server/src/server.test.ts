@@ -138,6 +138,14 @@ describe('POST /rooms', () => {
     expect(await (await lookup(base, 'MN72')).json()).toEqual({ peerId: second.host.id });
   });
 
+  it('answers 503 when no free code turns up', async () => {
+    // Every draw spells AAAA, so once one host holds it there is nothing left.
+    const { port, base } = await start({ pick: () => 0 });
+    await hostRoom(port, base);
+    const second = await connect(port);
+    expect((await openRoom(base, second.id)).status).toBe(503);
+  });
+
   it('refuses a peer ID that is not connected', async () => {
     const { base } = await start();
     expect((await openRoom(base, randomUUID())).status).toBe(409);
