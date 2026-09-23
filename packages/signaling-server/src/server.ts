@@ -63,7 +63,7 @@ export function createSignalingServer({ allowedOrigin, proxies, pick, now }: Sig
 
   app.use('/rooms', allowOrigin(allowedOrigin), express.json());
 
-  // Only a connected peer may hold a code, so no code points at nobody.
+  // A code has to lead to someone: only a peer connected right now may hold one.
   app.post('/rooms', (req, res) => {
     const peerId = req.body?.peerId;
     if (typeof peerId !== 'string' || !connected.has(peerId)) return res.sendStatus(409);
@@ -75,7 +75,7 @@ export function createSignalingServer({ allowedOrigin, proxies, pick, now }: Sig
 
   app.get('/rooms/:code', (req, res) => {
     const ip = req.ip ?? '';
-    // A blocked address is refused even with a real code, so it learns nothing.
+    // Checked before the lookup. A blocked address learns nothing, not even from a real code.
     const wait = misses.blockedFor(ip);
     if (wait > 0) {
       res.set('Retry-After', String(Math.ceil(wait / 1000)));
@@ -100,8 +100,8 @@ export function createSignalingServer({ allowedOrigin, proxies, pick, now }: Sig
       });
     },
 
-    // The WebSockets have left the HTTP server's hands, so close() alone would
-    // wait on them forever.
+    // An upgraded WebSocket is no longer the HTTP server's to close, and close()
+    // alone would wait on it forever.
     close() {
       for (const client of connected.values()) client.getSocket()?.terminate();
       return new Promise<void>((resolve, reject) => {

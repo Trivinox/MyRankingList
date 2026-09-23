@@ -36,7 +36,7 @@ async function connect(port: number) {
     send(message: Omit<Message, 'src'>) {
       socket.send(JSON.stringify(message));
     },
-    // Messages arrive in order but not on cue, so wait for the one wanted.
+    // Messages arrive in order but not on cue. Wait for the one wanted instead of sleeping.
     receive(type: string) {
       return vi.waitFor(() => {
         const index = inbox.findIndex((message) => message.type === type);
@@ -139,7 +139,7 @@ describe('POST /rooms', () => {
   });
 
   it('answers 503 when no free code turns up', async () => {
-    // Every draw spells AAAA, so once one host holds it there is nothing left.
+    // Every draw spells AAAA. Once one host holds it, there is nothing left to give.
     const { port, base } = await start({ pick: () => 0 });
     await hostRoom(port, base);
     const second = await connect(port);
