@@ -72,7 +72,7 @@ Inside `packages/signaling-server`:
 
 ## CI
 
-GitHub Actions runs the format check, lint, type-check, the test suite and the build on every pull request. A second job runs alongside it with the Playwright suite: one test of the whole solo flow, from the form to the result and back into sorting, in desktop Chrome and in a Pixel 7 emulation where every placement is a tap. It has no retries, so a flaky run shows up as a failure, and when it fails the HTML report with the trace is attached to the run.
+GitHub Actions runs the format check, lint, type-check, the test suite and the build on every pull request. A second job runs alongside it with the Playwright suite, in desktop Chrome and in a Pixel 7 emulation where every placement is a tap. Two flows are walked from the form to the result: one typed by hand, with a tie, that goes back into sorting, and one picked from the catalog, edited and sorted. A third spec checks the Content Security Policy header, and every test fails if the policy blocked anything while it ran. There are no retries, so a flaky run shows up as a failure, and when it fails the HTML report with the trace is attached to the run.
 
 ## Deployment
 
