@@ -27,6 +27,11 @@ describe('parseGuestMessage', () => {
     expect(parseGuestMessage({ type: 'join', nickname: `${longest}a` })).toBeNull();
   });
 
+  it('refuses a blank nickname', () => {
+    expect(parseGuestMessage({ type: 'join', nickname: '' })).toBeNull();
+    expect(parseGuestMessage({ type: 'join', nickname: ' \t ' })).toBeNull();
+  });
+
   it.each([
     ['a join with no nickname', { type: 'join' }],
     ['a nickname that is not text', { type: 'join', nickname: 7 }],

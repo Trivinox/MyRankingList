@@ -36,11 +36,14 @@ function readParticipants(value: unknown): Participant[] | null {
   return participants;
 }
 
-// The form holds the nickname to the limit, so a longer one was not typed there.
+// The form sends neither a blank nickname nor one over the limit. Dropping
+// both here leaves a full room as the only refusal the host has to answer.
 export function parseGuestMessage(data: unknown): GuestMessage | null {
   if (!isRecord(data) || data.type !== 'join') return null;
   const { nickname } = data;
-  if (typeof nickname !== 'string' || nickname.trim().length > NICKNAME_LIMIT) return null;
+  if (typeof nickname !== 'string') return null;
+  const length = nickname.trim().length;
+  if (length === 0 || length > NICKNAME_LIMIT) return null;
   return { type: 'join', nickname };
 }
 
