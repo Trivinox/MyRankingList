@@ -36,6 +36,20 @@ export const es: typeof en = {
     criterionNotice: 'Di con qué criterio los comparas para empezar a ordenar.',
     continue: 'Continuar',
   },
+  catalog: {
+    heading: 'Listas preparadas',
+    browse: 'Ver listas preparadas',
+    searchLabel: 'Buscar en el catálogo',
+    searchPlaceholder: 'Un título, o algo que esté en la lista',
+    resultsLabel: 'Listas que coinciden',
+    noResults:
+      'En el catálogo no hay nada que diga eso. Prueba con otra palabra, o escribe tu lista.',
+    empty: 'Todavía no hay listas preparadas en este idioma.',
+    itemCount_one: '{{count}} elemento',
+    itemCount_other: '{{count}} elementos',
+    hasImages: 'Con imágenes',
+    back: 'Volver a mi lista',
+  },
   sorting: {
     listLabel: 'Tu lista por ahora',
     poolHint: 'Añádelo a la lista',

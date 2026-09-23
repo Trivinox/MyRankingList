@@ -137,9 +137,14 @@ export function ListInputForm() {
         })}
       </ol>
 
-      <button type="button" className={styles.add} onClick={addItem}>
-        {t('form.addItem')}
-      </button>
+      <div className={styles.rowActions}>
+        <button type="button" className={styles.add} onClick={addItem}>
+          {t('form.addItem')}
+        </button>
+        <button type="button" className={styles.browse} onClick={() => setScreen('catalog')}>
+          {t('catalog.browse')}
+        </button>
+      </div>
 
       {duplicateRows.size > 0 && <p className={styles.notice}>{t('form.duplicateNotice')}</p>}
 
