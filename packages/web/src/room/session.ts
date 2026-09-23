@@ -150,8 +150,13 @@ export async function joinRoom(code: string, nickname: string) {
 
   const channel = guest.connect(found.peerId, { serialization: 'json', reliable: true });
   let admitted = false;
+  let gaveUp = false;
 
+  // Destroying the Peer closes the channel on the spot, and its close handler
+  // lands back here before this call is done. The first reason is the one kept.
   const giveUp = (kind: 'full' | 'unreachable') => {
+    if (gaveUp) return;
+    gaveUp = true;
     clearTimeout(timer);
     guest.destroy();
     if (mine !== attempt) return;
