@@ -158,9 +158,20 @@ export function ListInputForm() {
       {duplicateRows.size > 0 && <p className={styles.notice}>{t('form.duplicateNotice')}</p>}
 
       <div className={styles.footer}>
-        <button type="submit" className={styles.continue} disabled={!ready}>
-          {t('form.continue')}
-        </button>
+        <div className={styles.buttons}>
+          <button type="submit" className={styles.continue} disabled={!ready}>
+            {t('form.continue')}
+          </button>
+          {/* A room sorts the same list, so it asks for the same things. */}
+          <button
+            type="button"
+            className={styles.room}
+            disabled={!ready}
+            onClick={() => setScreen('room-create')}
+          >
+            {t('room.create')}
+          </button>
+        </div>
         {!ready && (
           <p className={styles.notice}>
             {itemCount < MIN_ITEMS

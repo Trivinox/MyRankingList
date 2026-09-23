@@ -344,6 +344,32 @@ describe('ListInputForm', () => {
     });
   });
 
+  // The same gate as continue, checked on both ways of failing it.
+  it('keeps create room shut until continue would open', async () => {
+    renderForm();
+    const createRoom = screen.getByRole('button', { name: en.room.create });
+
+    await userEvent.type(screen.getByLabelText(en.form.criterionLabel), 'Which one is better?');
+    await userEvent.type(screen.getByLabelText('Item 1'), 'Alien');
+    await userEvent.type(screen.getByLabelText('Item 2'), 'The Thing');
+    expect(createRoom).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText('Item 3'), 'Blade Runner');
+    expect(createRoom).toBeEnabled();
+
+    await userEvent.clear(screen.getByLabelText(en.form.criterionLabel));
+    expect(createRoom).toBeDisabled();
+  });
+
+  it('opens the room creation screen', async () => {
+    useListDraft.setState({ items: filledRows(3), criterion: 'Which one do you like more?' });
+    renderForm();
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.create }));
+
+    expect(useScreen.getState().screen).toBe('room-create');
+  });
+
   it('opens the catalog', async () => {
     renderForm();
 

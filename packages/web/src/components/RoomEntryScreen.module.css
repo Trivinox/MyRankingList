@@ -1,0 +1,93 @@
+/* Spacing and colours are literals until the design system lands. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 1.5rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22rem;
+}
+
+.field input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d5d5de;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Typed in any case and read in capitals, the way the lobby shows it. */
+.code {
+  width: 8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.flag {
+  color: #8a5b00;
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.submit,
+.back {
+  padding: 0.55rem 1.4rem;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.submit {
+  border: none;
+  background: #33333f;
+  color: #fff;
+}
+
+.submit:disabled {
+  background: #c9c9d1;
+  cursor: not-allowed;
+}
+
+.back {
+  border: 1px solid #b8b8c2;
+  background: none;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.status,
+.error {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.status {
+  color: #6b6b76;
+}
+
+.error {
+  color: #b3261e;
+}
