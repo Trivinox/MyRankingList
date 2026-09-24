@@ -114,7 +114,7 @@ export const es: typeof en = {
     rateLimited_one: 'Demasiados códigos incorrectos. Vuelve a intentarlo en {{count}} minuto.',
     rateLimited_other: 'Demasiados códigos incorrectos. Vuelve a intentarlo en {{count}} minutos.',
     full: 'Esa sala está llena.',
-    started: 'En esa sala ya han empezado a ordenar. Ya no se puede entrar.',
+    started: 'En esa sala ya han empezado a ordenar, así que no se puede entrar.',
     unreachable: 'No se pudo llegar a la sala. Revisa tu conexión y vuelve a intentarlo.',
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
     placed: '{{nickname}}, {{placed}} de {{total}} colocados',

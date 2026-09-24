@@ -28,6 +28,8 @@ export function ParticipantAvatar({
 }: ParticipantAvatarProps) {
   const { t } = useTranslation();
   const { nickname, progress, isCreator } = participant;
+  // The count comes from the host's browser, and the parser only checks it is
+  // a whole number.
   const fill = total ? Math.min(progress / total, 1) : 0;
   // Array.from so an initial made of two UTF-16 units, an emoji say, is not
   // cut in half.

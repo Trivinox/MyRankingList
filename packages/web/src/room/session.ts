@@ -260,8 +260,8 @@ export async function joinRoom(code: string, nickname: string) {
     } else if (message.type === 'participants' && admitted) {
       useRoom.getState().setParticipants(message.participants);
     } else if (message.type === 'start' && admitted && useRoom.getState().status === 'lobby') {
-      // The placement draws its own shuffle, so no two people get the list
-      // in the same order.
+      // The placement draws its own shuffle, so each person gets an order of
+      // their own.
       usePlacement.getState().start(message.items, message.criterion);
       useRoom.getState().startSorting(message.items);
       follow((placed) => void channel.send({ type: 'progress', placed } satisfies GuestMessage));
