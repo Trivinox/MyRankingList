@@ -92,3 +92,56 @@ test('people join a room by code and by link and see each other come and go', as
   await expectNoViolations(other);
   await other.context().close();
 });
+
+test('the creator starts the room and everyone sees how far along the others are', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const start = ana.getByRole('button', { name: 'Start' });
+  await expect(start).toBeDisabled();
+
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await expect(juan.getByText('Waiting for the creator to start.')).toBeVisible();
+  await expect(juan.getByRole('button', { name: 'Start' })).toHaveCount(0);
+
+  await start.click();
+
+  for (const page of [ana, juan]) {
+    await expect(
+      page.getByRole('heading', { name: 'Which fruit do you like more?' }),
+    ).toBeVisible();
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3');
+  }
+
+  // Wherever the item lands, it is placed, and that is all the others hear.
+  const top = juan.getByRole('button', { name: 'Put it at position 1', exact: true });
+  if (isMobile) {
+    await top.tap();
+  } else {
+    await top.click();
+  }
+  await expect(juan.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
+
+  await expect(ana.getByRole('img', { name: 'Juan, 2 of 3 placed' })).toBeVisible();
+  await expect(ana.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+  await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+
+  const late = await openPerson(browser, testInfo);
+  await late.goto(`/?room=${code}`);
+  await late.getByLabel('Your nickname').fill('Lucía');
+  await late.getByRole('button', { name: 'Join', exact: true }).click();
+  await expect(late.getByRole('alert')).toHaveText(
+    'That room has already started sorting. Nobody else can join it now.',
+  );
+
+  for (const page of [juan, late]) {
+    await expectNoViolations(page);
+    await page.context().close();
+  }
+});
