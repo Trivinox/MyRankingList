@@ -86,25 +86,21 @@
 }
 
 .participant {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.7rem;
+  padding: 0.4rem 0.7rem;
   border-radius: 8px;
   background: #f3f3f7;
 }
 
-.nickname {
-  overflow-wrap: anywhere;
+.start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.tag {
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  background: #e0dcf5;
-  color: #4a4a55;
-  font-size: 0.75rem;
+.notice {
+  margin: 0;
+  color: #6b6b76;
+  font-size: 0.9rem;
 }
 
 .confirm {
@@ -123,6 +119,7 @@
   gap: 0.75rem;
 }
 
+.primary,
 .secondary,
 .danger {
   align-self: flex-start;
@@ -130,6 +127,17 @@
   border-radius: 6px;
   font: inherit;
   cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: #33333f;
+  color: #fff;
+}
+
+.primary:disabled {
+  background: #c9c9d1;
+  cursor: default;
 }
 
 .secondary {

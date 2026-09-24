@@ -5,14 +5,16 @@ import type { Participant } from '../room/hostRoom.ts';
 export type Role = 'host' | 'guest';
 
 // Idle is no room at all, the state before creating or joining and after
-// leaving. Closed is a room that ended under a guest, who still has to see it
-// happened before going back.
-export type RoomStatus = 'idle' | 'connecting' | 'lobby' | 'closed';
+// leaving. Sorting starts for everyone at once, when the creator says so.
+// Closed is a room that ended under a guest, who still has to see it happened
+// before going back.
+export type RoomStatus = 'idle' | 'connecting' | 'lobby' | 'sorting' | 'closed';
 
 export type RoomError =
   | { kind: 'not-found' }
   | { kind: 'rate-limited'; retryAfter: number }
   | { kind: 'full' }
+  | { kind: 'started' }
   | { kind: 'unreachable' };
 
 interface Room {
@@ -35,6 +37,7 @@ interface Room {
     items?: Item[];
   }) => void;
   setParticipants: (participants: Participant[]) => void;
+  startSorting: (items: Item[]) => void;
   fail: (error: RoomError) => void;
   close: () => void;
   leave: () => void;
@@ -62,6 +65,8 @@ export const useRoom = create<Room>((set) => ({
   enterLobby: (room) => set({ ...room, status: 'lobby', error: null }),
 
   setParticipants: (participants) => set({ participants }),
+
+  startSorting: (items) => set({ items, status: 'sorting' }),
 
   // A failed attempt leaves no room behind, only the reason on the entry screen.
   fail: (error) => set({ ...empty, error }),

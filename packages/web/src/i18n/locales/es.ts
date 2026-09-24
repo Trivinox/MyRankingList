@@ -87,7 +87,9 @@ export const es: typeof en = {
       outside: 'Lo has soltado fuera de la lista. La lista sigue igual.',
       cancelled: 'Arrastre cancelado. La lista sigue igual.',
       allPlaced: 'Ya están todos colocados. Aún puedes moverlos, o pulsa Ver resultado.',
+      allPlacedInRoom: 'Ya están todos colocados. Aún puedes moverlos.',
     },
+    allPlacedInRoom: 'Ya está todo colocado. Aún puedes cambiar cosas de sitio.',
   },
   result: {
     title: 'Tu lista final',
@@ -112,8 +114,11 @@ export const es: typeof en = {
     rateLimited_one: 'Demasiados códigos incorrectos. Vuelve a intentarlo en {{count}} minuto.',
     rateLimited_other: 'Demasiados códigos incorrectos. Vuelve a intentarlo en {{count}} minutos.',
     full: 'Esa sala está llena.',
+    started: 'En esa sala ya han empezado a ordenar. Ya no se puede entrar.',
     unreachable: 'No se pudo llegar a la sala. Revisa tu conexión y vuelve a intentarlo.',
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
+    placed: '{{nickname}}, {{placed}} de {{total}} colocados',
+    everyone: 'Todos los de la sala',
     lobby: {
       code: 'Código de la sala',
       copyLink: 'Copiar enlace',
@@ -131,6 +136,9 @@ export const es: typeof en = {
       confirmYes: 'Cerrarla',
       confirmNo: 'Quedarme',
       closed: 'La sala se cerró.',
+      start: 'Empezar',
+      needsSomeone: 'Tiene que entrar alguien más antes de poder empezar.',
+      waiting: 'Esperando a que quien creó la sala empiece.',
     },
   },
 };

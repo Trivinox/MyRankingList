@@ -1,0 +1,98 @@
+.avatar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  min-width: 0;
+}
+
+/* The ring is drawn over the outer edge and the tinted circle sits inside it,
+   so an empty ring still leaves the initial on its colour. */
+.badge {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* The stroke starts at three o'clock; turned so it fills from the top. */
+  transform: rotate(-90deg);
+}
+
+.track,
+.fill {
+  fill: none;
+  stroke-width: 3;
+}
+
+.track {
+  stroke: #e6e6ee;
+}
+
+.fill {
+  stroke: #7e6bcc;
+  transition: stroke-dasharray 0.35s ease-out;
+}
+
+.initial {
+  position: absolute;
+  inset: 0.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tint);
+  color: #33333f;
+  font-weight: 600;
+}
+
+.nickname {
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: #e0dcf5;
+  color: #4a4a55;
+  font-size: 0.75rem;
+}
+
+/* A column per person, for a row of them side by side. Long names are cut so
+   one person cannot push the others out of the row. */
+.stacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  width: 4.5rem;
+  text-align: center;
+}
+
+.stacked .nickname {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stacked .tag {
+  padding: 0 0.35rem;
+  font-size: 0.65rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

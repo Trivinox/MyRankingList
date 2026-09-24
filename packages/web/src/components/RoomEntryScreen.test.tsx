@@ -171,6 +171,15 @@ describe('RoomEntryScreen', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(en.room.full);
     });
 
+    it('says the room has already started', async () => {
+      vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'started' }));
+      renderEntry('join');
+
+      await tryToJoin('AB3K');
+
+      expect(screen.getByRole('alert')).toHaveTextContent(en.room.started);
+    });
+
     it('says the room could not be reached', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'unreachable' }));
       renderEntry('join');

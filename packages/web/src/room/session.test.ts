@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../core/types.ts';
+import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Participant } from './hostRoom.ts';
-import { createRoom, joinRoom, leaveRoom } from './session.ts';
+import { createRoom, joinRoom, leaveRoom, startRoom } from './session.ts';
 import type { FoundRoom, OpenedRoom } from './signaling.ts';
 
 // Stand-ins for peerjs and the signaling client, shaped like the parts the
@@ -122,11 +123,28 @@ const items: Item[] = [
 // Lets the awaits inside the session run up to its next wait on the network.
 const settle = () => vi.waitFor(() => undefined);
 
+// Puts the head of the pool at the top of the list, and returns what the list
+// holds afterwards.
+const placeOne = () => {
+  usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index: 0 });
+  return usePlacement.getState().placement!.rankedSlots;
+};
+
+// Takes the item at the top and puts it at the bottom, which places nothing.
+const reorder = () => {
+  const [top] = usePlacement.getState().placement!.rankedSlots;
+  const slots = usePlacement.getState().placement!.rankedSlots.length;
+  usePlacement
+    .getState()
+    .drop({ from: 'placed', itemId: top.itemIds[0] }, { kind: 'gap', index: slots });
+};
+
 beforeEach(() => {
   peers.length = 0;
   signaling.openRoom.mockReset();
   signaling.findRoom.mockReset();
   signaling.iceServers.mockReset().mockResolvedValue(ICE_SERVERS);
+  usePlacement.setState({ items: [], criterion: '', placement: null });
 });
 
 // The host's Peer only exists once the ICE servers have come back.
@@ -193,7 +211,9 @@ describe('createRoom', () => {
     expect(room.role).toBe('host');
     expect(room.code).toBe('AB3K');
     expect(room.criterion).toBe('Best noodle');
-    expect(room.participants).toEqual([{ id: room.you, nickname: 'Ana', isCreator: true }]);
+    expect(room.participants).toEqual([
+      { id: room.you, nickname: 'Ana', isCreator: true, progress: 0 },
+    ]);
   });
 
   it('keeps a copy of the items, not the draft rows themselves', async () => {
@@ -332,11 +352,120 @@ describe('createRoom', () => {
 
     expect(useRoom.getState()).toMatchObject({ status: 'idle', code: null, error: null });
   });
+  describe('starting', () => {
+    const progressOf = (nickname: string) =>
+      useRoom.getState().participants.find((p) => p.nickname === nickname)?.progress;
+
+    async function startWithJuan() {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      startRoom();
+      return { host, juan, lucia };
+    }
+
+    it('is refused while the creator is alone', async () => {
+      await openRoom();
+
+      startRoom();
+
+      expect(useRoom.getState().status).toBe('lobby');
+      expect(usePlacement.getState().placement).toBeNull();
+    });
+
+    it('sends everyone a copy of the list and starts the host sorting it too', async () => {
+      const { juan, lucia } = await startWithJuan();
+
+      for (const channel of [juan, lucia]) {
+        expect(channel.sent).toContainEqual({ type: 'start', items, criterion: 'Best noodle' });
+      }
+      const room = useRoom.getState();
+      expect(room.status).toBe('sorting');
+      expect(usePlacement.getState()).toMatchObject({ items, criterion: 'Best noodle' });
+      expect(usePlacement.getState().placement?.pendingPool).toHaveLength(2);
+      usePlacement.getState().items.forEach((item, index) => expect(item).not.toBe(items[index]));
+    });
+
+    it('puts everyone at 1 of the list and says so', async () => {
+      const { lucia } = await startWithJuan();
+
+      const { participants } = useRoom.getState();
+      expect(participants.map((p) => p.progress)).toEqual([1, 1, 1]);
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+    });
+
+    it('tells someone who arrives after the start that it has started, and keeps them out', async () => {
+      const { host } = await startWithJuan();
+      const before = useRoom.getState().participants;
+
+      const late = guestJoins(host, 'Late');
+
+      expect(late.sent).toEqual([{ type: 'started' }]);
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('passes on the progress a guest reports to everyone', async () => {
+      const { juan, lucia } = await startWithJuan();
+
+      juan.emit('data', { type: 'progress', placed: 2 });
+
+      expect(progressOf('Juan')).toBe(2);
+      expect(progressOf('Lucía')).toBe(1);
+      const { participants } = useRoom.getState();
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+      expect(juan.sent.at(-1)).toEqual({ type: 'participants', participants });
+    });
+
+    it('ignores progress past the end of the list, and from a channel that never joined', async () => {
+      const { host, juan } = await startWithJuan();
+      const before = useRoom.getState().participants;
+
+      juan.emit('data', { type: 'progress', placed: 4 });
+      host.receive().emit('data', { type: 'progress', placed: 2 });
+
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('ignores progress sent from the lobby', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const before = useRoom.getState().participants;
+
+      juan.emit('data', { type: 'progress', placed: 2 });
+
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('counts what the host places, and not what they move around', async () => {
+      const { juan } = await startWithJuan();
+      const sent = juan.sent.length;
+
+      placeOne();
+      expect(progressOf('Ana')).toBe(2);
+      expect(juan.sent).toHaveLength(sent + 1);
+
+      const before = usePlacement.getState().placement!.rankedSlots;
+      reorder();
+      expect(usePlacement.getState().placement!.rankedSlots).not.toEqual(before);
+      expect(progressOf('Ana')).toBe(2);
+      expect(juan.sent).toHaveLength(sent + 1);
+    });
+
+    it('stops counting once the room is left', async () => {
+      const { juan } = await startWithJuan();
+      leaveRoom();
+      const sent = juan.sent.length;
+
+      placeOne();
+
+      expect(juan.sent).toHaveLength(sent);
+    });
+  });
 });
 
 describe('joinRoom', () => {
-  const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true };
-  const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false };
+  const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 0 };
+  const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 0 };
 
   // Gets as far as the guest's channel to the host, open and with the join sent.
   async function reachHost() {
@@ -496,6 +625,62 @@ describe('joinRoom', () => {
 
     expect(peers).toHaveLength(0);
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: null });
+  });
+
+  describe('once the host starts', () => {
+    const start = { type: 'start', items, criterion: 'Best noodle' };
+
+    it('starts sorting its own shuffle of the list', async () => {
+      const { channel } = await reachLobby();
+
+      channel.emit('data', start);
+
+      expect(useRoom.getState()).toMatchObject({ status: 'sorting', items });
+      expect(usePlacement.getState()).toMatchObject({ items, criterion: 'Best noodle' });
+      expect(usePlacement.getState().placement?.pendingPool).toHaveLength(2);
+    });
+
+    it('reports each item it places, and nothing when one only moves', async () => {
+      const { channel } = await reachLobby();
+      channel.emit('data', start);
+
+      placeOne();
+      expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+
+      const sent = channel.sent.length;
+      reorder();
+      expect(channel.sent).toHaveLength(sent);
+    });
+
+    it('ignores a start that comes before the welcome', async () => {
+      const { channel } = await reachHost();
+
+      channel.emit('data', start);
+
+      expect(useRoom.getState().status).toBe('connecting');
+      expect(usePlacement.getState().placement).toBeNull();
+    });
+
+    it('marks the room closed when the host goes mid-sort, and stops reporting', async () => {
+      const { channel } = await reachLobby();
+      channel.emit('data', start);
+
+      channel.close();
+      const sent = channel.sent.length;
+      placeOne();
+
+      expect(useRoom.getState().status).toBe('closed');
+      expect(channel.sent).toHaveLength(sent);
+    });
+  });
+
+  it('is told the room has already started, and lets go of the Peer', async () => {
+    const { guest, channel } = await reachHost();
+
+    channel.emit('data', { type: 'started' });
+
+    expect(guest.destroyed).toBe(true);
+    expect(useRoom.getState()).toMatchObject({ status: 'idle', error: { kind: 'started' } });
   });
 
   it('closes its channel when the tab is closed', async () => {

@@ -154,7 +154,7 @@ describe('App', () => {
         code: 'AB3K',
         you: 'a',
         criterion,
-        participants: [{ id: 'a', nickname, isCreator: true }],
+        participants: [{ id: 'a', nickname, isCreator: true, progress: 0 }],
         items,
       });
     });
