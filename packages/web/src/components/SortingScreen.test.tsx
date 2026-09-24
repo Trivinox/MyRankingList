@@ -10,6 +10,7 @@ import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { SortingScreen } from './SortingScreen.tsx';
@@ -131,6 +132,7 @@ const renderScreen = () =>
 beforeEach(() => {
   usePlacement.setState({ items: [], criterion: '', placement: null });
   useScreen.setState({ screen: 'list-input' });
+  useRoom.getState().leave();
 });
 
 describe('SortingScreen', () => {
@@ -1810,5 +1812,92 @@ describe('on a phone-wide screen', () => {
 
     expect(counts).toEqual([1, 1, 1]);
     expect(logged).toBe(0);
+  });
+});
+
+describe('in a room', () => {
+  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
+  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1 };
+
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+    useScreen.setState({ screen: 'sorting' });
+    useRoom.setState({
+      role: 'guest',
+      you: 'j',
+      participants: [ana, juan],
+      status: 'sorting',
+      items,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const fillUp = () => {
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index < items.length; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+  };
+
+  it('shows how far along everyone is', () => {
+    renderScreen();
+
+    const strip = screen.getByRole('list', { name: en.room.everyone });
+    expect(within(strip).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('offers no result of its own once the pool is empty, only that the list can still change', () => {
+    fillUp();
+    renderScreen();
+
+    expect(screen.queryByRole('button', { name: en.sorting.seeResult })).not.toBeInTheDocument();
+    expect(screen.getByText(en.sorting.allPlacedInRoom)).toBeInTheDocument();
+  });
+
+  it('keeps saying where a held item goes while the pool is empty', async () => {
+    fillUp();
+    renderScreen();
+    const [first] = started().rankedSlots[0].itemIds;
+
+    await userEvent.click(screen.getByRole('button', { name: `Move ${textOf(first)}` }));
+
+    expect(
+      screen.getByText(createI18n().t('sorting.select.heldHint', { item: textOf(first) })),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(en.sorting.allPlacedInRoom)).not.toBeInTheDocument();
+  });
+
+  it('does not mention See result when the last item goes in', () => {
+    vi.useFakeTimers();
+    const { drop } = usePlacement.getState();
+    for (let index = 1; index < items.length - 1; index++) {
+      drop({ from: 'pool' }, { kind: 'gap', index });
+    }
+    renderScreen();
+
+    letGo('pool', 'gap:0');
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(announced()).toBe(en.sorting.announce.allPlacedInRoom);
+  });
+
+  it('goes back to the lobby screen, which says so, when the room closes', () => {
+    renderScreen();
+
+    act(() => useRoom.getState().close());
+
+    expect(useScreen.getState().screen).toBe('lobby');
+  });
+
+  it('is not there when sorting alone', () => {
+    useRoom.getState().leave();
+    fillUp();
+    renderScreen();
+
+    expect(screen.queryByRole('list', { name: en.room.everyone })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en.sorting.seeResult })).toBeInTheDocument();
   });
 });

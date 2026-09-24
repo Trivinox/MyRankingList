@@ -35,6 +35,7 @@ import type { RankedSlot } from '../core/types.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
@@ -44,6 +45,7 @@ import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
 import type { DropPreview, Feedback } from './RankedList.tsx';
+import { RoomProgress } from './RoomProgress.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit's stock instructions explain a keyboard drag, and only the pointer
@@ -176,6 +178,8 @@ export function SortingScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, drop } = usePlacement();
   const setScreen = useScreen((state) => state.setScreen);
+  const roomStatus = useRoom((state) => state.status);
+  const inRoom = roomStatus === 'sorting';
   const [dragged, setDragged] = useState<DragSource | null>(null);
   // A placed item picked up with its move button, waiting for the tap that puts
   // it down. Null means a tap places the pool item. Kept here and not in the
@@ -247,6 +251,14 @@ export function SortingScreen() {
   });
 
   useEffect(preload, []);
+
+  // The lobby screen already knows how to tell someone the room is gone and
+  // take them back to the form.
+  useEffect(() => {
+    if (roomStatus === 'closed') {
+      setScreen('lobby');
+    }
+  }, [roomStatus, setScreen]);
 
   // Nothing reaches this screen without a placement behind it, but the store
   // starts empty and the type says so.
@@ -376,7 +388,7 @@ export function SortingScreen() {
     // The pool card is gone after this one, and the button that takes its
     // place is out of sight for someone on the list.
     if (source.from === 'pool' && outcome !== 'rejected' && placement.pendingPool.length === 1) {
-      say(t('sorting.announce.allPlaced'));
+      say(t(inRoom ? 'sorting.announce.allPlacedInRoom' : 'sorting.announce.allPlaced'));
     }
     drop(source, target);
   };
@@ -481,6 +493,8 @@ export function SortingScreen() {
         <ProgressBar placed={placed} total={items.length} />
       </div>
 
+      <RoomProgress />
+
       <DndContext
         sensors={sensors}
         // The gaps are thin strips between the cards, so the drop has to follow
@@ -502,6 +516,7 @@ export function SortingScreen() {
               held={heldItem}
               onRelease={() => release(false)}
               onFinish={() => setScreen('result')}
+              inRoom={inRoom}
               mobile={mobile}
             />
           </aside>
