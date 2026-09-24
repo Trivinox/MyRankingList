@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GOOGLE_STUN } from './iceServers.ts';
 import { ROOM_CODE_ALPHABET } from './roomCode.ts';
 import { MISS_WINDOW_MS, createSignalingServer } from './server.ts';
 import type { SignalingOptions } from './server.ts';
@@ -15,7 +16,12 @@ afterEach(async () => {
 });
 
 async function start(options: Partial<SignalingOptions> = {}) {
-  const server = createSignalingServer({ allowedOrigin: ORIGIN, proxies: 0, ...options });
+  const server = createSignalingServer({
+    allowedOrigin: ORIGIN,
+    proxies: 0,
+    metered: null,
+    ...options,
+  });
   running.push(server);
   const port = await server.listen(0);
   return { port, base: `http://127.0.0.1:${port}` };
@@ -197,6 +203,37 @@ describe('rate limit', () => {
   });
 });
 
+describe('GET /ice-servers', () => {
+  const metered = { domain: 'example.metered.live', apiKey: 'key' };
+  const turn = { urls: 'turn:example.relay.metered.ca:443', username: 'user', credential: 'pass' };
+
+  it('lists Google STUN alone when no Metered key is set', async () => {
+    const { base } = await start();
+    const response = await fetch(`${base}/ice-servers`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ iceServers: [GOOGLE_STUN] });
+  });
+
+  it("adds Metered's TURN servers when the key is set", async () => {
+    const fetcher = vi.fn(async () =>
+      Response.json([{ urls: 'stun:example.relay.metered.ca:80' }, turn]),
+    );
+    const { base } = await start({ metered, fetcher });
+
+    const response = await fetch(`${base}/ice-servers`);
+    expect(await response.json()).toEqual({ iceServers: [GOOGLE_STUN, turn] });
+  });
+
+  it('falls back to STUN when Metered fails', async () => {
+    const fetcher = vi.fn(async () => Response.json({ error: 'Invalid API Key' }, { status: 401 }));
+    const { base } = await start({ metered, fetcher });
+
+    const response = await fetch(`${base}/ice-servers`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ iceServers: [GOOGLE_STUN] });
+  });
+});
+
 describe('CORS', () => {
   it('lets the app read /rooms and passes the preflight for the JSON POST', async () => {
     const { base } = await start();
@@ -218,6 +255,12 @@ describe('CORS', () => {
 
     const miss = await fetch(`${base}/rooms/ZZZZ`, { headers: { Origin: ORIGIN } });
     expect(miss.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+  });
+
+  it('lets the app read /ice-servers', async () => {
+    const { base } = await start();
+    const response = await fetch(`${base}/ice-servers`, { headers: { Origin: ORIGIN } });
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
   });
 
   it("lets the app fetch a peer ID from peer's own route, and the ID is a UUID", async () => {
