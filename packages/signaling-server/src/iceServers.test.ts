@@ -3,7 +3,7 @@ import { CACHE_MS, GOOGLE_STUN, createIceServers } from './iceServers.ts';
 
 const metered = { domain: 'example.metered.live', apiKey: 'key/with+symbols' };
 
-// Metered's answer as its documentation shows it, STUN entry included.
+// Shaped like the answer in Metered's documentation, STUN entry included.
 const METERED_ANSWER = [
   { urls: 'stun:example.relay.metered.ca:80' },
   { urls: 'turn:example.relay.metered.ca:80', username: 'user', credential: 'pass' },

@@ -104,8 +104,8 @@ export function createSignalingServer({
     res.json({ peerId });
   });
 
-  // Asked before every Peer is created. The TURN credentials in it are why the
-  // list comes from here: the Metered key stays on this server.
+  // Served from here and not from the app so the Metered key never leaves this
+  // server. The TURN credentials it answers with are readable by anyone.
   app.use('/ice-servers', allowOrigin(allowedOrigin));
   app.get('/ice-servers', async (_req, res) => {
     res.json({ iceServers: await iceServers() });

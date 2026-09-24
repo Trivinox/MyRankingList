@@ -7,8 +7,6 @@ export type FoundRoom =
   | { kind: 'rate-limited'; retryAfter: number }
   | { kind: 'unreachable' };
 
-// Enough to find the other side on most networks. TURN is what the server adds
-// when it has credentials, and without it a room can still work.
 export const GOOGLE_STUN: RTCIceServer = { urls: 'stun:stun.l.google.com:19302' };
 
 function isIceServer(entry: unknown): entry is RTCIceServer {
