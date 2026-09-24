@@ -151,7 +151,7 @@ describe('createRoom', () => {
     return lastPeer();
   }
 
-  // Join as a guest and hand back what the host sent that channel.
+  // A guest's channel, with its join already sent.
   function guestJoins(host: InstanceType<typeof fakes.FakePeer>, nickname: string) {
     const channel = host.receive();
     channel.emit('data', { type: 'join', nickname });
@@ -389,9 +389,9 @@ describe('joinRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'lobby', participants: [ana, juan] });
   });
 
-  // Destroying the Peer closes the channel, and its close handler runs before
-  // the give-up that caused it has finished. Without a guard the store is told
-  // unreachable in between, and the end state alone would not show it.
+  // The close handler fires while the give-up that set it off is still
+  // running. Without a guard the store hears unreachable in between, which the
+  // final state alone would hide.
   it('says the room is full, and only that', async () => {
     const { guest, channel } = await reachHost();
     const written: (string | undefined)[] = [];

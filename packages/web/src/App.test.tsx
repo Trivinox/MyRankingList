@@ -13,7 +13,7 @@ import { useRoom } from './state/roomStore.ts';
 import { useScreen } from './state/screenStore.ts';
 import App from './App.tsx';
 
-// Only the room flow reaches it. The session's real work is in the E2E.
+// Only the room flow reaches it, and the session has a suite of its own.
 vi.mock('./room/session.ts', () => ({
   createRoom: vi.fn(),
   joinRoom: vi.fn(),

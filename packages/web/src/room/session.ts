@@ -207,8 +207,8 @@ export async function joinRoom(code: string, nickname: string) {
   });
 }
 
-// Destroying the Peer closes every channel it holds: a host's guests see the
-// room close, and a guest's host drops them from the list.
+// Every channel goes with the Peer: a host's guests see the room close, and a
+// guest's host drops them from the list.
 export function leaveRoom() {
   attempt++;
   peer?.destroy();

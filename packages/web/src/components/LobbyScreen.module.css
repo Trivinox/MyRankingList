@@ -1,4 +1,4 @@
-/* Spacing and colours are literals until the design system lands. */
+/* Literal values here too, waiting on the design system. */
 .screen {
   display: flex;
   flex-direction: column;
@@ -18,7 +18,7 @@
   gap: 0.4rem 0.75rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid #e6e6ee;
-  /* Matches the header: content has to be hidden as it passes underneath. */
+  /* Painted, or the participants would show through it on their way up. */
   background: #fff;
 }
 

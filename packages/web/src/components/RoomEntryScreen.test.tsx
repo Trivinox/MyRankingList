@@ -12,8 +12,8 @@ import type { RoomError } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { RoomEntryScreen } from './RoomEntryScreen.tsx';
 
-// The session is peerjs and the network. The E2E runs it for real; here the
-// store is moved by hand to whatever the session would have written.
+// The session is tested on its own and in the E2E. Here the store is moved by
+// hand to whatever the session would have written.
 vi.mock('../room/session.ts', () => ({
   createRoom: vi.fn(),
   joinRoom: vi.fn(),
