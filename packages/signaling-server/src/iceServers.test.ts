@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CACHE_MS, GOOGLE_STUN, createIceServers } from './iceServers.ts';
 
 const metered = { domain: 'example.metered.live', apiKey: 'key/with+symbols' };
@@ -20,6 +20,10 @@ function answering(...responses: (Response | Error)[]) {
     return next.clone();
   });
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('createIceServers', () => {
   it('gives STUN alone without Metered, and asks no one', async () => {
@@ -77,6 +81,26 @@ describe('createIceServers', () => {
 
     expect(await iceServers()).toEqual([GOOGLE_STUN]);
     expect(await iceServers()).toEqual([GOOGLE_STUN, ...TURN]);
+  });
+
+  // Waiting out the real 5 seconds would slow the suite, so the timeout's
+  // signal is one the test fires itself.
+  it('gives up on a Metered that hangs after 5 seconds, and falls back to STUN', async () => {
+    const timeout = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+    const fetcher = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+        }),
+    );
+    const iceServers = createIceServers({ metered, fetcher });
+
+    const servers = iceServers();
+    expect(AbortSignal.timeout).toHaveBeenCalledWith(5000);
+    timeout.abort(new DOMException('The operation timed out', 'TimeoutError'));
+
+    expect(await servers).toEqual([GOOGLE_STUN]);
   });
 
   it('drops an entry without its credentials', async () => {

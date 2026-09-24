@@ -483,6 +483,21 @@ describe('joinRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: null });
   });
 
+  it('makes no Peer when left while the ICE servers are on their way', async () => {
+    signaling.findRoom.mockResolvedValue({ kind: 'found', peerId: 'host-peer' });
+    let answer: (servers: RTCIceServer[]) => void = () => {};
+    signaling.iceServers.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const done = joinRoom('AB3K', 'Juan');
+    await vi.waitFor(() => expect(signaling.iceServers).toHaveBeenCalled());
+
+    leaveRoom();
+    answer(ICE_SERVERS);
+    await done;
+
+    expect(peers).toHaveLength(0);
+    expect(useRoom.getState()).toMatchObject({ status: 'idle', error: null });
+  });
+
   it('closes its channel when the tab is closed', async () => {
     const { guest, channel } = await reachLobby();
 
