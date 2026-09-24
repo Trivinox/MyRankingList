@@ -6,6 +6,7 @@ import type { RequestHandler } from 'express';
 import { ExpressPeerServer } from 'peer';
 import type { IClient } from 'peer';
 import type { Config } from './config.ts';
+import { createIceServers } from './iceServers.ts';
 import { createRateLimiter } from './rateLimit.ts';
 import { normalizeRoomCode } from './roomCode.ts';
 import type { Pick } from './roomCode.ts';
@@ -19,6 +20,8 @@ export const MISS_WINDOW_MS = 5 * 60 * 1000;
 export type SignalingOptions = Omit<Config, 'port'> & {
   pick?: Pick;
   now?: () => number;
+  // Stands in for Metered in the tests.
+  fetcher?: typeof fetch;
 };
 
 // The app runs on Vercel and calls this server from another origin.
@@ -35,7 +38,14 @@ function allowOrigin(origin: string): RequestHandler {
   };
 }
 
-export function createSignalingServer({ allowedOrigin, proxies, pick, now }: SignalingOptions) {
+export function createSignalingServer({
+  allowedOrigin,
+  proxies,
+  metered,
+  pick,
+  now,
+  fetcher,
+}: SignalingOptions) {
   const app = express();
   const server = createServer(app);
   // peer never reads the client's address, so it gets no `proxied` of its own
@@ -45,6 +55,7 @@ export function createSignalingServer({ allowedOrigin, proxies, pick, now }: Sig
   const rooms = new RoomRegistry(pick);
   const misses = createRateLimiter({ limit: MAX_MISSES, windowMs: MISS_WINDOW_MS, now });
   const connected = new Map<string, IClient>();
+  const iceServers = createIceServers({ metered, fetcher, now });
 
   const peerServer = ExpressPeerServer(server, {
     // A room code only leads to its host's ID, so that ID must be impossible to
@@ -91,6 +102,13 @@ export function createSignalingServer({ allowedOrigin, proxies, pick, now }: Sig
       return res.sendStatus(404);
     }
     res.json({ peerId });
+  });
+
+  // Served from here and not from the app so the Metered key never leaves this
+  // server. The TURN credentials it answers with are readable by anyone.
+  app.use('/ice-servers', allowOrigin(allowedOrigin));
+  app.get('/ice-servers', async (_req, res) => {
+    res.json({ iceServers: await iceServers() });
   });
 
   app.use(peerServer);

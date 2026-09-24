@@ -7,6 +7,18 @@ export type FoundRoom =
   | { kind: 'rate-limited'; retryAfter: number }
   | { kind: 'unreachable' };
 
+export const GOOGLE_STUN: RTCIceServer = { urls: 'stun:stun.l.google.com:19302' };
+
+function isIceServer(entry: unknown): entry is RTCIceServer {
+  if (typeof entry !== 'object' || entry === null) return false;
+  const { urls, username, credential } = entry as Record<string, unknown>;
+  return (
+    typeof urls === 'string' &&
+    (username === undefined || typeof username === 'string') &&
+    (credential === undefined || typeof credential === 'string')
+  );
+}
+
 // Anything that is not an answer this server gives counts as not reaching it:
 // a failed request, a proxy's error page, Vite's index.html for a path it does
 // not know.
@@ -57,6 +69,21 @@ export function createSignaling(baseUrl: string, fetcher: typeof fetch = fetch) 
       if (response?.status !== 200) return { kind: 'unreachable' };
       const peerId = await stringField(response, 'peerId');
       return peerId === null ? { kind: 'unreachable' } : { kind: 'found', peerId };
+    },
+
+    // Fails open. A room with STUN alone still connects most people, and the
+    // Peer that comes next says for itself whether the server is there.
+    async iceServers(): Promise<RTCIceServer[]> {
+      const response = await request('/ice-servers');
+      if (response?.status !== 200) return [GOOGLE_STUN];
+      try {
+        const body: unknown = await response.json();
+        const list = (body as { iceServers?: unknown } | null)?.iceServers;
+        if (Array.isArray(list) && list.length > 0 && list.every(isIceServer)) return list;
+      } catch {
+        // Not JSON: the same as no list at all.
+      }
+      return [GOOGLE_STUN];
     },
   };
 }

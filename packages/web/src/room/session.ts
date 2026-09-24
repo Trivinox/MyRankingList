@@ -23,14 +23,15 @@ const server = new URL(SIGNALING_URL);
 const secure = server.protocol === 'https:';
 
 // Passing `config` replaces peerjs's default whole, and that default brings
-// PeerJS's own public TURN servers with it. Google's STUN is the only one chosen.
-const peerOptions = {
+// PeerJS's own public TURN servers with it. The list comes from the signaling
+// server instead, asked again for every Peer so its credentials stay current.
+const peerOptions = (iceServers: RTCIceServer[]) => ({
   host: server.hostname,
   port: Number(server.port) || (secure ? 443 : 80),
   path: server.pathname,
   secure,
-  config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
-};
+  config: { iceServers },
+});
 
 // One room at a time. Every create, join or leave bumps the attempt, and the
 // callbacks of an older one check it and stop writing to the store.
@@ -63,7 +64,9 @@ function opened(created: Peer) {
 
 export async function createRoom(nickname: string, items: Item[], criterion: string) {
   const mine = begin('host');
-  const host = new Peer(peerOptions);
+  const iceServers = await signaling.iceServers();
+  if (mine !== attempt) return;
+  const host = new Peer(peerOptions(iceServers));
   peer = host;
 
   const ok = await opened(host);
@@ -137,7 +140,9 @@ export async function joinRoom(code: string, nickname: string) {
     return;
   }
 
-  const guest = new Peer(peerOptions);
+  const iceServers = await signaling.iceServers();
+  if (mine !== attempt) return;
+  const guest = new Peer(peerOptions(iceServers));
   peer = guest;
   if (!(await opened(guest))) {
     if (mine === attempt) {

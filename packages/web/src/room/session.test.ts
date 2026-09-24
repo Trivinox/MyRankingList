@@ -98,7 +98,7 @@ const fakes = vi.hoisted(() => {
   }
 
   const peers: FakePeer[] = [];
-  const signaling = { openRoom: vi.fn(), findRoom: vi.fn() };
+  const signaling = { openRoom: vi.fn(), findRoom: vi.fn(), iceServers: vi.fn() };
   return { peers, signaling, FakePeer };
 });
 
@@ -107,6 +107,11 @@ vi.mock('./signaling.ts', () => ({ createSignaling: () => fakes.signaling }));
 
 const { peers, signaling } = fakes;
 const lastPeer = () => peers[peers.length - 1];
+
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'turn:relay.test:443', username: 'user', credential: 'pass' },
+];
 
 const items: Item[] = [
   { id: 'a', text: 'Udon' },
@@ -121,7 +126,15 @@ beforeEach(() => {
   peers.length = 0;
   signaling.openRoom.mockReset();
   signaling.findRoom.mockReset();
+  signaling.iceServers.mockReset().mockResolvedValue(ICE_SERVERS);
 });
+
+// The host's Peer only exists once the ICE servers have come back.
+async function startCreating() {
+  const done = createRoom('Ana', items, 'Best noodle');
+  await vi.waitFor(() => expect(peers).toHaveLength(1));
+  return { done, host: lastPeer() };
+}
 
 afterEach(() => {
   leaveRoom();
@@ -129,26 +142,39 @@ afterEach(() => {
 });
 
 describe('the Peer', () => {
-  it('is left to the server for its ID, and names Google STUN as its only ICE server', async () => {
-    void createRoom('Ana', items, 'Best noodle');
+  it('is left to the server for its ID, and uses the ICE servers the server lists', async () => {
+    const { host } = await startCreating();
 
-    expect(lastPeer().options).toEqual({
+    expect(host.options).toEqual({
       host: 'localhost',
       port: 9000,
       path: '/',
       secure: false,
-      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
+      config: { iceServers: ICE_SERVERS },
     });
+  });
+
+  it('is not made when the room is left while the ICE servers are on their way', async () => {
+    let answer: (servers: RTCIceServer[]) => void = () => {};
+    signaling.iceServers.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const done = createRoom('Ana', items, 'Best noodle');
+
+    leaveRoom();
+    answer(ICE_SERVERS);
+    await done;
+
+    expect(peers).toHaveLength(0);
+    expect(useRoom.getState()).toMatchObject({ status: 'idle', error: null });
   });
 });
 
 describe('createRoom', () => {
   async function openRoom(code = 'AB3K') {
     signaling.openRoom.mockResolvedValue({ kind: 'opened', code } satisfies OpenedRoom);
-    const done = createRoom('Ana', items, 'Best noodle');
-    lastPeer().open('host-peer');
+    const { done, host } = await startCreating();
+    host.open('host-peer');
     await done;
-    return lastPeer();
+    return host;
   }
 
   // A guest's channel, with its join already sent.
@@ -179,23 +205,23 @@ describe('createRoom', () => {
   });
 
   it('gives up when the Peer cannot open, without asking for a code', async () => {
-    const done = createRoom('Ana', items, 'Best noodle');
-    lastPeer().emit('error', new Error('server-error'));
+    const { done, host } = await startCreating();
+    host.emit('error', new Error('server-error'));
     await done;
 
     expect(signaling.openRoom).not.toHaveBeenCalled();
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: { kind: 'unreachable' } });
-    expect(lastPeer().destroyed).toBe(true);
+    expect(host.destroyed).toBe(true);
   });
 
   it('gives up when the server will not hand out a code', async () => {
     signaling.openRoom.mockResolvedValue({ kind: 'refused' } satisfies OpenedRoom);
-    const done = createRoom('Ana', items, 'Best noodle');
-    lastPeer().open('host-peer');
+    const { done, host } = await startCreating();
+    host.open('host-peer');
     await done;
 
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: { kind: 'unreachable' } });
-    expect(lastPeer().destroyed).toBe(true);
+    expect(host.destroyed).toBe(true);
   });
 
   // An error after opening is about the server connection, and the channels
@@ -296,8 +322,8 @@ describe('createRoom', () => {
   it('writes nothing when left while the code is on its way', async () => {
     let answer: (room: OpenedRoom) => void = () => {};
     signaling.openRoom.mockReturnValue(new Promise((resolve) => (answer = resolve)));
-    const done = createRoom('Ana', items, 'Best noodle');
-    lastPeer().open('host-peer');
+    const { done, host } = await startCreating();
+    host.open('host-peer');
     await settle();
 
     leaveRoom();
@@ -350,9 +376,10 @@ describe('joinRoom', () => {
   });
 
   it('opens a reliable JSON channel to the host and asks to join', async () => {
-    const { channel } = await reachHost();
+    const { guest, channel } = await reachHost();
 
     expect(signaling.findRoom).toHaveBeenCalledWith('AB3K');
+    expect(guest.options).toMatchObject({ config: { iceServers: ICE_SERVERS } });
     expect(channel.peer).toBe('host-peer');
     expect(channel.options).toEqual({ serialization: 'json', reliable: true });
     expect(channel.sent).toEqual([{ type: 'join', nickname: 'Juan' }]);
@@ -450,6 +477,21 @@ describe('joinRoom', () => {
 
     leaveRoom();
     answer({ kind: 'found', peerId: 'host-peer' });
+    await done;
+
+    expect(peers).toHaveLength(0);
+    expect(useRoom.getState()).toMatchObject({ status: 'idle', error: null });
+  });
+
+  it('makes no Peer when left while the ICE servers are on their way', async () => {
+    signaling.findRoom.mockResolvedValue({ kind: 'found', peerId: 'host-peer' });
+    let answer: (servers: RTCIceServer[]) => void = () => {};
+    signaling.iceServers.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const done = joinRoom('AB3K', 'Juan');
+    await vi.waitFor(() => expect(signaling.iceServers).toHaveBeenCalled());
+
+    leaveRoom();
+    answer(ICE_SERVERS);
     await done;
 
     expect(peers).toHaveLength(0);

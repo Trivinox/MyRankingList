@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createSignaling } from './signaling.ts';
+import { GOOGLE_STUN, createSignaling } from './signaling.ts';
 
 const BASE = 'http://signaling.test';
 
@@ -106,5 +106,37 @@ describe('findRoom', () => {
     expect(await answering(numeric).signaling.findRoom('AB3K')).toEqual({ kind: 'unreachable' });
 
     expect(await answering(json(null)).signaling.findRoom('AB3K')).toEqual({ kind: 'unreachable' });
+  });
+});
+
+describe('iceServers', () => {
+  const turn = { urls: 'turn:relay.test:443', username: 'user', credential: 'pass' };
+
+  it('returns the list the server gives', async () => {
+    const { fetcher, signaling } = answering(json({ iceServers: [GOOGLE_STUN, turn] }));
+
+    expect(await signaling.iceServers()).toEqual([GOOGLE_STUN, turn]);
+    expect(fetcher).toHaveBeenCalledWith(`${BASE}/ice-servers`, undefined);
+  });
+
+  it('falls back to Google STUN when the request fails', async () => {
+    const { signaling } = answering(() => Promise.reject(new TypeError('Failed to fetch')));
+
+    expect(await signaling.iceServers()).toEqual([GOOGLE_STUN]);
+  });
+
+  it('falls back to Google STUN when the answer is not the one it gives', async () => {
+    const answers = [
+      new Response('<!doctype html>', { status: 200 }),
+      json({ iceServers: [turn] }, 500),
+      json({ iceServers: [] }),
+      json({ iceServers: [{ urls: 7 }] }),
+      json({ iceServers: [{ ...turn, credential: 1 }] }),
+      json([turn]),
+      json(null),
+    ];
+    for (const answer of answers) {
+      expect(await answering(answer).signaling.iceServers()).toEqual([GOOGLE_STUN]);
+    }
   });
 });
