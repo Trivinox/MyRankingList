@@ -9,5 +9,13 @@ const policy: string = config.headers[0].headers[0].value;
 test('serves the page with the policy from vercel.json', async ({ page }) => {
   const response = await page.goto('/');
 
-  expect(response?.headers()['content-security-policy']).toBe(policy);
+  // The one difference is the local signaling server, which production must
+  // never be allowed to reach.
+  expect(policy).not.toContain('localhost');
+  expect(response?.headers()['content-security-policy']).toBe(
+    policy.replace(
+      "connect-src 'self'",
+      "connect-src 'self' http://localhost:9000 ws://localhost:9000",
+    ),
+  );
 });

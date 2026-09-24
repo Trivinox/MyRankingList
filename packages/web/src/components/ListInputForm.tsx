@@ -5,6 +5,7 @@ import { findDuplicates } from '../core/duplicates.ts';
 import { isAllowedImageUrl } from '../core/images.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import styles from './ListInputForm.module.css';
 import { useRejectedImages } from './useRejectedImages.ts';
 
@@ -25,8 +26,8 @@ export function ListInputForm() {
     updateItemText,
     updateItemImageUrl,
     setCriterion,
-    setScreen,
   } = useListDraft();
+  const setScreen = useScreen((state) => state.setScreen);
   const start = usePlacement((state) => state.start);
   const criterionField = useRef<HTMLInputElement>(null);
 
@@ -157,9 +158,20 @@ export function ListInputForm() {
       {duplicateRows.size > 0 && <p className={styles.notice}>{t('form.duplicateNotice')}</p>}
 
       <div className={styles.footer}>
-        <button type="submit" className={styles.continue} disabled={!ready}>
-          {t('form.continue')}
-        </button>
+        <div className={styles.buttons}>
+          <button type="submit" className={styles.continue} disabled={!ready}>
+            {t('form.continue')}
+          </button>
+          {/* A room sorts the same list, so it asks for the same things. */}
+          <button
+            type="button"
+            className={styles.room}
+            disabled={!ready}
+            onClick={() => setScreen('room-create')}
+          >
+            {t('room.create')}
+          </button>
+        </div>
         {!ready && (
           <p className={styles.notice}>
             {itemCount < MIN_ITEMS

@@ -5,12 +5,14 @@ import { Announcer } from './components/Announcer.tsx';
 import { CatalogScreen } from './components/CatalogScreen.tsx';
 import { LanguageSelector } from './components/LanguageSelector.tsx';
 import { ListInputForm } from './components/ListInputForm.tsx';
+import { LobbyScreen } from './components/LobbyScreen.tsx';
 import { MuteButton } from './components/MuteButton.tsx';
 import { ResultScreen } from './components/ResultScreen.tsx';
+import { RoomEntryScreen } from './components/RoomEntryScreen.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
 import { useAnnouncer } from './components/useAnnouncer.ts';
-import { useListDraft } from './state/listDraftStore.ts';
-import type { Screen } from './state/listDraftStore.ts';
+import { useScreen } from './state/screenStore.ts';
+import type { Screen } from './state/screenStore.ts';
 import styles from './App.module.css';
 
 // The sorting screen needs the room the form does not: a pool taking close to
@@ -21,11 +23,14 @@ const widths: Record<Screen, string> = {
   catalog: styles.page,
   sorting: `${styles.page} ${styles.wide}`,
   result: styles.page,
+  'room-create': styles.page,
+  'room-join': styles.page,
+  lobby: styles.page,
 };
 
 function App() {
   const { t } = useTranslation();
-  const screen = useListDraft((state) => state.screen);
+  const { screen, setScreen } = useScreen();
   // For a message sent as the screen changes under it. A region that arrives
   // with the new screen is already holding its text when it shows up, and a
   // screen reader only reads a region it has seen change.
@@ -55,13 +60,22 @@ function App() {
       <MotionConfig reducedMotion="user">
         {screen === 'list-input' && (
           <>
-            <p>{t('app.tagline')}</p>
+            <div className={styles.intro}>
+              <p>{t('app.tagline')}</p>
+              {/* Up here because a guest has no list to write. */}
+              <button type="button" className={styles.join} onClick={() => setScreen('room-join')}>
+                {t('room.join')}
+              </button>
+            </div>
             <ListInputForm />
           </>
         )}
         {screen === 'catalog' && <CatalogScreen announce={say} />}
         {screen === 'sorting' && <SortingScreen />}
         {screen === 'result' && <ResultScreen />}
+        {screen === 'room-create' && <RoomEntryScreen mode="create" />}
+        {screen === 'room-join' && <RoomEntryScreen mode="join" />}
+        {screen === 'lobby' && <LobbyScreen />}
       </MotionConfig>
       {announcing && <Announcer announcement={announcement} />}
     </div>

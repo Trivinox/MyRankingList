@@ -19,10 +19,22 @@ export default defineConfig({
     // 412px wide with touch: the phone layout, where every placement is a tap.
     { name: 'android', use: { ...devices['Pixel 7'] } },
   ],
-  // The production build, as Vercel will serve it, rather than the dev server.
-  webServer: {
-    command: 'vite build && vite preview --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !ci,
-  },
+  webServer: [
+    // The production build, as Vercel will serve it, rather than the dev server.
+    {
+      command: 'vite build && vite preview --port 4173 --strictPort',
+      url: 'http://localhost:4173',
+      reuseExistingServer: !ci,
+    },
+    // Never reused: one left running by `npm run dev` only lets in the Vite dev
+    // server's origin, and every room test would fail on CORS instead of
+    // saying the port is taken.
+    {
+      command: 'npm run dev --workspace=packages/signaling-server',
+      cwd: '../..',
+      port: 9000,
+      env: { ALLOWED_ORIGIN: 'http://localhost:4173' },
+      reuseExistingServer: false,
+    },
+  ],
 });

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
@@ -7,8 +7,18 @@ import { createI18n } from './i18n/index.ts';
 import { en } from './i18n/locales/en.ts';
 import { es } from './i18n/locales/es.ts';
 import { loadCatalog } from './catalog/catalog.ts';
+import { createRoom } from './room/session.ts';
 import { useListDraft } from './state/listDraftStore.ts';
+import { useRoom } from './state/roomStore.ts';
+import { useScreen } from './state/screenStore.ts';
 import App from './App.tsx';
+
+// Only the room flow reaches it, and the session has a suite of its own.
+vi.mock('./room/session.ts', () => ({
+  createRoom: vi.fn(),
+  joinRoom: vi.fn(),
+  leaveRoom: vi.fn(),
+}));
 
 const renderApp = () =>
   render(
@@ -17,11 +27,12 @@ const renderApp = () =>
     </I18nextProvider>,
   );
 
-// The draft store outlives each render, and the flows below leave rows
-// written that would put the next test past a first visit.
+// The stores outlive each render. The flows below leave rows written, which
+// would put the next test past a first visit, and a room open.
 beforeEach(() => {
+  useScreen.setState({ screen: 'list-input' });
+  useRoom.getState().leave();
   useListDraft.setState({
-    screen: 'list-input',
     items: Array.from({ length: 3 }, () => ({ id: crypto.randomUUID(), text: '' })),
     criterion: '',
   });
@@ -135,5 +146,40 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: en.result.newList }));
 
     expect(screen.getByRole('status')).toHaveTextContent(/^$/);
+  });
+
+  it('goes from the form to a room of its own', async () => {
+    vi.mocked(createRoom).mockImplementation(async (nickname, items, criterion) => {
+      useRoom.getState().enterLobby({
+        code: 'AB3K',
+        you: 'a',
+        criterion,
+        participants: [{ id: 'a', nickname, isCreator: true }],
+        items,
+      });
+    });
+    renderApp();
+
+    await userEvent.type(screen.getByLabelText(en.form.criterionLabel), 'Best noodle');
+    for (const [number, text] of ['Udon', 'Soba', 'Ramen'].entries()) {
+      await userEvent.type(screen.getByRole('textbox', { name: `Item ${number + 1}` }), text);
+    }
+    await userEvent.click(screen.getByRole('button', { name: en.room.create }));
+    await userEvent.type(screen.getByLabelText(en.room.nicknameLabel), 'Ana');
+    await userEvent.click(screen.getByRole('button', { name: en.room.open }));
+
+    expect(screen.getByText('AB3K')).toBeInTheDocument();
+    expect(screen.getByText('Best noodle')).toBeInTheDocument();
+    expect(within(screen.getByRole('list')).getByText('Ana')).toBeInTheDocument();
+    expect(useRoom.getState().items.map((item) => item.text)).toEqual(['Udon', 'Soba', 'Ramen']);
+  });
+
+  it('opens the join screen for someone with no list to write', async () => {
+    renderApp();
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.join }));
+
+    expect(screen.getByRole('heading', { name: en.room.joinHeading })).toBeInTheDocument();
+    expect(screen.getByLabelText(en.room.codeLabel)).toHaveFocus();
   });
 });

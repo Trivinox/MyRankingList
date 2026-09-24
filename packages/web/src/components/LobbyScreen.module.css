@@ -1,0 +1,149 @@
+/* Literal values here too, waiting on the design system. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* The code stays in sight however long the list gets, since reading it out
+   to someone is how most people will get in. */
+.bar {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e6e6ee;
+  /* Painted, or the participants would show through it on their way up. */
+  background: #fff;
+}
+
+.codeLabel {
+  color: #6b6b76;
+  font-size: 0.85rem;
+}
+
+.code {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+
+.copy {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #b8b8c2;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.copied {
+  color: #6b6b76;
+  font-size: 0.85rem;
+}
+
+.criterion {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.criterionLabel {
+  display: block;
+  color: #6b6b76;
+  font-size: 0.85rem;
+}
+
+.listHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.count {
+  color: #6b6b76;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.participants {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.participant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: #f3f3f7;
+}
+
+.nickname {
+  overflow-wrap: anywhere;
+}
+
+.tag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: #e0dcf5;
+  color: #4a4a55;
+  font-size: 0.75rem;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prompt {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.secondary,
+.danger {
+  align-self: flex-start;
+  padding: 0.55rem 1.4rem;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.secondary {
+  border: 1px solid #b8b8c2;
+  background: none;
+}
+
+.danger {
+  border: none;
+  background: #b3261e;
+  color: #fff;
+}
+
+.closed {
+  margin: 0;
+  font-size: 1.1rem;
+}

@@ -9,6 +9,7 @@ import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { es } from '../i18n/locales/es.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 
 const confetti = vi.hoisted(() => Object.assign(vi.fn(), { reset: vi.fn() }));
@@ -58,7 +59,8 @@ const rows = () =>
 beforeEach(() => {
   confetti.mockClear();
   confetti.reset.mockClear();
-  useListDraft.setState({ screen: 'result', ...draft });
+  useScreen.setState({ screen: 'result' });
+  useListDraft.setState(draft);
   usePlacement.setState({ items, criterion: draft.criterion, placement: finished });
 });
 
@@ -123,7 +125,7 @@ describe('ResultScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: en.result.sortAgain }));
 
     const { placement, items: sorting, criterion } = usePlacement.getState();
-    expect(useListDraft.getState().screen).toBe('sorting');
+    expect(useScreen.getState().screen).toBe('sorting');
     expect(sorting).toEqual(items);
     expect(criterion).toBe(draft.criterion);
     expect(placement?.rankedSlots).toHaveLength(1);
@@ -137,7 +139,7 @@ describe('ResultScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: en.result.newList }));
 
-    expect(useListDraft.getState().screen).toBe('list-input');
+    expect(useScreen.getState().screen).toBe('list-input');
     expect(screen.getByRole('textbox', { name: 'Item 1' })).toHaveValue('Sushi');
     expect(screen.getByRole('textbox', { name: 'Item 6' })).toHaveValue('');
     expect(screen.getByDisplayValue(draft.criterion)).toHaveFocus();

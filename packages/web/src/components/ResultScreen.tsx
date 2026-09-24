@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { rankItems } from '../core/ranking.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
-import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { useScreen } from '../state/screenStore.ts';
 import { ItemCard } from './ItemCard.tsx';
 import styles from './ResultScreen.module.css';
 
@@ -15,7 +15,7 @@ const colors = ['#b7a8e8', '#f6b8c4', '#ffd6a5'];
 export function ResultScreen() {
   const { t } = useTranslation();
   const { items, criterion, placement, start } = usePlacement();
-  const setScreen = useListDraft((state) => state.setScreen);
+  const setScreen = useScreen((state) => state.setScreen);
   const heading = useRef<HTMLHeadingElement>(null);
 
   // See result unmounted along with the sorting screen.
