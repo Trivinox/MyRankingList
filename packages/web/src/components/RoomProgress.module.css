@@ -1,3 +1,9 @@
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .strip {
   display: flex;
   flex-wrap: wrap;
@@ -8,7 +14,29 @@
 }
 
 .person {
+  position: relative;
   display: flex;
+}
+
+/* Over the top right of the circle, which sits centred in a 4.5rem column.
+   Not above it: the row scrolls on a phone and would clip anything outside. */
+.remove {
+  position: absolute;
+  top: 0;
+  left: calc(50% + 0.5rem);
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid #b8b8c2;
+  border-radius: 50%;
+  background: #fff;
+  color: #4a4a55;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* 767px mirrors useIsMobile.ts. One row that scrolls sideways: a room of

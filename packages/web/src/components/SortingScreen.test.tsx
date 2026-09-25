@@ -1892,6 +1892,14 @@ describe('in a room', () => {
     expect(useScreen.getState().screen).toBe('lobby');
   });
 
+  it('goes back to the lobby screen when the creator removes them', () => {
+    renderScreen();
+
+    act(() => useRoom.getState().remove());
+
+    expect(useScreen.getState().screen).toBe('lobby');
+  });
+
   it('is not there when sorting alone', () => {
     useRoom.getState().leave();
     fillUp();

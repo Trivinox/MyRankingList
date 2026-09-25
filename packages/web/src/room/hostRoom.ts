@@ -38,6 +38,13 @@ export function leave(participants: Participant[], id: string): Participant[] {
   return participants.filter((p) => p.id !== id);
 }
 
+// Taking someone out on purpose, as opposed to them going. Every removal goes
+// through here, whoever decides it. The creator cannot be taken out of their
+// own room: without them there is no room left.
+export function exclude(participants: Participant[], id: string): Participant[] {
+  return participants.filter((p) => p.id !== id || p.isCreator);
+}
+
 // Everyone's list opens with one item already down, so the count starts at 1.
 export function startAll(participants: Participant[]): Participant[] {
   return participants.map((p) => ({ ...p, progress: 1 }));

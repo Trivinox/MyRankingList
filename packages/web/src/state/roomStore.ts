@@ -6,9 +6,9 @@ export type Role = 'host' | 'guest';
 
 // Idle is no room at all, the state before creating or joining and after
 // leaving. Sorting starts for everyone at once, when the creator says so.
-// Closed is a room that ended under a guest, who still has to see it happened
-// before going back.
-export type RoomStatus = 'idle' | 'connecting' | 'lobby' | 'sorting' | 'closed';
+// Closed is a room that ended under a guest, and removed a guest the creator
+// took out. Either way they still have to see it happened before going back.
+export type RoomStatus = 'idle' | 'connecting' | 'lobby' | 'sorting' | 'closed' | 'removed';
 
 export type RoomError =
   | { kind: 'not-found' }
@@ -40,6 +40,7 @@ interface Room {
   startSorting: (items: Item[]) => void;
   fail: (error: RoomError) => void;
   close: () => void;
+  remove: () => void;
   leave: () => void;
 }
 
@@ -72,6 +73,8 @@ export const useRoom = create<Room>((set) => ({
   fail: (error) => set({ ...empty, error }),
 
   close: () => set({ status: 'closed' }),
+
+  remove: () => set({ status: 'removed' }),
 
   leave: () => set(empty),
 }));

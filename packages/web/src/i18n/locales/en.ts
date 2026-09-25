@@ -114,6 +114,13 @@ export const en = {
     notOpened: 'The room could not be opened. Check your connection and try again.',
     placed: '{{nickname}}, {{placed}} of {{total}} placed',
     everyone: 'Everyone in the room',
+    remove: {
+      button: 'Remove',
+      label: 'Remove {{nickname}}',
+      confirm: 'Remove {{nickname}} from the room?',
+      yes: 'Yes, remove',
+      no: 'Cancel',
+    },
     lobby: {
       code: 'Room code',
       copyLink: 'Copy link',
@@ -131,6 +138,7 @@ export const en = {
       confirmYes: 'Close it',
       confirmNo: 'Stay',
       closed: 'The room was closed.',
+      removed: 'The creator removed you from the room.',
       start: 'Start',
       needsSomeone: 'Someone else has to join before you can start.',
       waiting: 'Waiting for the creator to start.',

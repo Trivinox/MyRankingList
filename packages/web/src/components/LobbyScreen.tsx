@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ROOM_LIMIT, START_MINIMUM } from '../room/hostRoom.ts';
 import { forgetRoomLink, roomLink } from '../room/link.ts';
@@ -7,7 +7,9 @@ import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
+import { RemovalPrompt } from './RemovalPrompt.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
+import { useRemoval } from './useRemoval.ts';
 import styles from './LobbyScreen.module.css';
 
 export function LobbyScreen() {
@@ -16,6 +18,8 @@ export function LobbyScreen() {
   const { role, code, you, participants, criterion, status } = useRoom();
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const removal = useRemoval(participants);
+  const headingId = useId();
   const { announcement, say } = useAnnouncer();
   const seen = useRef(participants);
 
@@ -44,11 +48,11 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed') {
+  if (status === 'closed' || status === 'removed') {
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">
-          {t('room.lobby.closed')}
+          {t(status === 'closed' ? 'room.lobby.closed' : 'room.lobby.removed')}
         </p>
         <button type="button" className={styles.secondary} onClick={backToForm}>
           {t('room.back')}
@@ -92,12 +96,19 @@ export function LobbyScreen() {
       </p>
 
       <div className={styles.listHeader}>
-        <h2 className={styles.heading}>{t('room.lobby.heading')}</h2>
+        <h2 id={headingId} className={styles.heading}>
+          {t('room.lobby.heading')}
+        </h2>
         <span className={styles.count}>
           {t('room.lobby.count', { count: participants.length, limit: ROOM_LIMIT })}
         </span>
       </div>
-      <ul className={styles.participants}>
+      <ul
+        ref={removal.list}
+        className={styles.participants}
+        aria-labelledby={headingId}
+        tabIndex={-1}
+      >
         {participants.map((participant, place) => (
           <li key={participant.id} className={styles.participant}>
             <ParticipantAvatar
@@ -105,9 +116,28 @@ export function LobbyScreen() {
               place={place}
               isYou={participant.id === you}
             />
+            {role === 'host' && !participant.isCreator && (
+              <button
+                ref={removal.buttonRef(participant.id)}
+                type="button"
+                className={styles.remove}
+                aria-label={t('room.remove.label', { nickname: participant.nickname })}
+                onClick={() => removal.ask(participant.id)}
+              >
+                {t('room.remove.button')}
+              </button>
+            )}
           </li>
         ))}
       </ul>
+      {removal.target && (
+        <RemovalPrompt
+          key={removal.target.id}
+          nickname={removal.target.nickname}
+          onRemove={removal.confirm}
+          onCancel={removal.cancel}
+        />
+      )}
 
       {role === 'host' ? (
         <div className={styles.start}>

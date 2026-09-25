@@ -12,13 +12,15 @@ export type GuestMessage =
   { type: 'join'; nickname: string } | { type: 'progress'; placed: number };
 
 // `you` tells the guest which of the participants is them. `started` is the
-// answer to a join once registration has closed.
+// answer to a join once registration has closed. `removed` is the last thing a
+// guest hears from a creator who took them out.
 export type HostMessage =
   | { type: 'welcome'; you: string; criterion: string; participants: Participant[] }
   | { type: 'participants'; participants: Participant[] }
   | { type: 'full' }
   | { type: 'start'; items: Item[]; criterion: string }
-  | { type: 'started' };
+  | { type: 'started' }
+  | { type: 'removed' };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -122,6 +124,7 @@ export function parseHostMessage(data: unknown): HostMessage | null {
     }
     case 'full':
     case 'started':
+    case 'removed':
       return { type: data.type };
     default:
       return null;

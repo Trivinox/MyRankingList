@@ -145,3 +145,45 @@ test('the creator starts the room and everyone sees how far along the others are
     await page.context().close();
   }
 });
+
+test('the creator removes someone mid-sort, who is told so and drops out of the strip', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  const lucia = await openPerson(browser, testInfo);
+  await lucia.goto(`/?room=${code}`);
+  await join(lucia, 'Lucía');
+
+  await ana.getByRole('button', { name: 'Start' }).click();
+  for (const page of [ana, lucia]) {
+    await expect(page.getByRole('img', { name: 'Juan, 1 of 3 placed' })).toBeVisible();
+  }
+  // Only the creator gets the crosses.
+  await expect(lucia.getByRole('button', { name: 'Remove Juan' })).toHaveCount(0);
+
+  const remove = ana.getByRole('button', { name: 'Remove Juan' });
+  if (isMobile) {
+    await remove.tap();
+  } else {
+    await remove.click();
+  }
+  await ana.getByRole('button', { name: 'Yes, remove' }).click();
+
+  await expect(juan.getByRole('alert')).toHaveText('The creator removed you from the room.');
+  for (const page of [ana, lucia]) {
+    await expect(page.getByRole('img', { name: /^Juan,/ })).toHaveCount(0);
+    await expect(page.getByRole('img', { name: 'Lucía, 1 of 3 placed' })).toBeVisible();
+  }
+
+  await expectNoViolations(juan);
+  await juan.getByRole('button', { name: 'Back to my list' }).click();
+  await expect(juan).toHaveURL('/');
+
+  for (const page of [juan, lucia]) await page.context().close();
+});

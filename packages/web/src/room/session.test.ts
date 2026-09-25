@@ -4,7 +4,7 @@ import type { Item } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Participant } from './hostRoom.ts';
-import { createRoom, joinRoom, leaveRoom, startRoom } from './session.ts';
+import { createRoom, joinRoom, leaveRoom, removeParticipant, startRoom } from './session.ts';
 import type { FoundRoom, OpenedRoom } from './signaling.ts';
 
 // Stand-ins for peerjs and the signaling client, shaped like the parts the
@@ -39,9 +39,11 @@ const fakes = vi.hoisted(() => {
   }
 
   // Like peerjs, closing emits `close` right away, and only for a channel
-  // that was open.
+  // that was open. `sentBeforeClose` is what had gone out when it closed.
   class FakeChannel extends Emitter {
     sent: unknown[] = [];
+    sentBeforeClose: unknown[] | null = null;
+    closeOptions: unknown;
     isOpen = false;
     peer: string;
     options: unknown;
@@ -57,8 +59,10 @@ const fakes = vi.hoisted(() => {
     send(message: unknown) {
       this.sent.push(message);
     }
-    close() {
+    close(options?: unknown) {
       if (!this.isOpen) return;
+      this.sentBeforeClose = [...this.sent];
+      this.closeOptions = options;
       this.isOpen = false;
       this.emit('close');
     }
@@ -451,6 +455,17 @@ describe('createRoom', () => {
       expect(juan.sent).toHaveLength(sent + 1);
     });
 
+    it('ignores progress from a guest who was removed', async () => {
+      const { juan } = await startWithJuan();
+      const id = useRoom.getState().participants[1].id;
+      removeParticipant(id);
+      const before = useRoom.getState().participants;
+
+      juan.emit('data', { type: 'progress', placed: 2 });
+
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
     it('stops counting once the room is left', async () => {
       const { juan } = await startWithJuan();
       leaveRoom();
@@ -459,6 +474,81 @@ describe('createRoom', () => {
       placeOne();
 
       expect(juan.sent).toHaveLength(sent);
+    });
+  });
+
+  describe('removing', () => {
+    it('tells the guest before closing their channel, and flushes it first', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const id = useRoom.getState().participants[1].id;
+
+      removeParticipant(id);
+
+      expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'removed' });
+      expect(juan.closeOptions).toEqual({ flush: true });
+    });
+
+    it('drops them from the room and tells the rest', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      const id = useRoom.getState().participants[1].id;
+      const sentToJuan = juan.sent.length;
+
+      removeParticipant(id);
+
+      const { participants } = useRoom.getState();
+      expect(participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+      expect(juan.sent).toHaveLength(sentToJuan + 1);
+    });
+
+    // Their end closing afterwards is not a second departure to announce.
+    it('sends nothing more when the removed channel then closes', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      removeParticipant(useRoom.getState().participants[1].id);
+      const sentToLucia = lucia.sent.length;
+
+      juan.isOpen = true;
+      juan.close();
+
+      expect(lucia.sent).toHaveLength(sentToLucia);
+    });
+
+    it('never removes the creator', async () => {
+      const host = await openRoom();
+      guestJoins(host, 'Juan');
+      const before = useRoom.getState().participants;
+
+      removeParticipant(useRoom.getState().you!);
+
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('leaves space in a full lobby for one more', async () => {
+      const host = await openRoom();
+      for (let i = 1; i < 20; i++) guestJoins(host, `Guest ${i}`);
+
+      removeParticipant(useRoom.getState().participants[3].id);
+      const late = guestJoins(host, 'Late');
+
+      expect(late.sent[0]).toMatchObject({ type: 'welcome' });
+      expect(useRoom.getState().participants).toHaveLength(20);
+    });
+
+    it('works mid-sort too', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      guestJoins(host, 'Lucía');
+      startRoom();
+
+      removeParticipant(useRoom.getState().participants[1].id);
+
+      expect(juan.sent.at(-1)).toEqual({ type: 'removed' });
+      expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
     });
   });
 });
@@ -672,6 +762,40 @@ describe('joinRoom', () => {
       expect(useRoom.getState().status).toBe('closed');
       expect(channel.sent).toHaveLength(sent);
     });
+  });
+
+  it('ends up removed, not closed, when the creator takes it out', async () => {
+    const { guest, channel } = await reachLobby();
+    const written: string[] = [];
+    const stop = useRoom.subscribe((room) => written.push(room.status));
+
+    channel.emit('data', { type: 'removed' });
+    stop();
+
+    expect(guest.destroyed).toBe(true);
+    expect(written).toEqual(['removed']);
+    expect(useRoom.getState().status).toBe('removed');
+  });
+
+  it('stops reporting progress once removed mid-sort', async () => {
+    const { channel } = await reachLobby();
+    channel.emit('data', { type: 'start', items, criterion: 'Best noodle' });
+    channel.emit('data', { type: 'removed' });
+    const sent = channel.sent.length;
+
+    placeOne();
+
+    expect(useRoom.getState().status).toBe('removed');
+    expect(channel.sent).toHaveLength(sent);
+  });
+
+  it('ignores a removal before the welcome', async () => {
+    const { guest, channel } = await reachHost();
+
+    channel.emit('data', { type: 'removed' });
+
+    expect(guest.destroyed).toBe(false);
+    expect(useRoom.getState().status).toBe('connecting');
   });
 
   it('is told the room has already started, and lets go of the Peer', async () => {

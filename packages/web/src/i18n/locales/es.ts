@@ -119,6 +119,13 @@ export const es: typeof en = {
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
     placed: '{{nickname}}, {{placed}} de {{total}} colocados',
     everyone: 'Todos los de la sala',
+    remove: {
+      button: 'Quitar',
+      label: 'Quitar a {{nickname}}',
+      confirm: '¿Quitar a {{nickname}} de la sala?',
+      yes: 'Sí, quitar',
+      no: 'Cancelar',
+    },
     lobby: {
       code: 'Código de la sala',
       copyLink: 'Copiar enlace',
@@ -136,6 +143,7 @@ export const es: typeof en = {
       confirmYes: 'Cerrarla',
       confirmNo: 'Quedarme',
       closed: 'La sala se cerró.',
+      removed: 'Quien creó la sala te sacó de ella.',
       start: 'Empezar',
       needsSomeone: 'Tiene que entrar alguien más antes de poder empezar.',
       waiting: 'Esperando a que quien creó la sala empiece.',
