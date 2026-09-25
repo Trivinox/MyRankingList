@@ -3,11 +3,8 @@ import type { Participant } from '../room/hostRoom.ts';
 import { removeParticipant } from '../room/session.ts';
 
 // The creator's side of taking someone out: who the prompt is asking about,
-// and where the focus goes once they are gone. Removing someone takes their
-// row, their Remove button and the prompt away together, which would leave the
-// focus on the page. It moves to the next person's Remove button instead, or
-// the one before when it was the last, or the list itself when nobody else can
-// be removed.
+// and where the focus goes once they are gone. Their row, their Remove button
+// and the prompt all leave together, and the focus would be left on the page.
 export function useRemoval(participants: Participant[]) {
   const [removing, setRemoving] = useState<string | null>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
