@@ -258,6 +258,56 @@ describe('LobbyScreen', () => {
       expect(screen.queryByRole('group')).not.toBeInTheDocument();
     });
 
+    // The row, its button and the prompt all go at once, and the focus would
+    // go with them.
+    describe('where the focus goes once someone is removed', () => {
+      const removeFor = async (i18n: ReturnType<typeof renderLobby>, nickname: string) => {
+        await userEvent.click(
+          screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname }) }),
+        );
+        await userEvent.click(screen.getByRole('button', { name: en.room.remove.yes }));
+      };
+
+      beforeEach(() => {
+        vi.mocked(removeParticipant).mockImplementation((id) =>
+          useRoom
+            .getState()
+            .setParticipants(useRoom.getState().participants.filter((p) => p.id !== id)),
+        );
+      });
+
+      it('lands on the next person to remove', async () => {
+        inRoom('host', 'a', [ana, juan, lucia]);
+        const i18n = renderLobby();
+
+        await removeFor(i18n, 'Juan');
+
+        expect(
+          screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Lucía' }) }),
+        ).toHaveFocus();
+      });
+
+      it('lands on the one before when it was the last', async () => {
+        inRoom('host', 'a', [ana, juan, lucia]);
+        const i18n = renderLobby();
+
+        await removeFor(i18n, 'Lucía');
+
+        expect(
+          screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+        ).toHaveFocus();
+      });
+
+      it('lands on the list when nobody else can be removed', async () => {
+        inRoom('host', 'a');
+        const i18n = renderLobby();
+
+        await removeFor(i18n, 'Juan');
+
+        expect(screen.getByRole('list', { name: en.room.lobby.heading })).toHaveFocus();
+      });
+    });
+
     it('drops the question when the person leaves before the answer', async () => {
       inRoom('host', 'a');
       const i18n = renderLobby();

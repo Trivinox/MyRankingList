@@ -86,6 +86,21 @@ describe('RoomProgress', () => {
     expect(removeParticipant).toHaveBeenCalledWith('j');
   });
 
+  it('leaves the focus on the strip once the only guest is removed', async () => {
+    vi.mocked(removeParticipant).mockImplementation(() =>
+      useRoom.getState().setParticipants([ana]),
+    );
+    inRoom('sorting', 'host');
+    const i18n = renderStrip();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: en.room.remove.yes }));
+
+    expect(screen.getByRole('list', { name: en.room.everyone })).toHaveFocus();
+  });
+
   it('gives a guest no way to remove anyone', () => {
     inRoom('sorting');
     renderStrip();

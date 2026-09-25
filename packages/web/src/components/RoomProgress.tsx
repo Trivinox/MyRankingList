@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { removeParticipant } from '../room/session.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 import { RemovalPrompt } from './RemovalPrompt.tsx';
+import { useRemoval } from './useRemoval.ts';
 import styles from './RoomProgress.module.css';
 
 // How far along everyone in the room is. Counts only: what anyone else has put
@@ -13,15 +12,13 @@ export function RoomProgress() {
   const { t } = useTranslation();
   const { role, participants, you, status } = useRoom();
   const total = usePlacement((state) => state.items.length);
-  const [removing, setRemoving] = useState<string | null>(null);
+  const removal = useRemoval(participants);
 
   if (status !== 'sorting') return null;
 
-  const target = participants.find((p) => p.id === removing);
-
   return (
     <div className={styles.progress}>
-      <ul className={styles.strip} aria-label={t('room.everyone')}>
+      <ul ref={removal.list} className={styles.strip} aria-label={t('room.everyone')} tabIndex={-1}>
         {participants.map((participant, place) => (
           <li key={participant.id} className={styles.person}>
             <ParticipantAvatar
@@ -35,11 +32,12 @@ export function RoomProgress() {
                 under every name and make the row taller on a phone. */}
             {role === 'host' && !participant.isCreator && (
               <button
+                ref={removal.buttonRef(participant.id)}
                 type="button"
                 className={styles.remove}
                 aria-label={t('room.remove.label', { nickname: participant.nickname })}
                 title={t('room.remove.label', { nickname: participant.nickname })}
-                onClick={() => setRemoving(participant.id)}
+                onClick={() => removal.ask(participant.id)}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -47,15 +45,12 @@ export function RoomProgress() {
           </li>
         ))}
       </ul>
-      {target && (
+      {removal.target && (
         <RemovalPrompt
-          key={target.id}
-          nickname={target.nickname}
-          onRemove={() => {
-            removeParticipant(target.id);
-            setRemoving(null);
-          }}
-          onCancel={() => setRemoving(null)}
+          key={removal.target.id}
+          nickname={removal.target.nickname}
+          onRemove={removal.confirm}
+          onCancel={removal.cancel}
         />
       )}
     </div>
