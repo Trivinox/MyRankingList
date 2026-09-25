@@ -87,9 +87,10 @@ describe('parseHostMessage', () => {
     });
   });
 
-  it('reads a full room, and one that has already started', () => {
+  it('reads a full room, one that has already started, and a removal', () => {
     expect(parseHostMessage({ type: 'full' })).toEqual({ type: 'full' });
     expect(parseHostMessage({ type: 'started' })).toEqual({ type: 'started' });
+    expect(parseHostMessage({ type: 'removed', why: 'x' })).toEqual({ type: 'removed' });
   });
 
   it('reads the start of sorting, with the list and the criterion', () => {

@@ -5,7 +5,7 @@ import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
 import { SIGNALING_URL } from './config.ts';
-import { START_MINIMUM, admit, leave, setProgress, startAll } from './hostRoom.ts';
+import { START_MINIMUM, admit, exclude, leave, setProgress, startAll } from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 import type { GuestMessage, HostMessage } from './protocol.ts';
@@ -39,8 +39,9 @@ const peerOptions = (iceServers: RTCIceServer[]) => ({
 // callbacks of an older one check it and stop writing to the store.
 let peer: Peer | null = null;
 let attempt = 0;
-// Set by createRoom once the lobby is open, for the host's Start to call.
+// Set by createRoom once the lobby is open, for the host's buttons to call.
 let startHere: (() => void) | null = null;
+let removeHere: ((id: string) => void) | null = null;
 let unfollow: (() => void) | null = null;
 
 function stopFollowing() {
@@ -52,6 +53,7 @@ function letGo() {
   peer?.destroy();
   peer = null;
   startHere = null;
+  removeHere = null;
   stopFollowing();
 }
 
@@ -138,7 +140,10 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
       const room = useRoom.getState();
 
       if (message.type === 'progress') {
-        if (id === null || room.status !== 'sorting' || message.placed > room.items.length) return;
+        // A removed guest's channel stays open until their end closes it, and
+        // what it sends meanwhile is from nobody in the room.
+        if (id === null || channels.get(id) !== channel) return;
+        if (room.status !== 'sorting' || message.placed > room.items.length) return;
         setParticipants(setProgress(room.participants, id, message.placed));
         return;
       }
@@ -165,7 +170,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     });
 
     channel.on('close', () => {
-      if (id === null || mine !== attempt) return;
+      if (id === null || channels.get(id) !== channel || mine !== attempt) return;
       channels.delete(id);
       setParticipants(leave(useRoom.getState().participants, id));
     });
@@ -183,6 +188,18 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     usePlacement.getState().start(list, criterion);
     useRoom.getState().startSorting(list);
     follow((placed) => setParticipants(setProgress(useRoom.getState().participants, you, placed)));
+  };
+
+  // The creator has no channel, so they are never found here.
+  removeHere = (id) => {
+    const channel = channels.get(id);
+    if (!channel) return;
+    channels.delete(id);
+    send(channel, { type: 'removed' });
+    // Flushing sends a close of its own after the message, so the guest reads
+    // why before their channel goes. A plain close could drop it on the way.
+    channel.close({ flush: true });
+    setParticipants(exclude(useRoom.getState().participants, id));
   };
 
   useRoom.getState().enterLobby({
@@ -220,6 +237,7 @@ export async function joinRoom(code: string, nickname: string) {
   const channel = guest.connect(found.peerId, { serialization: 'json', reliable: true });
   let admitted = false;
   let gaveUp = false;
+  let removed = false;
 
   // Destroying the Peer closes the channel on the spot, and its close handler
   // lands back here before this call is done. The first reason is the one kept.
@@ -265,13 +283,19 @@ export async function joinRoom(code: string, nickname: string) {
       usePlacement.getState().start(message.items, message.criterion);
       useRoom.getState().startSorting(message.items);
       follow((placed) => void channel.send({ type: 'progress', placed } satisfies GuestMessage));
+    } else if (message.type === 'removed' && admitted) {
+      // Set before letting go: destroying the Peer closes the channel, and its
+      // close handler would call the room closed.
+      removed = true;
+      letGo();
+      useRoom.getState().remove();
     } else if ((message.type === 'full' || message.type === 'started') && !admitted) {
       giveUp(message.type);
     }
   });
 
   channel.on('close', () => {
-    if (mine !== attempt) return;
+    if (mine !== attempt || removed) return;
     if (admitted) {
       letGo();
       useRoom.getState().close();
@@ -295,6 +319,11 @@ export function startRoom() {
   const { status, participants } = useRoom.getState();
   if (status !== 'lobby' || participants.length < START_MINIMUM) return;
   startHere?.();
+}
+
+// Only the host holds the channels, so on a guest this does nothing.
+export function removeParticipant(id: string) {
+  removeHere?.(id);
 }
 
 // A closed tab does not close its channels on its own. The other end only

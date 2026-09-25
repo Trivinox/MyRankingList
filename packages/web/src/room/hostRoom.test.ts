@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_LIMIT, admit, leave, setProgress, startAll } from './hostRoom.ts';
+import { ROOM_LIMIT, admit, exclude, leave, setProgress, startAll } from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
 
 function seat(participants: Participant[], nickname: string, isCreator = false) {
@@ -86,6 +86,33 @@ describe('leave', () => {
     const { participants } = seat([], 'Ana', true);
 
     expect(leave(participants, 'someone-else')).toEqual(participants);
+  });
+});
+
+describe('exclude', () => {
+  it('drops the one removed and leaves the rest as they were', () => {
+    const ana = seat([], 'Ana', true);
+    const juan = seat(ana.participants, 'Juan');
+    const started = startAll(seat(juan.participants, 'Luis').participants);
+
+    const after = exclude(started, juan.participant.id);
+
+    expect(after.map((p) => p.nickname)).toEqual(['Ana', 'Luis']);
+    expect(after[0]).toBe(started[0]);
+    expect(after[1]).toBe(started[2]);
+  });
+
+  it('never takes out the creator', () => {
+    const ana = seat([], 'Ana', true);
+    const { participants } = seat(ana.participants, 'Juan');
+
+    expect(exclude(participants, ana.participant.id)).toEqual(participants);
+  });
+
+  it('frees the place of whoever it takes out of a full room', () => {
+    const participants = fullRoom();
+
+    expect(admit(exclude(participants, participants[5].id), 'Late').ok).toBe(true);
   });
 });
 
