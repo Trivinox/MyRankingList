@@ -29,15 +29,16 @@ async function start(options: Partial<SignalingOptions> = {}) {
 
 // Speaks peer's protocol the way the PeerJS client does, minus the WebRTC.
 // Passing the ID and token of an earlier connection is what reconnect() does.
-async function connect(port: number, id = randomUUID(), token = randomUUID()) {
+function dial(port: number, id: string = randomUUID(), token: string = randomUUID()) {
   const socket = new WebSocket(`ws://127.0.0.1:${port}/peerjs?key=peerjs&id=${id}&token=${token}`);
   const inbox: Message[] = [];
   socket.addEventListener('message', (event) => inbox.push(JSON.parse(String(event.data))));
 
-  const peer = {
+  return {
     id,
     token,
     socket,
+    inbox,
     send(message: Omit<Message, 'src'>) {
       socket.send(JSON.stringify(message));
     },
@@ -50,6 +51,10 @@ async function connect(port: number, id = randomUUID(), token = randomUUID()) {
       });
     },
   };
+}
+
+async function connect(port: number, id?: string, token?: string) {
+  const peer = dial(port, id, token);
   await peer.receive('OPEN');
   return peer;
 }
@@ -199,6 +204,27 @@ describe('grace window', () => {
     // the window it would have closed in is well over.
     await new Promise((resolve) => setTimeout(resolve, GRACE * 2));
     expect((await lookup(base, code)).status).toBe(200);
+  });
+
+  // What a host sees after a network drop: its own side knows the socket is
+  // dead before the server does, and reconnects while the old one still
+  // looks open here.
+  it('hands the code to a host that reconnects before its old socket closes, with no OPEN', async () => {
+    const { port, base } = await start({ graceMs: GRACE });
+    const { host, code } = await hostRoom(port, base);
+
+    const back = dial(port, host.id, host.token);
+    await vi.waitFor(() => expect(back.socket.readyState).toBe(WebSocket.OPEN));
+    const response = await openRoom(base, back.id);
+    expect(await response.json()).toEqual({ code });
+
+    // The old socket no longer belongs to the client, so its close holds nothing.
+    host.socket.close();
+    await new Promise((resolve) => setTimeout(resolve, GRACE * 2));
+    expect((await lookup(base, code)).status).toBe(200);
+    // peer only sends OPEN to a client it registers, and this one it already had.
+    // A host waiting for PeerJS's open event here would wait forever.
+    expect(back.inbox.map((message) => message.type)).not.toContain('OPEN');
   });
 });
 
