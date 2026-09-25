@@ -1,0 +1,48 @@
+import { useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import styles from './RemovalPrompt.module.css';
+
+interface RemovalPromptProps {
+  nickname: string;
+  onRemove: () => void;
+  onCancel: () => void;
+}
+
+// Asked under the whole list rather than next to the person, since in the
+// sorting strip each person is a column too narrow to hold it. The focus comes
+// here on its own, landing on the choice that removes nobody, and goes back to
+// the Remove button that opened it when that is the choice made.
+export function RemovalPrompt({ nickname, onRemove, onCancel }: RemovalPromptProps) {
+  const { t } = useTranslation();
+  const promptId = useId();
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  // Read on the first render, while the button that opened the prompt still
+  // has the focus. An effect would run twice in development and find Cancel
+  // there the second time.
+  const [opener] = useState(() => document.activeElement);
+
+  useEffect(() => {
+    cancelButton.current?.focus();
+  }, []);
+
+  const cancel = () => {
+    onCancel();
+    if (opener instanceof HTMLElement) opener.focus();
+  };
+
+  return (
+    <div className={styles.prompt} role="group" aria-labelledby={promptId}>
+      <p id={promptId} className={styles.question}>
+        {t('room.remove.confirm', { nickname })}
+      </p>
+      <div className={styles.actions}>
+        <button type="button" className={styles.remove} onClick={onRemove}>
+          {t('room.remove.yes')}
+        </button>
+        <button ref={cancelButton} type="button" className={styles.cancel} onClick={cancel}>
+          {t('room.remove.no')}
+        </button>
+      </div>
+    </div>
+  );
+}

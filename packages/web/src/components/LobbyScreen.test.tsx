@@ -6,13 +6,17 @@ import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
-import { leaveRoom, startRoom } from '../room/session.ts';
+import { leaveRoom, removeParticipant, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { LobbyScreen } from './LobbyScreen.tsx';
 
-vi.mock('../room/session.ts', () => ({ leaveRoom: vi.fn(), startRoom: vi.fn() }));
+vi.mock('../room/session.ts', () => ({
+  leaveRoom: vi.fn(),
+  removeParticipant: vi.fn(),
+  startRoom: vi.fn(),
+}));
 
 const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 0 };
 const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 0 };
@@ -46,6 +50,7 @@ const announcer = () => document.querySelector('[data-announcer]')!;
 beforeEach(() => {
   vi.mocked(leaveRoom).mockReset();
   vi.mocked(startRoom).mockReset();
+  vi.mocked(removeParticipant).mockReset();
   useScreen.setState({ screen: 'lobby' });
   window.history.replaceState(null, '', '/');
 });
@@ -128,6 +133,31 @@ describe('LobbyScreen', () => {
       expect(useScreen.getState().screen).toBe('list-input');
     });
 
+    it('is told the creator removed them and can go back to the form', async () => {
+      window.history.replaceState(null, '', '/?room=AB3K');
+      inRoom('guest', 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().remove());
+
+      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.removed);
+      await userEvent.click(screen.getByRole('button', { name: en.room.back }));
+      expect(leaveRoom).toHaveBeenCalled();
+      expect(window.location.search).toBe('');
+      expect(useScreen.getState().screen).toBe('list-input');
+    });
+
+    it('cannot remove anyone', () => {
+      inRoom('guest', 'j', [ana, juan, lucia]);
+      const i18n = renderLobby();
+
+      for (const { nickname } of [ana, lucia]) {
+        expect(
+          screen.queryByRole('button', { name: i18n.t('room.remove.label', { nickname }) }),
+        ).not.toBeInTheDocument();
+      }
+    });
+
     it('waits for the creator, with no way to start the room', () => {
       inRoom('guest', 'j');
       renderLobby();
@@ -182,6 +212,62 @@ describe('LobbyScreen', () => {
       expect(screen.queryByText(en.room.lobby.confirmClose)).not.toBeInTheDocument();
       expect(leaveRoom).not.toHaveBeenCalled();
       expect(useScreen.getState().screen).toBe('lobby');
+    });
+
+    it('can remove everyone but themselves', () => {
+      inRoom('host', 'a', [ana, juan, lucia]);
+      const i18n = renderLobby();
+
+      const label = (nickname: string) => i18n.t('room.remove.label', { nickname });
+      expect(within(row('Juan')).getByRole('button', { name: label('Juan') })).toBeInTheDocument();
+      expect(
+        within(row('Lucía')).getByRole('button', { name: label('Lucía') }),
+      ).toBeInTheDocument();
+      expect(within(row('Ana')).queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('asks before removing someone, and cancelling removes nobody', async () => {
+      inRoom('host', 'a');
+      const i18n = renderLobby();
+      const remove = screen.getByRole('button', {
+        name: i18n.t('room.remove.label', { nickname: 'Juan' }),
+      });
+
+      await userEvent.click(remove);
+      const prompt = screen.getByRole('group', {
+        name: i18n.t('room.remove.confirm', { nickname: 'Juan' }),
+      });
+      expect(within(prompt).getByRole('button', { name: en.room.remove.no })).toHaveFocus();
+
+      await userEvent.click(within(prompt).getByRole('button', { name: en.room.remove.no }));
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+      expect(remove).toHaveFocus();
+      expect(removeParticipant).not.toHaveBeenCalled();
+    });
+
+    it('removes someone once confirmed', async () => {
+      inRoom('host', 'a');
+      const i18n = renderLobby();
+
+      await userEvent.click(
+        screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+      );
+      await userEvent.click(screen.getByRole('button', { name: en.room.remove.yes }));
+
+      expect(removeParticipant).toHaveBeenCalledWith('j');
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
+
+    it('drops the question when the person leaves before the answer', async () => {
+      inRoom('host', 'a');
+      const i18n = renderLobby();
+
+      await userEvent.click(
+        screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+      );
+      act(() => useRoom.getState().setParticipants([ana]));
+
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
     });
 
     it('closes the room once confirmed', async () => {

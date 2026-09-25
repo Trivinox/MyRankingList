@@ -1,23 +1,28 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
+import { removeParticipant } from '../room/session.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { RoomStatus } from '../state/roomStore.ts';
 import { RoomProgress } from './RoomProgress.tsx';
+
+vi.mock('../room/session.ts', () => ({ removeParticipant: vi.fn() }));
 
 const items: Item[] = ['Udon', 'Soba', 'Ramen', 'Pho'].map((text) => ({ id: text, text }));
 
 const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
 const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 3 };
 
-function inRoom(status: RoomStatus) {
-  useRoom.setState({ role: 'guest', you: 'j', participants: [ana, juan], status, items });
+function inRoom(status: RoomStatus, role: 'host' | 'guest' = 'guest') {
+  const you = role === 'host' ? 'a' : 'j';
+  useRoom.setState({ role, you, participants: [ana, juan], status, items });
 }
 
 const renderStrip = () => {
@@ -31,6 +36,7 @@ const renderStrip = () => {
 };
 
 beforeEach(() => {
+  vi.mocked(removeParticipant).mockReset();
   usePlacement.getState().start(items, 'Best noodle');
 });
 
@@ -62,6 +68,29 @@ describe('RoomProgress', () => {
         name: i18n.t('room.placed', { nickname: 'Juan', placed: 4, total: 4 }),
       }),
     ).toBeInTheDocument();
+  });
+
+  it('lets the host remove anyone but themselves, once they confirm', async () => {
+    inRoom('sorting', 'host');
+    const i18n = renderStrip();
+
+    expect(
+      screen.queryByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Ana' }) }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+    );
+    expect(removeParticipant).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: en.room.remove.yes }));
+
+    expect(removeParticipant).toHaveBeenCalledWith('j');
+  });
+
+  it('gives a guest no way to remove anyone', () => {
+    inRoom('sorting');
+    renderStrip();
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('is not there outside a room', () => {

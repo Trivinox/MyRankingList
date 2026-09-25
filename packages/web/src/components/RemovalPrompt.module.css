@@ -1,0 +1,34 @@
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.question {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.remove,
+.cancel {
+  padding: 0.5rem 1.2rem;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.remove {
+  border: none;
+  background: #b3261e;
+  color: #fff;
+}
+
+.cancel {
+  border: 1px solid #b8b8c2;
+  background: none;
+}

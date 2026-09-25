@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ROOM_LIMIT, START_MINIMUM } from '../room/hostRoom.ts';
 import { forgetRoomLink, roomLink } from '../room/link.ts';
-import { leaveRoom, startRoom } from '../room/session.ts';
+import { leaveRoom, removeParticipant, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
+import { RemovalPrompt } from './RemovalPrompt.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import styles from './LobbyScreen.module.css';
 
@@ -16,6 +17,7 @@ export function LobbyScreen() {
   const { role, code, you, participants, criterion, status } = useRoom();
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   const { announcement, say } = useAnnouncer();
   const seen = useRef(participants);
 
@@ -44,11 +46,11 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed') {
+  if (status === 'closed' || status === 'removed') {
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">
-          {t('room.lobby.closed')}
+          {t(status === 'closed' ? 'room.lobby.closed' : 'room.lobby.removed')}
         </p>
         <button type="button" className={styles.secondary} onClick={backToForm}>
           {t('room.back')}
@@ -60,6 +62,8 @@ export function LobbyScreen() {
   if (code === null) return null;
 
   const canStart = participants.length >= START_MINIMUM;
+  // Gone already if they left while the host was making up their mind.
+  const target = participants.find((p) => p.id === removing);
 
   // The clipboard is missing over plain http, which is how a phone on the same
   // wifi reaches a dev machine, and it can refuse a page without focus. The
@@ -105,9 +109,30 @@ export function LobbyScreen() {
               place={place}
               isYou={participant.id === you}
             />
+            {role === 'host' && !participant.isCreator && (
+              <button
+                type="button"
+                className={styles.remove}
+                aria-label={t('room.remove.label', { nickname: participant.nickname })}
+                onClick={() => setRemoving(participant.id)}
+              >
+                {t('room.remove.button')}
+              </button>
+            )}
           </li>
         ))}
       </ul>
+      {target && (
+        <RemovalPrompt
+          key={target.id}
+          nickname={target.nickname}
+          onRemove={() => {
+            removeParticipant(target.id);
+            setRemoving(null);
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
 
       {role === 'host' ? (
         <div className={styles.start}>
