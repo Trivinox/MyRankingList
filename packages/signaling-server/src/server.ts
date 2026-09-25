@@ -17,8 +17,9 @@ import { RoomRegistry } from './rooms.ts';
 export const MAX_MISSES = 10;
 export const MISS_WINDOW_MS = 5 * 60 * 1000;
 
-// How long a host's code outlives its signaling socket. Long enough for a phone
-// that froze the tab while its owner sent the link somewhere else.
+// How long a host's code outlives its signaling socket. A guess for now: it has
+// to cover a phone that froze the tab in the background, and nobody has timed
+// how long that lasts on Android yet.
 export const GRACE_MS = 5 * 60 * 1000;
 
 export type SignalingOptions = Omit<Config, 'port'> & {

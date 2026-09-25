@@ -165,6 +165,10 @@ describe('POST /rooms', () => {
 describe('grace window', () => {
   const GRACE = 300;
 
+  // Nothing to wait on but the clock: long enough for a window that should
+  // have closed to be well over.
+  const outlastWindow = () => new Promise((resolve) => setTimeout(resolve, GRACE * 2));
+
   // A 409 means the server has seen the socket go, so the window has started.
   async function dropped(base: string, peerId: string) {
     await vi.waitFor(async () => {
@@ -200,9 +204,7 @@ describe('grace window', () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ code });
 
-    // Nothing to wait on here but the clock: the code must still be there once
-    // the window it would have closed in is well over.
-    await new Promise((resolve) => setTimeout(resolve, GRACE * 2));
+    await outlastWindow();
     expect((await lookup(base, code)).status).toBe(200);
   });
 
@@ -220,7 +222,7 @@ describe('grace window', () => {
 
     // The old socket no longer belongs to the client, so its close holds nothing.
     host.socket.close();
-    await new Promise((resolve) => setTimeout(resolve, GRACE * 2));
+    await outlastWindow();
     expect((await lookup(base, code)).status).toBe(200);
     // peer only sends OPEN to a client it registers, and this one it already had.
     // A host waiting for PeerJS's open event here would wait forever.
