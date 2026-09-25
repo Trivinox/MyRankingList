@@ -17,9 +17,15 @@ import { RoomRegistry } from './rooms.ts';
 export const MAX_MISSES = 10;
 export const MISS_WINDOW_MS = 5 * 60 * 1000;
 
+// How long a host's code outlives its signaling socket. A guess for now: it has
+// to cover a phone that froze the tab in the background, and nobody has timed
+// how long that lasts on Android yet.
+export const GRACE_MS = 5 * 60 * 1000;
+
 export type SignalingOptions = Omit<Config, 'port'> & {
   pick?: Pick;
   now?: () => number;
+  graceMs?: number;
   // Stands in for Metered in the tests.
   fetcher?: typeof fetch;
 };
@@ -44,6 +50,7 @@ export function createSignalingServer({
   metered,
   pick,
   now,
+  graceMs = GRACE_MS,
   fetcher,
 }: SignalingOptions) {
   const app = express();
@@ -52,7 +59,7 @@ export function createSignalingServer({
   // and its app inherits this setting when mounted.
   if (proxies > 0) app.set('trust proxy', proxies);
 
-  const rooms = new RoomRegistry(pick);
+  const rooms = new RoomRegistry({ graceMs, pick });
   const misses = createRateLimiter({ limit: MAX_MISSES, windowMs: MISS_WINDOW_MS, now });
   const connected = new Map<string, IClient>();
   const iceServers = createIceServers({ metered, fetcher, now });
@@ -65,10 +72,15 @@ export function createSignalingServer({
     corsOptions: { origin: allowedOrigin },
   });
 
-  peerServer.on('connection', (client) => connected.set(client.getId(), client));
+  // PeerJS reconnects with the ID and token it had, so a host coming back
+  // inside the window arrives here under the ID its code points to.
+  peerServer.on('connection', (client) => {
+    connected.set(client.getId(), client);
+    rooms.cancelHold(client.getId());
+  });
   peerServer.on('disconnect', (client) => {
     connected.delete(client.getId());
-    rooms.release(client.getId());
+    rooms.hold(client.getId());
   });
   // Without a listener, the first message that is not JSON would throw from
   // peer's emitter and take the whole server down. Every error it reports
@@ -124,6 +136,7 @@ export function createSignalingServer({
     // An upgraded WebSocket is no longer the HTTP server's to close, and close()
     // alone would wait on it forever.
     close() {
+      rooms.clearHolds();
       for (const client of connected.values()) client.getSocket()?.terminate();
       return new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
