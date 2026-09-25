@@ -6,17 +6,17 @@ import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
-import { leaveRoom } from '../room/session.ts';
+import { leaveRoom, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { LobbyScreen } from './LobbyScreen.tsx';
 
-vi.mock('../room/session.ts', () => ({ leaveRoom: vi.fn() }));
+vi.mock('../room/session.ts', () => ({ leaveRoom: vi.fn(), startRoom: vi.fn() }));
 
-const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true };
-const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false };
-const lucia: Participant = { id: 'l', nickname: 'Lucía', isCreator: false };
+const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 0 };
+const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 0 };
+const lucia: Participant = { id: 'l', nickname: 'Lucía', isCreator: false, progress: 0 };
 
 const renderLobby = () => {
   const i18n = createI18n();
@@ -45,6 +45,7 @@ const announcer = () => document.querySelector('[data-announcer]')!;
 
 beforeEach(() => {
   vi.mocked(leaveRoom).mockReset();
+  vi.mocked(startRoom).mockReset();
   useScreen.setState({ screen: 'lobby' });
   window.history.replaceState(null, '', '/');
 });
@@ -126,9 +127,49 @@ describe('LobbyScreen', () => {
       expect(window.location.search).toBe('');
       expect(useScreen.getState().screen).toBe('list-input');
     });
+
+    it('waits for the creator, with no way to start the room', () => {
+      inRoom('guest', 'j');
+      renderLobby();
+
+      expect(screen.getByText(en.room.lobby.waiting)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: en.room.lobby.start })).not.toBeInTheDocument();
+    });
+  });
+
+  it('moves to the sorting screen once the room starts', () => {
+    inRoom('guest', 'j');
+    renderLobby();
+
+    act(() => useRoom.getState().startSorting([]));
+
+    expect(useScreen.getState().screen).toBe('sorting');
   });
 
   describe('as the host', () => {
+    it('cannot start alone, and is told why', () => {
+      inRoom('host', 'a', [ana]);
+      renderLobby();
+
+      const start = screen.getByRole('button', { name: en.room.lobby.start });
+      expect(start).toBeDisabled();
+      expect(start).toHaveAccessibleDescription(en.room.lobby.needsSomeone);
+      expect(screen.queryByText(en.room.lobby.waiting)).not.toBeInTheDocument();
+    });
+
+    it('starts the room once someone else is in', async () => {
+      inRoom('host', 'a', [ana]);
+      renderLobby();
+
+      act(() => useRoom.getState().setParticipants([ana, juan]));
+      const start = screen.getByRole('button', { name: en.room.lobby.start });
+      expect(start).toBeEnabled();
+      expect(screen.queryByText(en.room.lobby.needsSomeone)).not.toBeInTheDocument();
+
+      await userEvent.click(start);
+      expect(startRoom).toHaveBeenCalled();
+    });
+
     it('asks before closing the room, and staying keeps it open', async () => {
       inRoom('host', 'a');
       renderLobby();

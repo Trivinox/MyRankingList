@@ -13,12 +13,22 @@ interface PoolItemProps {
   held?: Item | null;
   onRelease?: () => void;
   onFinish?: () => void;
+  // A room has no result of one person's to show, so an empty pool there only
+  // says the list can still change.
+  inRoom?: boolean;
   // On a phone the list is the main element, so the card shrinks to a row and
   // is only ever placed by tapping.
   mobile?: boolean;
 }
 
-export function PoolItem({ item, held, onRelease, onFinish, mobile = false }: PoolItemProps) {
+export function PoolItem({
+  item,
+  held,
+  onRelease,
+  onFinish,
+  inRoom = false,
+  mobile = false,
+}: PoolItemProps) {
   const { t } = useTranslation();
   const hint = held ? t('sorting.select.heldHint', { item: held.text }) : t('sorting.poolHint');
 
@@ -37,6 +47,8 @@ export function PoolItem({ item, held, onRelease, onFinish, mobile = false }: Po
           <Handle key={item.id} item={item} dimmed={Boolean(held)} mobile={mobile} />
           <p className={styles.hint}>{hint}</p>
         </>
+      ) : inRoom ? (
+        <p className={styles.hint}>{held ? hint : t('sorting.allPlacedInRoom')}</p>
       ) : (
         <>
           {/* Leaving now would drop the held item without a word, so the

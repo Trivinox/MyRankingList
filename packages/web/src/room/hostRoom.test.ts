@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_LIMIT, admit, leave } from './hostRoom.ts';
+import { ROOM_LIMIT, admit, leave, setProgress, startAll } from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
 
 function seat(participants: Participant[], nickname: string, isCreator = false) {
@@ -21,7 +21,7 @@ describe('admit', () => {
   it('seats the creator first, marked as such', () => {
     const { participant, participants } = seat([], 'Ana', true);
 
-    expect(participant).toMatchObject({ nickname: 'Ana', isCreator: true });
+    expect(participant).toMatchObject({ nickname: 'Ana', isCreator: true, progress: 0 });
     expect(participants).toEqual([participant]);
   });
 
@@ -86,5 +86,37 @@ describe('leave', () => {
     const { participants } = seat([], 'Ana', true);
 
     expect(leave(participants, 'someone-else')).toEqual(participants);
+  });
+});
+
+describe('startAll', () => {
+  it('puts everyone at 1, the item their list opens with', () => {
+    const ana = seat([], 'Ana', true);
+    const { participants } = seat(ana.participants, 'Juan');
+
+    expect(startAll(participants).map((p) => [p.nickname, p.progress])).toEqual([
+      ['Ana', 1],
+      ['Juan', 1],
+    ]);
+    expect(participants.map((p) => p.progress)).toEqual([0, 0]);
+  });
+});
+
+describe('setProgress', () => {
+  it('changes only the one named, and leaves the others as they were', () => {
+    const ana = seat([], 'Ana', true);
+    const juan = seat(ana.participants, 'Juan');
+    const started = startAll(juan.participants);
+
+    const after = setProgress(started, juan.participant.id, 3);
+
+    expect(after.map((p) => p.progress)).toEqual([1, 3]);
+    expect(after[0]).toBe(started[0]);
+  });
+
+  it('changes nothing for an id that is not in the room', () => {
+    const started = startAll(seat([], 'Ana', true).participants);
+
+    expect(setProgress(started, 'someone-else', 2)).toEqual(started);
   });
 });

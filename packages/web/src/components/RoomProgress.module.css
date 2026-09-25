@@ -1,0 +1,27 @@
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: flex;
+}
+
+/* 767px mirrors useIsMobile.ts. One row that scrolls sideways: a room of
+   twenty wrapping into rows would push the list off a phone's screen. */
+@media (max-width: 767px) {
+  .strip {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .person {
+    flex-shrink: 0;
+  }
+}

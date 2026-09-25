@@ -137,6 +137,8 @@ function describe(error: RoomError, joining: boolean, t: Translate) {
       return t('room.rateLimited', { count: Math.ceil(error.retryAfter / 60) });
     case 'full':
       return t('room.full');
+    case 'started':
+      return t('room.started');
     case 'unreachable':
       return t(joining ? 'room.unreachable' : 'room.notOpened');
   }

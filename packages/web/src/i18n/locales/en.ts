@@ -82,7 +82,9 @@ export const en = {
       outside: 'Dropped outside the list. The list is unchanged.',
       cancelled: 'Drag cancelled. The list is unchanged.',
       allPlaced: 'Every item is placed. You can still move them, or press See result.',
+      allPlacedInRoom: 'Every item is placed. You can still move them.',
     },
+    allPlacedInRoom: 'Everything is placed. You can still move items around.',
   },
   result: {
     title: 'Your final list',
@@ -107,8 +109,11 @@ export const en = {
     rateLimited_one: 'Too many wrong codes. Try again in {{count}} minute.',
     rateLimited_other: 'Too many wrong codes. Try again in {{count}} minutes.',
     full: 'That room is full.',
+    started: 'That room has already started sorting. Nobody else can join it now.',
     unreachable: 'The room could not be reached. Check your connection and try again.',
     notOpened: 'The room could not be opened. Check your connection and try again.',
+    placed: '{{nickname}}, {{placed}} of {{total}} placed',
+    everyone: 'Everyone in the room',
     lobby: {
       code: 'Room code',
       copyLink: 'Copy link',
@@ -126,6 +131,9 @@ export const en = {
       confirmYes: 'Close it',
       confirmNo: 'Stay',
       closed: 'The room was closed.',
+      start: 'Start',
+      needsSomeone: 'Someone else has to join before you can start.',
+      waiting: 'Waiting for the creator to start.',
     },
   },
 };

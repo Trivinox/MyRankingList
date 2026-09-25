@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ROOM_LIMIT } from '../room/hostRoom.ts';
-import type { Participant } from '../room/hostRoom.ts';
+import { ROOM_LIMIT, START_MINIMUM } from '../room/hostRoom.ts';
 import { forgetRoomLink, roomLink } from '../room/link.ts';
-import { leaveRoom } from '../room/session.ts';
+import { leaveRoom, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
+import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import styles from './LobbyScreen.module.css';
 
@@ -32,6 +32,12 @@ export function LobbyScreen() {
     seen.current = participants;
   }, [participants, say, t]);
 
+  // The host's own Start and a guest's start message both land here, as the
+  // session sets the room sorting.
+  useEffect(() => {
+    if (status === 'sorting') setScreen('sorting');
+  }, [status, setScreen]);
+
   const backToForm = () => {
     leaveRoom();
     forgetRoomLink();
@@ -52,6 +58,8 @@ export function LobbyScreen() {
   }
 
   if (code === null) return null;
+
+  const canStart = participants.length >= START_MINIMUM;
 
   // The clipboard is missing over plain http, which is how a phone on the same
   // wifi reaches a dev machine, and it can refuse a page without focus. The
@@ -90,14 +98,37 @@ export function LobbyScreen() {
         </span>
       </div>
       <ul className={styles.participants}>
-        {participants.map((participant) => (
-          <ParticipantRow
-            key={participant.id}
-            participant={participant}
-            isYou={participant.id === you}
-          />
+        {participants.map((participant, place) => (
+          <li key={participant.id} className={styles.participant}>
+            <ParticipantAvatar
+              participant={participant}
+              place={place}
+              isYou={participant.id === you}
+            />
+          </li>
         ))}
       </ul>
+
+      {role === 'host' ? (
+        <div className={styles.start}>
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={!canStart}
+            aria-describedby={canStart ? undefined : 'lobby-start-notice'}
+            onClick={startRoom}
+          >
+            {t('room.lobby.start')}
+          </button>
+          {!canStart && (
+            <p id="lobby-start-notice" className={styles.notice}>
+              {t('room.lobby.needsSomeone')}
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className={styles.notice}>{t('room.lobby.waiting')}</p>
+      )}
 
       {role === 'host' && confirming ? (
         <div className={styles.confirm}>
@@ -124,16 +155,5 @@ export function LobbyScreen() {
 
       <Announcer announcement={announcement} />
     </div>
-  );
-}
-
-function ParticipantRow({ participant, isYou }: { participant: Participant; isYou: boolean }) {
-  const { t } = useTranslation();
-  return (
-    <li className={styles.participant}>
-      <span className={styles.nickname}>{participant.nickname}</span>
-      {isYou && <span className={styles.tag}>{t('room.lobby.you')}</span>}
-      {participant.isCreator && <span className={styles.tag}>{t('room.lobby.creator')}</span>}
-    </li>
   );
 }
