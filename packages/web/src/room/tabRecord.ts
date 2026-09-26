@@ -1,8 +1,9 @@
 import type { Item, PlacementState } from '../core/types.ts';
 
 // What a guest's tab keeps while sorting in a room, so a reload can take them
-// back in with the same place and the same list. The session storage belongs
-// to this tab alone: another tab, or another device, starts with nothing.
+// back in with the same place and the same list. A new tab or another device
+// starts with nothing. A duplicated tab gets a copy, and the host tells the
+// older of the two it has been replaced.
 //
 // The nickname is kept for the join message, which always carries one. The
 // host only reads it when the seat means nothing to it any more.
@@ -30,7 +31,8 @@ export function readTabRecord(): TabRecord | null {
   }
   if (saved === null) return null;
 
-  // Nobody but this app writes here, but an older build might have.
+  // Only this app writes here. Still, a tab left open across a deploy holds a
+  // record from the build before, which may not have every field this one reads.
   try {
     const record = JSON.parse(saved) as Partial<TabRecord> | null;
     const complete =
