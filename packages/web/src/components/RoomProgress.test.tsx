@@ -34,7 +34,7 @@ const juan: Participant = {
 
 function inRoom(status: RoomStatus, role: 'host' | 'guest' = 'guest') {
   const you = role === 'host' ? 'a' : 'j';
-  useRoom.setState({ role, you, participants: [ana, juan], status, items });
+  useRoom.setState({ role, you, participants: [ana, juan], status, items, overdue: [] });
 }
 
 const renderStrip = () => {
@@ -137,6 +137,83 @@ describe('RoomProgress', () => {
     renderStrip();
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  describe('someone away for too long', () => {
+    const awayJuan = { ...juan, connected: false };
+
+    function overdue(role: 'host' | 'guest') {
+      inRoom('sorting', role);
+      useRoom.setState({ participants: [ana, awayJuan], overdue: ['j'] });
+    }
+
+    it('shows the creator a notice with a way to finish without them', () => {
+      overdue('host');
+      const i18n = renderStrip();
+
+      expect(
+        screen.getByText(i18n.t('room.overdue.notice', { nickname: 'Juan', count: 20 })),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: i18n.t('room.overdue.finish', { nickname: 'Juan' }) }),
+      ).toBeInTheDocument();
+    });
+
+    it('shows a guest nothing', () => {
+      overdue('guest');
+      const i18n = renderStrip();
+
+      expect(
+        screen.queryByText(i18n.t('room.overdue.notice', { nickname: 'Juan', count: 20 })),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('asks first, and finishes without them once the creator confirms', async () => {
+      overdue('host');
+      const i18n = renderStrip();
+
+      await userEvent.click(
+        screen.getByRole('button', { name: i18n.t('room.overdue.finish', { nickname: 'Juan' }) }),
+      );
+      expect(
+        screen.getByText(i18n.t('room.overdue.confirm', { nickname: 'Juan' })),
+      ).toBeInTheDocument();
+      expect(removeParticipant).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: en.room.overdue.yes }));
+
+      expect(removeParticipant).toHaveBeenCalledWith('j');
+    });
+
+    it('takes nobody out when the creator cancels, and gives the focus back', async () => {
+      overdue('host');
+      const i18n = renderStrip();
+      const finish = screen.getByRole('button', {
+        name: i18n.t('room.overdue.finish', { nickname: 'Juan' }),
+      });
+
+      await userEvent.click(finish);
+      await userEvent.click(screen.getByRole('button', { name: en.room.remove.no }));
+
+      expect(removeParticipant).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: en.room.overdue.yes })).not.toBeInTheDocument();
+      expect(finish).toHaveFocus();
+    });
+
+    it('drops the question when they come back while it is asked', async () => {
+      overdue('host');
+      const i18n = renderStrip();
+      await userEvent.click(
+        screen.getByRole('button', { name: i18n.t('room.overdue.finish', { nickname: 'Juan' }) }),
+      );
+
+      act(() => useRoom.setState({ participants: [ana, juan], overdue: [] }));
+      expect(screen.queryByRole('button', { name: en.room.overdue.yes })).not.toBeInTheDocument();
+
+      // Away long enough again, and the question does not come back unasked.
+      act(() => useRoom.setState({ participants: [ana, awayJuan], overdue: ['j'] }));
+      expect(screen.queryByRole('button', { name: en.room.overdue.yes })).not.toBeInTheDocument();
+    });
   });
 
   it('is not there outside a room', () => {

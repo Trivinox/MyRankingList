@@ -4,6 +4,8 @@ import styles from './RemovalPrompt.module.css';
 
 interface RemovalPromptProps {
   nickname: string;
+  // Asked about someone away for too long, in words that fit that.
+  finishing?: boolean;
   onRemove: () => void;
   onCancel: () => void;
 }
@@ -12,8 +14,9 @@ interface RemovalPromptProps {
 // sorting strip each person is a column too narrow to hold it. The focus comes
 // here on its own, landing on the choice that removes nobody, and goes back to
 // the Remove button that opened it when that is the choice made.
-export function RemovalPrompt({ nickname, onRemove, onCancel }: RemovalPromptProps) {
+export function RemovalPrompt({ nickname, finishing, onRemove, onCancel }: RemovalPromptProps) {
   const { t } = useTranslation();
+  const words = finishing ? 'room.overdue' : 'room.remove';
   const promptId = useId();
   const cancelButton = useRef<HTMLButtonElement>(null);
   // Read on the first render, while the button that opened the prompt still
@@ -33,11 +36,11 @@ export function RemovalPrompt({ nickname, onRemove, onCancel }: RemovalPromptPro
   return (
     <div className={styles.prompt} role="group" aria-labelledby={promptId}>
       <p id={promptId} className={styles.question}>
-        {t('room.remove.confirm', { nickname })}
+        {t(`${words}.confirm`, { nickname })}
       </p>
       <div className={styles.actions}>
         <button type="button" className={styles.remove} onClick={onRemove}>
-          {t('room.remove.yes')}
+          {t(`${words}.yes`)}
         </button>
         <button ref={cancelButton} type="button" className={styles.cancel} onClick={cancel}>
           {t('room.remove.no')}

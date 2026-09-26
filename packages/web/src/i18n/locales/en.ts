@@ -123,6 +123,13 @@ export const en = {
       yes: 'Yes, remove',
       no: 'Cancel',
     },
+    overdue: {
+      notice_one: '{{nickname}} has been away for {{count}} minute.',
+      notice_other: '{{nickname}} has been away for {{count}} minutes.',
+      finish: 'Finish without {{nickname}}',
+      confirm: 'Finish without {{nickname}}? They will not be able to come back into the room.',
+      yes: 'Yes, finish without them',
+    },
     lobby: {
       code: 'Room code',
       copyLink: 'Copy link',
