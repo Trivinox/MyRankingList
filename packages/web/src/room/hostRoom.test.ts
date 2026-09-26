@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_LIMIT, admit, exclude, leave, setProgress, startAll } from './hostRoom.ts';
+import {
+  ROOM_LIMIT,
+  admit,
+  exclude,
+  leave,
+  setConnected,
+  setProgress,
+  startAll,
+} from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
 
 function seat(participants: Participant[], nickname: string, isCreator = false) {
@@ -21,7 +29,12 @@ describe('admit', () => {
   it('seats the creator first, marked as such', () => {
     const { participant, participants } = seat([], 'Ana', true);
 
-    expect(participant).toMatchObject({ nickname: 'Ana', isCreator: true, progress: 0 });
+    expect(participant).toMatchObject({
+      nickname: 'Ana',
+      isCreator: true,
+      progress: 0,
+      connected: true,
+    });
     expect(participants).toEqual([participant]);
   });
 
@@ -145,5 +158,19 @@ describe('setProgress', () => {
     const started = startAll(seat([], 'Ana', true).participants);
 
     expect(setProgress(started, 'someone-else', 2)).toEqual(started);
+  });
+});
+
+describe('setConnected', () => {
+  it('marks only the one named, keeping their count', () => {
+    const ana = seat([], 'Ana', true);
+    const juan = seat(ana.participants, 'Juan');
+    const placed = setProgress(startAll(juan.participants), juan.participant.id, 3);
+
+    const away = setConnected(placed, juan.participant.id, false);
+
+    expect(away[1]).toMatchObject({ connected: false, progress: 3 });
+    expect(away[0]).toBe(placed[0]);
+    expect(setConnected(away, juan.participant.id, true)[1]).toEqual(placed[1]);
   });
 });

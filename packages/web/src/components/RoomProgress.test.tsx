@@ -17,8 +17,20 @@ vi.mock('../room/session.ts', () => ({ removeParticipant: vi.fn() }));
 
 const items: Item[] = ['Udon', 'Soba', 'Ramen', 'Pho'].map((text) => ({ id: text, text }));
 
-const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
-const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 3 };
+const ana: Participant = {
+  id: 'a',
+  nickname: 'Ana',
+  isCreator: true,
+  progress: 1,
+  connected: true,
+};
+const juan: Participant = {
+  id: 'j',
+  nickname: 'Juan',
+  isCreator: false,
+  progress: 3,
+  connected: true,
+};
 
 function inRoom(status: RoomStatus, role: 'host' | 'guest' = 'guest') {
   const you = role === 'host' ? 'a' : 'j';

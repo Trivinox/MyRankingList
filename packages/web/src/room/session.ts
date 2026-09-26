@@ -5,11 +5,21 @@ import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
 import { SIGNALING_URL } from './config.ts';
-import { START_MINIMUM, admit, exclude, leave, setProgress, startAll } from './hostRoom.ts';
+import {
+  START_MINIMUM,
+  admit,
+  exclude,
+  leave,
+  setConnected,
+  setProgress,
+  startAll,
+} from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 import type { GuestMessage, HostMessage } from './protocol.ts';
 import { createSignaling } from './signaling.ts';
+import { clearTabRecord, writeTabRecord } from './tabRecord.ts';
+import type { TabRecord } from './tabRecord.ts';
 
 // The only module that touches peerjs. It turns what happens on the network
 // into store updates, and the screens never see a Peer or a channel.
@@ -18,6 +28,11 @@ import { createSignaling } from './signaling.ts';
 // gives up. The lookup before it has no limit: a sleeping server on Render
 // takes close to a minute to wake, and that wait says nothing about the host.
 const WELCOME_TIMEOUT_MS = 20_000;
+
+// How long a guest who lost the host waits before each new try. The last one
+// repeats for as long as the code still resolves: the signaling server keeps
+// it a while for a host who may be coming back.
+const RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 15_000];
 
 const signaling = createSignaling(SIGNALING_URL);
 
@@ -43,6 +58,8 @@ let attempt = 0;
 let startHere: (() => void) | null = null;
 let removeHere: ((id: string) => void) | null = null;
 let unfollow: (() => void) | null = null;
+// A guest's next try at getting back to the host.
+let retry: ReturnType<typeof setTimeout> | undefined;
 
 function stopFollowing() {
   unfollow?.();
@@ -50,6 +67,7 @@ function stopFollowing() {
 }
 
 function letGo() {
+  clearTimeout(retry);
   peer?.destroy();
   peer = null;
   startHere = null;
@@ -63,16 +81,19 @@ function begin(role: Role) {
   return ++attempt;
 }
 
+function placedCount() {
+  const { items, placement } = usePlacement.getState();
+  return placement ? items.length - placement.pendingPool.length : 0;
+}
+
 // Only the count leaves this browser, never the list, and only when it
-// changes: moving an item that is already placed leaves it as it was.
-function follow(report: (placed: number) => void) {
-  const count = () => {
-    const { items, placement } = usePlacement.getState();
-    return placement ? items.length - placement.pendingPool.length : 0;
-  };
-  let last = count();
+// changes: moving an item that is already placed leaves it as it was. `keep`
+// runs on every change, moves included.
+function follow(report: (placed: number) => void, keep?: () => void) {
+  let last = placedCount();
   unfollow = usePlacement.subscribe(() => {
-    const placed = count();
+    keep?.();
+    const placed = placedCount();
     if (placed === last) return;
     last = placed;
     report(placed);
@@ -131,8 +152,15 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     tellEveryone();
   };
 
+  // Seat to participant id. The seat is the secret a guest shows to get their
+  // place back, and only they and this closure ever hold it: the id goes to
+  // everyone, so it proves nothing.
+  const seats = new Map<string, string>();
+  const removedSeats = new Set<string>();
+
   host.on('connection', (channel) => {
     let id: string | null = null;
+    let seat: string | null = null;
 
     channel.on('data', (data) => {
       const message = parseGuestMessage(data);
@@ -149,6 +177,38 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
       }
 
       if (id !== null) return;
+
+      if (message.seat !== undefined && removedSeats.has(message.seat)) {
+        send(channel, { type: 'removed' });
+        channel.close({ flush: true });
+        return;
+      }
+
+      // Someone coming back, from a reload or a dropped connection. A tab that
+      // still holds the place is a copy of this one, and is told to stop
+      // rather than left to take the place back on its next try.
+      const known = message.seat === undefined ? undefined : seats.get(message.seat);
+      if (known !== undefined && room.participants.some((p) => p.id === known)) {
+        const older = channels.get(known);
+        channels.delete(known);
+        if (older) {
+          send(older, { type: 'replaced' });
+          older.close({ flush: true });
+        }
+        id = known;
+        seat = message.seat!;
+        setParticipants(setConnected(room.participants, id, true));
+        channels.set(id, channel);
+        const { participants, items } = useRoom.getState();
+        send(
+          channel,
+          room.status === 'sorting'
+            ? { type: 'resume', you: id, seat, criterion, participants, items }
+            : { type: 'welcome', you: id, seat, criterion, participants },
+        );
+        return;
+      }
+
       // Registration closes with the start. The code still resolves: the
       // signaling server knows nothing about rooms.
       if (room.status === 'sorting') {
@@ -164,15 +224,31 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         return;
       }
       id = admission.participant.id;
+      seat = crypto.randomUUID();
+      seats.set(seat, id);
       setParticipants(admission.participants);
-      send(channel, { type: 'welcome', you: id, criterion, participants: admission.participants });
+      send(channel, {
+        type: 'welcome',
+        you: id,
+        seat,
+        criterion,
+        participants: admission.participants,
+      });
       channels.set(id, channel);
     });
 
+    // In the lobby a guest who drops has left, and coming back is joining
+    // again. Mid-sort nobody else can join, so the place waits for them.
     channel.on('close', () => {
       if (id === null || channels.get(id) !== channel || mine !== attempt) return;
       channels.delete(id);
-      setParticipants(leave(useRoom.getState().participants, id));
+      const { participants, status } = useRoom.getState();
+      if (status === 'sorting') {
+        setParticipants(setConnected(participants, id, false));
+      } else {
+        if (seat !== null) seats.delete(seat);
+        setParticipants(leave(participants, id));
+      }
     });
   });
 
@@ -190,15 +266,22 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     follow((placed) => setParticipants(setProgress(useRoom.getState().participants, you, placed)));
   };
 
-  // The creator has no channel, so they are never found here.
+  // The creator has no seat, so they are never found here. Someone who is
+  // away has no channel either, and hears it when they try to come back.
   removeHere = (id) => {
+    const seat = [...seats].find(([, owner]) => owner === id)?.[0];
+    if (seat === undefined) return;
+    seats.delete(seat);
+    removedSeats.add(seat);
     const channel = channels.get(id);
-    if (!channel) return;
     channels.delete(id);
-    send(channel, { type: 'removed' });
-    // Flushing sends a close of its own after the message, so the guest reads
-    // why before their channel goes. A plain close could drop it on the way.
-    channel.close({ flush: true });
+    if (channel) {
+      send(channel, { type: 'removed' });
+      // Flushing sends a close of its own after the message, so the guest
+      // reads why before their channel goes. A plain close could drop it on
+      // the way.
+      channel.close({ flush: true });
+    }
     setParticipants(exclude(useRoom.getState().participants, id));
   };
 
@@ -211,98 +294,207 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   });
 }
 
-export async function joinRoom(code: string, nickname: string) {
-  const mine = begin('guest');
+// What a guest carries from one connection to the next.
+interface Guest {
+  code: string;
+  nickname: string;
+  // Handed over with the welcome. Null before it, which is what tells a first
+  // join from a return.
+  seat: string | null;
+  you: string | null;
+  // Where the progress goes. Null between connections.
+  channel: DataConnection | null;
+}
 
-  const found = await signaling.findRoom(code);
+function save(guest: Guest) {
+  const { items, criterion, placement } = usePlacement.getState();
+  if (!placement || guest.seat === null || guest.you === null) return;
+  const { code, seat, you, nickname } = guest;
+  writeTabRecord({ code, seat, you, nickname, items, criterion, placement });
+}
+
+function followAsGuest(guest: Guest) {
+  follow(
+    (placed) => void guest.channel?.send({ type: 'progress', placed } satisfies GuestMessage),
+    () => save(guest),
+  );
+  save(guest);
+}
+
+// The room is over for this tab, whatever the reason, and a reload must not
+// try to get back into it.
+function end(how: 'close' | 'remove' | 'replace') {
+  letGo();
+  clearTabRecord();
+  useRoom.getState()[how]();
+}
+
+function later(mine: number, guest: Guest, tries: number, wait?: number) {
+  const delay = wait ?? RETRY_DELAYS_MS[Math.min(tries, RETRY_DELAYS_MS.length - 1)];
+  retry = setTimeout(() => void reach(mine, guest, tries + 1), delay);
+}
+
+// One try at the host: lookup, Peer, channel, join. A first join that fails
+// ends on the entry screen with the reason. A return keeps trying until the
+// room is gone or the host turns the seat down.
+async function reach(mine: number, guest: Guest, tries: number) {
+  const returning = guest.seat !== null;
+
+  const found = await signaling.findRoom(guest.code);
   if (mine !== attempt) return;
   if (found.kind !== 'found') {
-    useRoom.getState().fail(found);
+    if (!returning) {
+      useRoom.getState().fail(found);
+    } else if (found.kind === 'not-found') {
+      end('close');
+    } else {
+      later(
+        mine,
+        guest,
+        tries,
+        found.kind === 'rate-limited' ? found.retryAfter * 1000 : undefined,
+      );
+    }
     return;
   }
 
   const iceServers = await signaling.iceServers();
   if (mine !== attempt) return;
-  const guest = new Peer(peerOptions(iceServers));
-  peer = guest;
-  if (!(await opened(guest))) {
-    if (mine === attempt) {
-      peer = null;
-      useRoom.getState().fail({ kind: 'unreachable' });
-    }
+  const created = new Peer(peerOptions(iceServers));
+  peer = created;
+  if (!(await opened(created))) {
+    if (mine !== attempt) return;
+    peer = null;
+    if (returning) later(mine, guest, tries);
+    else useRoom.getState().fail({ kind: 'unreachable' });
     return;
   }
   if (mine !== attempt) return;
 
-  const channel = guest.connect(found.peerId, { serialization: 'json', reliable: true });
+  const channel = created.connect(found.peerId, { serialization: 'json', reliable: true });
+  // Let in on this channel, by a welcome or a resume.
   let admitted = false;
-  let gaveUp = false;
-  let removed = false;
+  let over = false;
 
   // Destroying the Peer closes the channel on the spot, and its close handler
   // lands back here before this call is done. The first reason is the one kept.
-  const giveUp = (kind: 'full' | 'started' | 'unreachable') => {
-    if (gaveUp) return;
-    gaveUp = true;
+  const stop = () => {
+    over = true;
     clearTimeout(timer);
-    guest.destroy();
+    created.destroy();
+    if (peer === created) peer = null;
+    if (guest.channel === channel) guest.channel = null;
+  };
+
+  const giveUp = (kind: 'full' | 'started' | 'unreachable') => {
+    if (over) return;
+    stop();
     if (mine !== attempt) return;
-    peer = null;
-    useRoom.getState().fail({ kind });
+    if (!returning) useRoom.getState().fail({ kind });
+    else if (kind === 'unreachable') later(mine, guest, tries);
+    // The seat means nothing to the host any more.
+    else end('close');
   };
   const timer = setTimeout(() => giveUp('unreachable'), WELCOME_TIMEOUT_MS);
 
   // Among others, the host's ID having gone from the server: the host left
-  // between the lookup and this connection.
-  guest.on('error', () => {
+  // between the lookup and this connection. Once in, an error is about the
+  // signaling server, and the channel may well be fine.
+  created.on('error', () => {
     if (!admitted) giveUp('unreachable');
   });
 
   channel.on('open', () => {
-    void channel.send({ type: 'join', nickname } satisfies GuestMessage);
+    const { nickname, seat } = guest;
+    const join: GuestMessage =
+      seat === null ? { type: 'join', nickname } : { type: 'join', nickname, seat };
+    void channel.send(join);
   });
 
   channel.on('data', (data) => {
     const message = parseHostMessage(data);
-    if (!message || mine !== attempt) return;
+    if (!message || mine !== attempt || over) return;
+    const room = useRoom.getState();
 
-    if (message.type === 'welcome' && !admitted) {
+    if (message.type === 'welcome' && !admitted && !returning) {
       admitted = true;
       clearTimeout(timer);
-      useRoom.getState().enterLobby({
-        code,
+      Object.assign(guest, { seat: message.seat, you: message.you, channel });
+      room.enterLobby({
+        code: guest.code,
         you: message.you,
         criterion: message.criterion,
         participants: message.participants,
       });
+    } else if (message.type === 'resume' && !admitted && returning) {
+      admitted = true;
+      clearTimeout(timer);
+      Object.assign(guest, { seat: message.seat, you: message.you, channel });
+      // The list stays the one this tab was sorting: a return only happens
+      // mid-sort or from a tab record, and both still hold it.
+      room.resume({
+        you: message.you,
+        criterion: message.criterion,
+        participants: message.participants,
+        items: message.items,
+      });
+      // The count only goes out when it changes, and whatever was placed
+      // while away changed it with nobody to tell.
+      void channel.send({ type: 'progress', placed: placedCount() } satisfies GuestMessage);
     } else if (message.type === 'participants' && admitted) {
-      useRoom.getState().setParticipants(message.participants);
-    } else if (message.type === 'start' && admitted && useRoom.getState().status === 'lobby') {
+      room.setParticipants(message.participants);
+    } else if (message.type === 'start' && admitted && room.status === 'lobby') {
       // The placement draws its own shuffle, so each person gets an order of
       // their own.
       usePlacement.getState().start(message.items, message.criterion);
-      useRoom.getState().startSorting(message.items);
-      follow((placed) => void channel.send({ type: 'progress', placed } satisfies GuestMessage));
-    } else if (message.type === 'removed' && admitted) {
-      // Set before letting go: destroying the Peer closes the channel, and its
-      // close handler would call the room closed.
-      removed = true;
-      letGo();
-      useRoom.getState().remove();
+      room.startSorting(message.items);
+      followAsGuest(guest);
+    } else if (message.type === 'removed' && (admitted || returning)) {
+      // Stopped before letting go: destroying the Peer closes the channel,
+      // and its close handler would take it for a drop.
+      stop();
+      end('remove');
+    } else if (message.type === 'replaced' && admitted) {
+      stop();
+      end('replace');
     } else if ((message.type === 'full' || message.type === 'started') && !admitted) {
       giveUp(message.type);
     }
   });
 
   channel.on('close', () => {
-    if (mine !== attempt || removed) return;
-    if (admitted) {
-      letGo();
-      useRoom.getState().close();
-    } else {
+    if (mine !== attempt || over) return;
+    if (!admitted) {
       giveUp('unreachable');
+      return;
+    }
+    stop();
+    // Mid-sort the guest keeps going while the way back is found. In the
+    // lobby there is nothing to keep, and the host has already let them go.
+    if (useRoom.getState().status === 'sorting') {
+      useRoom.getState().reconnect();
+      later(mine, guest, 0);
+    } else {
+      end('close');
     }
   });
+}
+
+export async function joinRoom(code: string, nickname: string) {
+  const mine = begin('guest');
+  await reach(mine, { code, nickname, seat: null, you: null, channel: null }, 0);
+}
+
+// A reload mid-sort. The tab kept the list and the seat, and goes back in
+// without asking anything.
+export function resumeRoom(record: TabRecord) {
+  const mine = begin('guest');
+  const { code, seat, you, nickname, items, criterion, placement } = record;
+  usePlacement.setState({ items, criterion, placement });
+  useRoom.getState().reconnect({ code, you });
+  const guest: Guest = { code, nickname, seat, you, channel: null };
+  followAsGuest(guest);
+  void reach(mine, guest, 0);
 }
 
 // Every channel goes with the Peer: a host's guests see the room close, and a
@@ -310,6 +502,7 @@ export async function joinRoom(code: string, nickname: string) {
 export function leaveRoom() {
   attempt++;
   letGo();
+  clearTabRecord();
   useRoom.getState().leave();
 }
 

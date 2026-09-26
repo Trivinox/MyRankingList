@@ -1816,8 +1816,8 @@ describe('on a phone-wide screen', () => {
 });
 
 describe('in a room', () => {
-  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
-  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1 };
+  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1, connected: true };
+  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1, connected: true };
 
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');

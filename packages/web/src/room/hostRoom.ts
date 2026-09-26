@@ -12,11 +12,15 @@ export const START_MINIMUM = 2;
 //
 // `progress` is how many items they have placed. The total is the length of
 // the list, the same for everyone, so it is not kept per person.
+//
+// `connected` goes false for someone whose channel dropped mid-sort. Their
+// place and their count stay, waiting for them to come back.
 export interface Participant {
   id: string;
   nickname: string;
   isCreator: boolean;
   progress: number;
+  connected: boolean;
 }
 
 export type Admission =
@@ -30,7 +34,13 @@ export function admit(participants: Participant[], wanted: string, isCreator = f
   const nickname = uniqueNickname(taken, wanted);
   if (nickname === null) return { ok: false, reason: 'nickname' };
 
-  const participant = { id: crypto.randomUUID(), nickname, isCreator, progress: 0 };
+  const participant = {
+    id: crypto.randomUUID(),
+    nickname,
+    isCreator,
+    progress: 0,
+    connected: true,
+  };
   return { ok: true, participant, participants: [...participants, participant] };
 }
 
@@ -52,4 +62,8 @@ export function startAll(participants: Participant[]): Participant[] {
 
 export function setProgress(participants: Participant[], id: string, placed: number) {
   return participants.map((p) => (p.id === id ? { ...p, progress: placed } : p));
+}
+
+export function setConnected(participants: Participant[], id: string, connected: boolean) {
+  return participants.map((p) => (p.id === id ? { ...p, connected } : p));
 }

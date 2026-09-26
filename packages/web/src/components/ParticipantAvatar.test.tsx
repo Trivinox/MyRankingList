@@ -7,7 +7,13 @@ import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 
-const juan: Participant = { id: 'j', nickname: 'juan', isCreator: false, progress: 3 };
+const juan: Participant = {
+  id: 'j',
+  nickname: 'juan',
+  isCreator: false,
+  progress: 3,
+  connected: true,
+};
 
 function renderAvatar(props: Partial<Parameters<typeof ParticipantAvatar>[0]> = {}) {
   const i18n = createI18n();
