@@ -5,10 +5,13 @@ import type { Participant } from '../room/hostRoom.ts';
 export type Role = 'host' | 'guest';
 
 // Idle is no room at all, the state before creating or joining and after
-// leaving. Sorting starts for everyone at once, when the creator says so.
-// Closed is a room that ended under a guest, and removed a guest the creator
-// took out. Either way they still have to see it happened before going back.
-export type RoomStatus = 'idle' | 'connecting' | 'lobby' | 'sorting' | 'closed' | 'removed';
+// leaving. Sorting starts for everyone at once, when the creator says so, and
+// reconnecting is a guest still sorting while their way back to the host is
+// found again. Closed is a room that ended under a guest, removed a guest the
+// creator took out, and replaced a tab whose place another tab took over.
+// Whichever it was, they still have to see it happened before going back.
+export type RoomStatus =
+  'idle' | 'connecting' | 'lobby' | 'sorting' | 'reconnecting' | 'closed' | 'removed' | 'replaced';
 
 export type RoomError =
   | { kind: 'not-found' }
@@ -38,9 +41,17 @@ interface Room {
   }) => void;
   setParticipants: (participants: Participant[]) => void;
   startSorting: (items: Item[]) => void;
+  reconnect: (room?: { code: string; you: string }) => void;
+  resume: (room: {
+    you: string;
+    criterion: string;
+    participants: Participant[];
+    items: Item[];
+  }) => void;
   fail: (error: RoomError) => void;
   close: () => void;
   remove: () => void;
+  replace: () => void;
   leave: () => void;
 }
 
@@ -69,12 +80,20 @@ export const useRoom = create<Room>((set) => ({
 
   startSorting: (items) => set({ items, status: 'sorting' }),
 
+  // Mid-sort everything else stays as it was. After a reload there is nothing
+  // yet but what the tab kept, until the host answers.
+  reconnect: (room) => set({ ...room, status: 'reconnecting' }),
+
+  resume: (room) => set({ ...room, status: 'sorting', error: null }),
+
   // A failed attempt leaves no room behind, only the reason on the entry screen.
   fail: (error) => set({ ...empty, error }),
 
   close: () => set({ status: 'closed' }),
 
   remove: () => set({ status: 'removed' }),
+
+  replace: () => set({ status: 'replaced' }),
 
   leave: () => set(empty),
 }));

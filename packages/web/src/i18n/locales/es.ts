@@ -118,6 +118,8 @@ export const es: typeof en = {
     unreachable: 'No se pudo llegar a la sala. Revisa tu conexión y vuelve a intentarlo.',
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
     placed: '{{nickname}}, {{placed}} de {{total}} colocados',
+    placedAway: '{{nickname}}, ausente, {{placed}} de {{total}} colocados',
+    reconnecting: 'Reconectando... Puedes seguir ordenando.',
     everyone: 'Todos los de la sala',
     remove: {
       button: 'Quitar',
@@ -144,6 +146,7 @@ export const es: typeof en = {
       confirmNo: 'Quedarme',
       closed: 'La sala se cerró.',
       removed: 'Quien creó la sala te sacó de ella.',
+      replaced: 'La sala se abrió en otra pestaña, así que esta salió de ella.',
       start: 'Empezar',
       needsSomeone: 'Tiene que entrar alguien más antes de poder empezar.',
       waiting: 'Esperando a que quien creó la sala empiece.',

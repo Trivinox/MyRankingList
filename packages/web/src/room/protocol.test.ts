@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { NICKNAME_LIMIT } from './nicknames.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 
-const ana = { id: 'p1', nickname: 'Ana', isCreator: true, progress: 0 };
-const juan = { id: 'p2', nickname: 'Juan', isCreator: false, progress: 0 };
+const ana = { id: 'p1', nickname: 'Ana', isCreator: true, progress: 0, connected: true };
+const juan = { id: 'p2', nickname: 'Juan', isCreator: false, progress: 0, connected: true };
 
 const items = [
   { id: 'a', text: 'Mango' },
@@ -23,6 +23,14 @@ describe('parseGuestMessage', () => {
     expect(parseGuestMessage({ type: 'join', nickname: 'Juan', isCreator: true })).toEqual({
       type: 'join',
       nickname: 'Juan',
+    });
+  });
+
+  it('reads the seat of someone coming back', () => {
+    expect(parseGuestMessage({ type: 'join', nickname: 'Juan', seat: 's1' })).toEqual({
+      type: 'join',
+      nickname: 'Juan',
+      seat: 's1',
     });
   });
 
@@ -48,6 +56,7 @@ describe('parseGuestMessage', () => {
   it.each([
     ['a join with no nickname', { type: 'join' }],
     ['a nickname that is not text', { type: 'join', nickname: 7 }],
+    ['a seat that is not text', { type: 'join', nickname: 'Juan', seat: 7 }],
     ['a message the host sends', { type: 'full' }],
     ['no items placed', { type: 'progress', placed: 0 }],
     ['part of an item placed', { type: 'progress', placed: 1.5 }],
@@ -69,11 +78,37 @@ describe('parseHostMessage', () => {
     const welcome = {
       type: 'welcome',
       you: 'p2',
+      seat: 's2',
       criterion: 'Best fruit',
       participants: [ana, juan],
     };
 
     expect(parseHostMessage(welcome)).toEqual(welcome);
+  });
+
+  it('reads a resume, with the list to sort', () => {
+    const resume = {
+      type: 'resume',
+      you: 'p2',
+      seat: 's2',
+      criterion: 'Best fruit',
+      participants: [
+        { ...ana, progress: 2 },
+        { ...juan, progress: 1 },
+      ],
+      items,
+    };
+
+    expect(parseHostMessage(resume)).toEqual(resume);
+  });
+
+  it('reads someone away, with their count kept', () => {
+    const away = { ...juan, progress: 2, connected: false };
+
+    expect(parseHostMessage({ type: 'participants', participants: [ana, away] })).toEqual({
+      type: 'participants',
+      participants: [ana, away],
+    });
   });
 
   it('reads a new participant list, empty or not', () => {
@@ -87,10 +122,11 @@ describe('parseHostMessage', () => {
     });
   });
 
-  it('reads a full room, one that has already started, and a removal', () => {
+  it('reads a full room, one that has already started, a removal and a replaced tab', () => {
     expect(parseHostMessage({ type: 'full' })).toEqual({ type: 'full' });
     expect(parseHostMessage({ type: 'started' })).toEqual({ type: 'started' });
     expect(parseHostMessage({ type: 'removed', why: 'x' })).toEqual({ type: 'removed' });
+    expect(parseHostMessage({ type: 'replaced', by: 'x' })).toEqual({ type: 'replaced' });
   });
 
   it('reads the start of sorting, with the list and the criterion', () => {
@@ -162,14 +198,44 @@ describe('parseHostMessage', () => {
   });
 
   it.each([
-    ['a welcome with no criterion', { type: 'welcome', you: 'p2', participants: [ana] }],
+    [
+      'a welcome with no criterion',
+      { type: 'welcome', you: 'p2', seat: 's2', participants: [ana] },
+    ],
     [
       'a welcome with no id for the guest',
-      { type: 'welcome', criterion: 'x', participants: [ana] },
+      { type: 'welcome', seat: 's2', criterion: 'x', participants: [ana] },
     ],
     [
       'a welcome whose id is a number',
-      { type: 'welcome', you: 2, criterion: 'x', participants: [] },
+      { type: 'welcome', you: 2, seat: 's2', criterion: 'x', participants: [] },
+    ],
+    ['a welcome with no seat', { type: 'welcome', you: 'p2', criterion: 'x', participants: [ana] }],
+    [
+      'a resume with no items',
+      { type: 'resume', you: 'p2', seat: 's2', criterion: 'x', participants: [ana] },
+    ],
+    [
+      'a resume whose list the form would refuse',
+      {
+        type: 'resume',
+        you: 'p2',
+        seat: 's2',
+        criterion: 'x',
+        participants: [ana],
+        items: items.slice(0, 2),
+      },
+    ],
+    [
+      'a participant with no connection state',
+      {
+        type: 'participants',
+        participants: [{ id: 'p1', nickname: 'Ana', isCreator: true, progress: 0 }],
+      },
+    ],
+    [
+      'a connection state that is text',
+      { type: 'participants', participants: [{ ...ana, connected: 'yes' }] },
     ],
     ['a list that is not an array', { type: 'participants', participants: { 0: ana } }],
     [

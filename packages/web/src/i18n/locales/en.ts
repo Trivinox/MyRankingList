@@ -113,6 +113,8 @@ export const en = {
     unreachable: 'The room could not be reached. Check your connection and try again.',
     notOpened: 'The room could not be opened. Check your connection and try again.',
     placed: '{{nickname}}, {{placed}} of {{total}} placed',
+    placedAway: '{{nickname}}, away, {{placed}} of {{total}} placed',
+    reconnecting: 'Reconnecting... You can keep sorting.',
     everyone: 'Everyone in the room',
     remove: {
       button: 'Remove',
@@ -139,6 +141,7 @@ export const en = {
       confirmNo: 'Stay',
       closed: 'The room was closed.',
       removed: 'The creator removed you from the room.',
+      replaced: 'This room is now open in another tab, so this one has left it.',
       start: 'Start',
       needsSomeone: 'Someone else has to join before you can start.',
       waiting: 'Waiting for the creator to start.',

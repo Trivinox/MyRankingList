@@ -14,7 +14,10 @@ export function RoomProgress() {
   const total = usePlacement((state) => state.items.length);
   const removal = useRemoval(participants);
 
-  if (status !== 'sorting') return null;
+  if (status !== 'sorting' && status !== 'reconnecting') return null;
+  // A reloaded tab knows nobody until the host answers, and an empty list
+  // would still be read out under its name.
+  if (participants.length === 0) return null;
 
   return (
     <div className={styles.progress}>

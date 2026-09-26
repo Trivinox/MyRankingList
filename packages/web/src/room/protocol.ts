@@ -7,20 +7,33 @@ import { NICKNAME_LIMIT } from './nicknames.ts';
 const MIN_ITEMS = 3;
 const TEXT_LIMIT = 80;
 
+// `seat` is only sent by someone coming back, to get their place again.
 // `placed` counts the opening item, so it is never below 1.
 export type GuestMessage =
-  { type: 'join'; nickname: string } | { type: 'progress'; placed: number };
+  { type: 'join'; nickname: string; seat?: string } | { type: 'progress'; placed: number };
 
-// `you` tells the guest which of the participants is them. `started` is the
-// answer to a join once registration has closed. `removed` is the last thing a
-// guest hears from a creator who took them out.
+// `you` tells the guest which of the participants is them, and `seat` is the
+// secret that gets that place back later. It goes to its owner alone. `resume`
+// answers a seat that returns mid-sort. `started` is the answer to a join once
+// registration has closed. `removed` is the last thing a guest hears from a
+// creator who took them out, and `replaced` what an older tab hears when the
+// same seat connects again from another.
 export type HostMessage =
-  | { type: 'welcome'; you: string; criterion: string; participants: Participant[] }
+  | { type: 'welcome'; you: string; seat: string; criterion: string; participants: Participant[] }
+  | {
+      type: 'resume';
+      you: string;
+      seat: string;
+      criterion: string;
+      participants: Participant[];
+      items: Item[];
+    }
   | { type: 'participants'; participants: Participant[] }
   | { type: 'full' }
   | { type: 'start'; items: Item[]; criterion: string }
   | { type: 'started' }
-  | { type: 'removed' };
+  | { type: 'removed' }
+  | { type: 'replaced' };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -43,7 +56,8 @@ function toParticipants(value: unknown): Participant[] | null {
       typeof entry.id !== 'string' ||
       typeof entry.nickname !== 'string' ||
       typeof entry.isCreator !== 'boolean' ||
-      !isCount(entry.progress, 0)
+      !isCount(entry.progress, 0) ||
+      typeof entry.connected !== 'boolean'
     ) {
       return null;
     }
@@ -52,6 +66,7 @@ function toParticipants(value: unknown): Participant[] | null {
       nickname: entry.nickname,
       isCreator: entry.isCreator,
       progress: entry.progress,
+      connected: entry.connected,
     });
   }
   return participants;
@@ -89,11 +104,12 @@ export function parseGuestMessage(data: unknown): GuestMessage | null {
 
   switch (data.type) {
     case 'join': {
-      const { nickname } = data;
+      const { nickname, seat } = data;
       if (typeof nickname !== 'string') return null;
       const length = nickname.trim().length;
       if (length === 0 || length > NICKNAME_LIMIT) return null;
-      return { type: 'join', nickname };
+      if (seat === undefined) return { type: 'join', nickname };
+      return typeof seat === 'string' ? { type: 'join', nickname, seat } : null;
     }
     case 'progress':
       return isCount(data.placed, 1) ? { type: 'progress', placed: data.placed } : null;
@@ -106,12 +122,17 @@ export function parseHostMessage(data: unknown): HostMessage | null {
   if (!isRecord(data)) return null;
 
   switch (data.type) {
-    case 'welcome': {
+    case 'welcome':
+    case 'resume': {
+      const { you, seat, criterion } = data;
       const participants = toParticipants(data.participants);
-      if (typeof data.you !== 'string' || typeof data.criterion !== 'string' || !participants) {
+      if (typeof you !== 'string' || typeof seat !== 'string' || typeof criterion !== 'string') {
         return null;
       }
-      return { type: 'welcome', you: data.you, criterion: data.criterion, participants };
+      if (!participants) return null;
+      if (data.type === 'welcome') return { type: 'welcome', you, seat, criterion, participants };
+      const items = toItems(data.items);
+      return items && { type: 'resume', you, seat, criterion, participants, items };
     }
     case 'participants': {
       const participants = toParticipants(data.participants);
@@ -125,6 +146,7 @@ export function parseHostMessage(data: unknown): HostMessage | null {
     case 'full':
     case 'started':
     case 'removed':
+    case 'replaced':
       return { type: data.type };
     default:
       return null;

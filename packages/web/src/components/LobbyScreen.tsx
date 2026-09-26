@@ -48,11 +48,11 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed' || status === 'removed') {
+  if (status === 'closed' || status === 'removed' || status === 'replaced') {
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">
-          {t(status === 'closed' ? 'room.lobby.closed' : 'room.lobby.removed')}
+          {t(`room.lobby.${status}`)}
         </p>
         <button type="button" className={styles.secondary} onClick={backToForm}>
           {t('room.back')}

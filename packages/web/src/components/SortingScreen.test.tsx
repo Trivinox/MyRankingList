@@ -1816,8 +1816,8 @@ describe('on a phone-wide screen', () => {
 });
 
 describe('in a room', () => {
-  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
-  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1 };
+  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1, connected: true };
+  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1, connected: true };
 
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
@@ -1896,6 +1896,30 @@ describe('in a room', () => {
     renderScreen();
 
     act(() => useRoom.getState().remove());
+
+    expect(useScreen.getState().screen).toBe('lobby');
+  });
+
+  it('says it is reconnecting while the host is lost, and lets the sorting go on', () => {
+    renderScreen();
+    expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+
+    act(() => useRoom.getState().reconnect());
+    expect(screen.getByText(en.room.reconnecting)).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('list', { name: en.room.everyone })).toBeInTheDocument();
+
+    const before = started().pendingPool.length;
+    act(() => usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index: 0 }));
+    expect(started().pendingPool).toHaveLength(before - 1);
+
+    act(() => useRoom.setState({ status: 'sorting' }));
+    expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+  });
+
+  it('goes back to the lobby screen when another tab takes its place', () => {
+    renderScreen();
+
+    act(() => useRoom.getState().replace());
 
     expect(useScreen.getState().screen).toBe('lobby');
   });

@@ -187,3 +187,50 @@ test('the creator removes someone mid-sort, who is told so and drops out of the 
 
   for (const page of [juan, lucia]) await page.context().close();
 });
+
+test('a guest who reloads mid-sort is back on their own list, and away until then', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  const top = juan.getByRole('button', { name: 'Put it at position 1', exact: true });
+  if (isMobile) {
+    await top.tap();
+  } else {
+    await top.click();
+  }
+  await expect(ana.getByRole('img', { name: 'Juan, 2 of 3 placed' })).toBeVisible();
+  const list = juan.getByRole('region', { name: 'Your list so far' });
+  const before = (await list.textContent()) ?? '';
+
+  // The reloaded tab's lookup waits here, so the creator's strip has time to
+  // show them gone before they are back.
+  let letThrough = () => {};
+  const held = new Promise<void>((resolve) => (letThrough = resolve));
+  await juan.route('**/rooms/*', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await juan.reload();
+
+  await expect(ana.getByRole('img', { name: 'Juan, away, 2 of 3 placed' })).toBeVisible();
+  await expect(juan.getByText('Reconnecting... You can keep sorting.')).toBeVisible();
+  await expect(list).toHaveText(before);
+  letThrough();
+
+  await expect(ana.getByRole('img', { name: 'Juan, 2 of 3 placed' })).toBeVisible();
+  await expect(juan.getByText('Reconnecting... You can keep sorting.')).toHaveCount(0);
+  await expect(juan.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
+  await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+  await expect(list).toHaveText(before);
+
+  await expectNoViolations(juan);
+  await juan.context().close();
+});

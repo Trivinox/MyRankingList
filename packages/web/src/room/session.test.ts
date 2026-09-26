@@ -4,8 +4,17 @@ import type { Item } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Participant } from './hostRoom.ts';
-import { createRoom, joinRoom, leaveRoom, removeParticipant, startRoom } from './session.ts';
+import {
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  removeParticipant,
+  resumeRoom,
+  startRoom,
+} from './session.ts';
 import type { FoundRoom, OpenedRoom } from './signaling.ts';
+import { readTabRecord } from './tabRecord.ts';
+import type { TabRecord } from './tabRecord.ts';
 
 // Stand-ins for peerjs and the signaling client, shaped like the parts the
 // session uses. A test plays the network by emitting events on them.
@@ -149,6 +158,7 @@ beforeEach(() => {
   signaling.findRoom.mockReset();
   signaling.iceServers.mockReset().mockResolvedValue(ICE_SERVERS);
   usePlacement.setState({ items: [], criterion: '', placement: null });
+  sessionStorage.clear();
 });
 
 // The host's Peer only exists once the ICE servers have come back.
@@ -216,7 +226,7 @@ describe('createRoom', () => {
     expect(room.code).toBe('AB3K');
     expect(room.criterion).toBe('Best noodle');
     expect(room.participants).toEqual([
-      { id: room.you, nickname: 'Ana', isCreator: true, progress: 0 },
+      { id: room.you, nickname: 'Ana', isCreator: true, progress: 0, connected: true },
     ]);
   });
 
@@ -267,7 +277,13 @@ describe('createRoom', () => {
     const participants = useRoom.getState().participants;
     expect(participants.map((p) => p.nickname)).toEqual(['Ana', 'Juan', 'Lucía']);
     expect(lucia.sent).toEqual([
-      { type: 'welcome', you: participants[2].id, criterion: 'Best noodle', participants },
+      {
+        type: 'welcome',
+        you: participants[2].id,
+        seat: expect.any(String),
+        criterion: 'Best noodle',
+        participants,
+      },
     ]);
     expect(juan.sent.at(-1)).toEqual({ type: 'participants', participants });
   });
@@ -551,11 +567,161 @@ describe('createRoom', () => {
       expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
     });
   });
+
+  describe('someone coming back', () => {
+    const seatOf = (channel: { sent: unknown[] }) => (channel.sent[0] as { seat: string }).seat;
+    const juanOf = () => useRoom.getState().participants.find((p) => p.nickname === 'Juan')!;
+
+    // The same tab again, on a new channel, showing the seat it was given.
+    function returns(host: InstanceType<typeof fakes.FakePeer>, seat: string) {
+      const channel = host.receive();
+      channel.emit('data', { type: 'join', nickname: 'Juan', seat });
+      return channel;
+    }
+
+    async function sortingWithJuan() {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      startRoom();
+      juan.emit('data', { type: 'progress', placed: 2 });
+      return { host, juan, lucia, seat: seatOf(juan) };
+    }
+
+    it('gives every guest a seat of their own, sent to nobody else', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+
+      expect(seatOf(juan)).not.toBe(seatOf(lucia));
+      expect(JSON.stringify(juan.sent.slice(1))).not.toContain(seatOf(lucia));
+      expect(JSON.stringify(lucia.sent)).not.toContain(seatOf(juan));
+      expect(JSON.stringify(useRoom.getState().participants)).not.toContain(seatOf(juan));
+    });
+
+    it('keeps the place of a guest who drops mid-sort, marked away with their count', async () => {
+      const { juan, lucia } = await sortingWithJuan();
+
+      juan.close();
+
+      expect(juanOf()).toMatchObject({ connected: false, progress: 2 });
+      const { participants } = useRoom.getState();
+      expect(participants).toHaveLength(3);
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+    });
+
+    it('gives a returning seat its place back, with the list and the same id', async () => {
+      const { host, juan, lucia, seat } = await sortingWithJuan();
+      const id = juanOf().id;
+      juan.close();
+
+      const back = returns(host, seat);
+
+      expect(juanOf()).toMatchObject({ id, connected: true, progress: 2 });
+      const { participants } = useRoom.getState();
+      expect(back.sent).toEqual([
+        { type: 'resume', you: id, seat, criterion: 'Best noodle', participants, items },
+      ]);
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+
+      back.emit('data', { type: 'progress', placed: 3 });
+      expect(juanOf().progress).toBe(3);
+    });
+
+    it('tells the older tab it was replaced when the same seat connects again', async () => {
+      const { host, juan, seat } = await sortingWithJuan();
+
+      const copy = returns(host, seat);
+
+      expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'replaced' });
+      expect(juan.closeOptions).toEqual({ flush: true });
+      expect(juanOf().connected).toBe(true);
+      expect(copy.sent[0]).toMatchObject({ type: 'resume' });
+
+      // What the older channel sends on its way out counts for nothing.
+      juan.emit('data', { type: 'progress', placed: 3 });
+      expect(juanOf().progress).toBe(2);
+    });
+
+    it('tells a seat that was removed while away that it was removed', async () => {
+      const { host, juan, seat } = await sortingWithJuan();
+      juan.close();
+      removeParticipant(juanOf().id);
+      const before = useRoom.getState().participants;
+
+      const back = returns(host, seat);
+
+      expect(back.sentBeforeClose).toEqual([{ type: 'removed' }]);
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('tells a seat it does not know, after the start, that the room has started', async () => {
+      const { host } = await sortingWithJuan();
+      const before = useRoom.getState().participants;
+
+      const stranger = returns(host, 'made-up');
+
+      expect(stranger.sent).toEqual([{ type: 'started' }]);
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    // The app only sends a seat mid-sort, but the host does not rely on that.
+    it('gives a seat still in the lobby its entry back with a welcome, not a resume', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const seat = seatOf(juan);
+      const id = juanOf().id;
+
+      const copy = returns(host, seat);
+
+      expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'replaced' });
+      const { participants } = useRoom.getState();
+      expect(participants).toHaveLength(2);
+      expect(copy.sent).toEqual([
+        { type: 'welcome', you: id, seat, criterion: 'Best noodle', participants },
+      ]);
+    });
+
+    it('lets a guest who left the lobby only join again as someone new', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const seat = seatOf(juan);
+      juan.close();
+
+      const back = returns(host, seat);
+
+      const welcome = back.sent[0] as { seat: string };
+      expect(welcome).toMatchObject({ type: 'welcome' });
+      expect(welcome.seat).not.toBe(seat);
+      expect(useRoom.getState().participants).toHaveLength(2);
+    });
+
+    it('removes someone who is away, with no channel to tell', async () => {
+      const { juan } = await sortingWithJuan();
+      juan.close();
+
+      removeParticipant(juanOf().id);
+
+      expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
+    });
+  });
 });
 
 describe('joinRoom', () => {
-  const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 0 };
-  const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 0 };
+  const ana: Participant = {
+    id: 'a',
+    nickname: 'Ana',
+    isCreator: true,
+    progress: 0,
+    connected: true,
+  };
+  const juan: Participant = {
+    id: 'j',
+    nickname: 'Juan',
+    isCreator: false,
+    progress: 0,
+    connected: true,
+  };
 
   // Gets as far as the guest's channel to the host, open and with the join sent.
   async function reachHost() {
@@ -575,6 +741,7 @@ describe('joinRoom', () => {
     reached.channel.emit('data', {
       type: 'welcome',
       you: 'j',
+      seat: 's1',
       criterion: 'Best noodle',
       participants: [ana, juan],
     });
@@ -751,16 +918,18 @@ describe('joinRoom', () => {
       expect(usePlacement.getState().placement).toBeNull();
     });
 
-    it('marks the room closed when the host goes mid-sort, and stops reporting', async () => {
-      const { channel } = await reachLobby();
+    it('goes on sorting when the host drops mid-sort, and stops reporting to the old channel', async () => {
+      const { guest, channel } = await reachLobby();
       channel.emit('data', start);
 
       channel.close();
       const sent = channel.sent.length;
       placeOne();
 
-      expect(useRoom.getState().status).toBe('closed');
+      expect(useRoom.getState().status).toBe('reconnecting');
+      expect(guest.destroyed).toBe(true);
       expect(channel.sent).toHaveLength(sent);
+      expect(usePlacement.getState().placement?.pendingPool).toHaveLength(1);
     });
   });
 
@@ -814,5 +983,300 @@ describe('joinRoom', () => {
 
     expect(guest.destroyed).toBe(true);
     expect(channel.isOpen).toBe(false);
+  });
+
+  describe('losing the host mid-sort', () => {
+    const start = { type: 'start', items, criterion: 'Best noodle' };
+
+    async function sorting() {
+      const reached = await reachLobby();
+      reached.channel.emit('data', start);
+      return reached;
+    }
+
+    // Lets the wait before the next try run out, and follows that try as far
+    // as an open channel with its join sent.
+    async function nextTry(wait: number) {
+      const before = peers.length;
+      await vi.advanceTimersByTimeAsync(wait);
+      expect(peers).toHaveLength(before + 1);
+      const guest = lastPeer();
+      guest.open('guest-peer');
+      await vi.advanceTimersByTimeAsync(0);
+      const channel = guest.channels[0];
+      channel.open();
+      return { guest, channel };
+    }
+
+    const resume = {
+      type: 'resume',
+      you: 'j',
+      seat: 's1',
+      criterion: 'Best noodle',
+      participants: [ana, juan],
+      items,
+    };
+
+    beforeEach(() => vi.useFakeTimers());
+
+    it('tries again after 2 seconds, showing its seat', async () => {
+      const { channel } = await sorting();
+      channel.close();
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(peers).toHaveLength(1);
+      const next = await nextTry(1);
+
+      expect(signaling.findRoom).toHaveBeenLastCalledWith('AB3K');
+      expect(next.channel.sent).toEqual([{ type: 'join', nickname: 'Juan', seat: 's1' }]);
+      expect(useRoom.getState().status).toBe('reconnecting');
+    });
+
+    it('is back to sorting on the resume, and tells the host what it placed meanwhile', async () => {
+      const { channel } = await sorting();
+      channel.close();
+      placeOne();
+      const kept = usePlacement.getState().placement;
+
+      const next = await nextTry(2_000);
+      next.channel.emit('data', resume);
+
+      expect(useRoom.getState()).toMatchObject({ status: 'sorting', you: 'j' });
+      expect(usePlacement.getState().placement).toBe(kept);
+      expect(next.channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+
+      placeOne();
+      expect(next.channel.sent.at(-1)).toEqual({ type: 'progress', placed: 3 });
+    });
+
+    it('waits longer after each failed try, up to 15 seconds', async () => {
+      const { channel } = await sorting();
+      signaling.findRoom.mockResolvedValue({ kind: 'unreachable' });
+      channel.close();
+
+      for (const wait of [2_000, 4_000, 8_000, 15_000, 15_000]) {
+        const calls = signaling.findRoom.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(wait - 1);
+        expect(signaling.findRoom.mock.calls).toHaveLength(calls);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(signaling.findRoom.mock.calls).toHaveLength(calls + 1);
+      }
+      expect(useRoom.getState().status).toBe('reconnecting');
+    });
+
+    // The code still resolving means the server is holding it for a host who
+    // may be back, so the host not answering is no reason to stop.
+    it('keeps going while the host cannot be reached', async () => {
+      const { channel } = await sorting();
+      channel.close();
+
+      const first = await nextTry(2_000);
+      first.guest.emit('error', new Error('peer-unavailable'));
+      expect(first.guest.destroyed).toBe(true);
+
+      const second = await nextTry(4_000);
+      expect(second.channel.sent).toEqual([{ type: 'join', nickname: 'Juan', seat: 's1' }]);
+      expect(useRoom.getState().status).toBe('reconnecting');
+    });
+
+    it('waits as long as the server asks after too many wrong codes', async () => {
+      const { channel } = await sorting();
+      signaling.findRoom.mockResolvedValueOnce({ kind: 'rate-limited', retryAfter: 30 });
+      channel.close();
+      await vi.advanceTimersByTimeAsync(2_000);
+      const calls = signaling.findRoom.mock.calls.length;
+
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(signaling.findRoom.mock.calls).toHaveLength(calls);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(signaling.findRoom.mock.calls).toHaveLength(calls + 1);
+    });
+
+    it('stops, with the room closed and the record gone, once the code is released', async () => {
+      const { channel } = await sorting();
+      signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
+      channel.close();
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(useRoom.getState().status).toBe('closed');
+      expect(readTabRecord()).toBeNull();
+      expect(signaling.findRoom).toHaveBeenCalledTimes(2);
+    });
+
+    it('ends up removed when it was taken out while away', async () => {
+      const { channel } = await sorting();
+      channel.close();
+
+      const next = await nextTry(2_000);
+      next.channel.emit('data', { type: 'removed' });
+
+      expect(useRoom.getState().status).toBe('removed');
+      expect(next.guest.destroyed).toBe(true);
+      expect(readTabRecord()).toBeNull();
+    });
+
+    it('stops for good when another tab takes its place', async () => {
+      const { guest, channel } = await sorting();
+
+      channel.emit('data', { type: 'replaced' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(useRoom.getState().status).toBe('replaced');
+      expect(guest.destroyed).toBe(true);
+      expect(peers).toHaveLength(1);
+      expect(readTabRecord()).toBeNull();
+    });
+
+    it('stops trying once the room is left', async () => {
+      const { channel } = await sorting();
+      channel.close();
+
+      leaveRoom();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(peers).toHaveLength(1);
+      expect(readTabRecord()).toBeNull();
+    });
+  });
+
+  describe('the tab record', () => {
+    it('is written once sorting starts, and follows every move', async () => {
+      const { channel } = await reachLobby();
+      expect(readTabRecord()).toBeNull();
+
+      channel.emit('data', { type: 'start', items, criterion: 'Best noodle' });
+      expect(readTabRecord()).toMatchObject({ code: 'AB3K', seat: 's1', you: 'j', items });
+
+      placeOne();
+      reorder();
+      expect(readTabRecord()?.placement).toEqual(usePlacement.getState().placement);
+    });
+
+    it('is cleared on leaving', async () => {
+      const { channel } = await reachLobby();
+      channel.emit('data', { type: 'start', items, criterion: 'Best noodle' });
+
+      leaveRoom();
+
+      expect(readTabRecord()).toBeNull();
+    });
+
+    it('is cleared on removal', async () => {
+      const { channel } = await reachLobby();
+      channel.emit('data', { type: 'start', items, criterion: 'Best noodle' });
+
+      channel.emit('data', { type: 'removed' });
+
+      expect(readTabRecord()).toBeNull();
+    });
+
+    it('leaves the room working when the browser blocks storage', async () => {
+      const refuse = () => {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      };
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(refuse);
+      const { channel } = await reachLobby();
+
+      channel.emit('data', { type: 'start', items, criterion: 'Best noodle' });
+      placeOne();
+      vi.restoreAllMocks();
+
+      expect(useRoom.getState().status).toBe('sorting');
+      expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+      expect(readTabRecord()).toBeNull();
+    });
+  });
+});
+
+describe('resumeRoom', () => {
+  const ana: Participant = {
+    id: 'a',
+    nickname: 'Ana',
+    isCreator: true,
+    progress: 2,
+    connected: true,
+  };
+  const juan: Participant = {
+    id: 'j',
+    nickname: 'Juan',
+    isCreator: false,
+    progress: 2,
+    connected: true,
+  };
+
+  // What a tab that had placed one item before the reload kept.
+  function reloadedTab(): TabRecord {
+    usePlacement.getState().start(items, 'Best noodle');
+    placeOne();
+    const record = {
+      code: 'AB3K',
+      seat: 's1',
+      you: 'j',
+      nickname: 'Juan',
+      items,
+      criterion: 'Best noodle',
+      placement: usePlacement.getState().placement!,
+    };
+    usePlacement.setState({ items: [], criterion: '', placement: null });
+    return record;
+  }
+
+  async function reconnect() {
+    signaling.findRoom.mockResolvedValue({ kind: 'found', peerId: 'host-peer' });
+    const record = reloadedTab();
+    resumeRoom(record);
+    await vi.waitFor(() => expect(peers).toHaveLength(1));
+    const guest = lastPeer();
+    guest.open('guest-peer');
+    await vi.waitFor(() => expect(guest.channels).toHaveLength(1));
+    const channel = guest.channels[0];
+    channel.open();
+    return { record, guest, channel };
+  }
+
+  it('puts the list back and asks for the same place, without asking anything', async () => {
+    const { record, channel } = await reconnect();
+
+    expect(usePlacement.getState()).toMatchObject({
+      items,
+      criterion: 'Best noodle',
+      placement: record.placement,
+    });
+    expect(useRoom.getState()).toMatchObject({
+      status: 'reconnecting',
+      code: 'AB3K',
+      role: 'guest',
+    });
+    expect(channel.sent).toEqual([{ type: 'join', nickname: 'Juan', seat: 's1' }]);
+  });
+
+  it('is sorting again on the resume, with the count it had', async () => {
+    const { channel } = await reconnect();
+
+    channel.emit('data', {
+      type: 'resume',
+      you: 'j',
+      seat: 's1',
+      criterion: 'Best noodle',
+      participants: [ana, juan],
+      items,
+    });
+
+    expect(useRoom.getState()).toMatchObject({
+      status: 'sorting',
+      participants: [ana, juan],
+      items,
+    });
+    expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+  });
+
+  it('ends with the room closed when the code no longer exists', async () => {
+    signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
+    resumeRoom(reloadedTab());
+
+    await vi.waitFor(() => expect(useRoom.getState().status).toBe('closed'));
+    expect(peers).toHaveLength(0);
   });
 });

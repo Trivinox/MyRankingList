@@ -17,8 +17,20 @@ vi.mock('../room/session.ts', () => ({ removeParticipant: vi.fn() }));
 
 const items: Item[] = ['Udon', 'Soba', 'Ramen', 'Pho'].map((text) => ({ id: text, text }));
 
-const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1 };
-const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 3 };
+const ana: Participant = {
+  id: 'a',
+  nickname: 'Ana',
+  isCreator: true,
+  progress: 1,
+  connected: true,
+};
+const juan: Participant = {
+  id: 'j',
+  nickname: 'Juan',
+  isCreator: false,
+  progress: 3,
+  connected: true,
+};
 
 function inRoom(status: RoomStatus, role: 'host' | 'guest' = 'guest') {
   const you = role === 'host' ? 'a' : 'j';
@@ -41,6 +53,25 @@ beforeEach(() => {
 });
 
 describe('RoomProgress', () => {
+  it('stays up while reconnecting, with the list the host last sent', () => {
+    inRoom('reconnecting');
+    renderStrip();
+
+    const strip = screen.getByRole('list', { name: en.room.everyone });
+    expect(within(strip).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('is not there after a reload, until the host says who is in the room', () => {
+    useRoom.setState({ role: 'guest', you: 'j', participants: [], status: 'reconnecting' });
+    renderStrip();
+    expect(screen.queryByRole('list', { name: en.room.everyone })).not.toBeInTheDocument();
+
+    act(() =>
+      useRoom.getState().resume({ you: 'j', criterion: 'x', participants: [ana, juan], items }),
+    );
+    expect(screen.getByRole('list', { name: en.room.everyone })).toBeInTheDocument();
+  });
+
   it('shows everyone with how far along they are', () => {
     inRoom('sorting');
     const i18n = renderStrip();

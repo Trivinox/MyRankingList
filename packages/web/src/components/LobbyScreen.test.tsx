@@ -18,9 +18,27 @@ vi.mock('../room/session.ts', () => ({
   startRoom: vi.fn(),
 }));
 
-const ana: Participant = { id: 'a', nickname: 'Ana', isCreator: true, progress: 0 };
-const juan: Participant = { id: 'j', nickname: 'Juan', isCreator: false, progress: 0 };
-const lucia: Participant = { id: 'l', nickname: 'Lucía', isCreator: false, progress: 0 };
+const ana: Participant = {
+  id: 'a',
+  nickname: 'Ana',
+  isCreator: true,
+  progress: 0,
+  connected: true,
+};
+const juan: Participant = {
+  id: 'j',
+  nickname: 'Juan',
+  isCreator: false,
+  progress: 0,
+  connected: true,
+};
+const lucia: Participant = {
+  id: 'l',
+  nickname: 'Lucía',
+  isCreator: false,
+  progress: 0,
+  connected: true,
+};
 
 const renderLobby = () => {
   const i18n = createI18n();
