@@ -665,6 +665,23 @@ describe('createRoom', () => {
       expect(useRoom.getState().participants).toBe(before);
     });
 
+    // The app only sends a seat mid-sort, but the host does not rely on that.
+    it('gives a seat still in the lobby its entry back with a welcome, not a resume', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const seat = seatOf(juan);
+      const id = juanOf().id;
+
+      const copy = returns(host, seat);
+
+      expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'replaced' });
+      const { participants } = useRoom.getState();
+      expect(participants).toHaveLength(2);
+      expect(copy.sent).toEqual([
+        { type: 'welcome', you: id, seat, criterion: 'Best noodle', participants },
+      ]);
+    });
+
     it('lets a guest who left the lobby only join again as someone new', async () => {
       const host = await openRoom();
       const juan = guestJoins(host, 'Juan');
