@@ -235,7 +235,7 @@ test('a guest who reloads mid-sort is back on their own list, and away until the
   await juan.context().close();
 });
 
-test('the creator closes the room and the guest is told so at once', async ({
+test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
 }, testInfo) => {
@@ -244,10 +244,15 @@ test('the creator closes the room and the guest is told so at once', async ({
   const juan = await openPerson(browser, testInfo);
   await juan.goto(`/?room=${code}`);
   await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+  await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+  // The creator alone can close it.
+  await expect(juan.getByRole('button', { name: 'Close the room' })).toHaveCount(0);
 
   await ana.getByRole('button', { name: 'Close the room' }).click();
   await ana.getByRole('button', { name: 'Close it' }).click();
 
+  await expect(ana.getByLabel('What are you comparing them by?')).toBeVisible();
   await expect(juan.getByRole('alert')).toHaveText('The creator closed the room.');
   await expectNoViolations(juan);
   await juan.context().close();
