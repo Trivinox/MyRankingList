@@ -58,6 +58,7 @@ let attempt = 0;
 // Set by createRoom once the lobby is open, for the host's buttons to call.
 let startHere: (() => void) | null = null;
 let removeHere: ((id: string) => void) | null = null;
+let closeHere: (() => void) | null = null;
 let unfollow: (() => void) | null = null;
 // A guest's next try at getting back to the host.
 let retry: ReturnType<typeof setTimeout> | undefined;
@@ -73,10 +74,14 @@ function letGo() {
   clearTimeout(retry);
   for (const timer of awayTimers.values()) clearTimeout(timer);
   awayTimers.clear();
+  // Guests hear it from the host before their channels go, instead of taking
+  // the silence for a drop and trying to get back in.
+  closeHere?.();
   peer?.destroy();
   peer = null;
   startHere = null;
   removeHere = null;
+  closeHere = null;
   stopFollowing();
 }
 
@@ -312,6 +317,10 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     setParticipants(exclude(useRoom.getState().participants, id));
   };
 
+  closeHere = () => {
+    for (const channel of channels.values()) send(channel, { type: 'closed' });
+  };
+
   useRoom.getState().enterLobby({
     code: result.code,
     you,
@@ -350,7 +359,7 @@ function followAsGuest(guest: Guest) {
 
 // The room is over for this tab, whatever the reason, and a reload must not
 // try to get back into it.
-function end(how: 'close' | 'remove' | 'replace') {
+function endHere(how: 'close' | 'end' | 'remove' | 'replace') {
   letGo();
   clearTabRecord();
   useRoom.getState()[how]();
@@ -373,7 +382,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
     if (!returning) {
       useRoom.getState().fail(found);
     } else if (found.kind === 'not-found') {
-      end('close');
+      endHere('end');
     } else {
       later(
         mine,
@@ -420,7 +429,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
     if (!returning) useRoom.getState().fail({ kind });
     else if (kind === 'unreachable') later(mine, guest, tries);
     // The seat means nothing to the host any more.
-    else end('close');
+    else endHere('end');
   };
   const timer = setTimeout(() => giveUp('unreachable'), WELCOME_TIMEOUT_MS);
 
@@ -480,10 +489,13 @@ async function reach(mine: number, guest: Guest, tries: number) {
       // Stopped before letting go: destroying the Peer closes the channel,
       // and its close handler would take it for a drop.
       stop();
-      end('remove');
+      endHere('remove');
     } else if (message.type === 'replaced' && admitted) {
       stop();
-      end('replace');
+      endHere('replace');
+    } else if (message.type === 'closed' && admitted) {
+      stop();
+      endHere('close');
     } else if ((message.type === 'full' || message.type === 'started') && !admitted) {
       giveUp(message.type);
     }
@@ -502,7 +514,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
       useRoom.getState().reconnect();
       later(mine, guest, 0);
     } else {
-      end('close');
+      endHere('end');
     }
   });
 }
@@ -524,8 +536,8 @@ export function resumeRoom(record: TabRecord) {
   void reach(mine, guest, 0);
 }
 
-// Every channel goes with the Peer: a host's guests see the room close, and a
-// guest's host drops them from the list.
+// Every channel goes with the Peer: a host's guests are told the room is
+// closed, and a guest's host drops them from the list.
 export function leaveRoom() {
   attempt++;
   letGo();
@@ -548,5 +560,7 @@ export function removeParticipant(id: string) {
 
 // A closed tab does not close its channels on its own. The other end only
 // notices once ICE gives up on it, around half a minute later, and until then
-// a guest who left is still listed.
-window.addEventListener('pagehide', () => peer?.destroy());
+// a guest who left is still listed. A creator's tab also tells its guests the
+// room is closed, which a crash never does: they only find out once the code
+// is gone.
+window.addEventListener('pagehide', letGo);

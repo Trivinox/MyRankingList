@@ -1884,13 +1884,16 @@ describe('in a room', () => {
     expect(announced()).toBe(en.sorting.announce.allPlacedInRoom);
   });
 
-  it('goes back to the lobby screen, which says so, when the room closes', () => {
-    renderScreen();
+  it.each(['close', 'end'] as const)(
+    'goes back to the lobby screen, which says so, when the room is over (%s)',
+    (how) => {
+      renderScreen();
 
-    act(() => useRoom.getState().close());
+      act(() => useRoom.getState()[how]());
 
-    expect(useScreen.getState().screen).toBe('lobby');
-  });
+      expect(useScreen.getState().screen).toBe('lobby');
+    },
+  );
 
   it('goes back to the lobby screen when the creator removes them', () => {
     renderScreen();

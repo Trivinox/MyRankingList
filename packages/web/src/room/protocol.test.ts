@@ -129,6 +129,10 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage({ type: 'replaced', by: 'x' })).toEqual({ type: 'replaced' });
   });
 
+  it('reads the creator closing the room', () => {
+    expect(parseHostMessage({ type: 'closed', by: 'x' })).toEqual({ type: 'closed' });
+  });
+
   it('reads the start of sorting, with the list and the criterion', () => {
     const start = { type: 'start', items, criterion: 'Best fruit' };
 

@@ -137,7 +137,7 @@ describe('LobbyScreen', () => {
       expect(useScreen.getState().screen).toBe('list-input');
     });
 
-    it('is told when the room closes under them and can go back to the form', async () => {
+    it('is told when the creator closes the room and can go back to the form', async () => {
       window.history.replaceState(null, '', '/?room=AB3K');
       inRoom('guest', 'j');
       renderLobby();
@@ -145,6 +145,21 @@ describe('LobbyScreen', () => {
       act(() => useRoom.getState().close());
 
       expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.closed);
+      await userEvent.click(screen.getByRole('button', { name: en.room.back }));
+      expect(leaveRoom).toHaveBeenCalled();
+      expect(window.location.search).toBe('');
+      expect(useScreen.getState().screen).toBe('list-input');
+    });
+
+    it('is told the room ended when the creator went without a word', async () => {
+      window.history.replaceState(null, '', '/?room=AB3K');
+      inRoom('guest', 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().end());
+
+      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.ended);
+      expect(screen.getByRole('alert')).not.toHaveTextContent(en.room.lobby.closed);
       await userEvent.click(screen.getByRole('button', { name: en.room.back }));
       expect(leaveRoom).toHaveBeenCalled();
       expect(window.location.search).toBe('');

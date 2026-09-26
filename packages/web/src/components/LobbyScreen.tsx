@@ -48,7 +48,7 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed' || status === 'removed' || status === 'replaced') {
+  if (status === 'closed' || status === 'ended' || status === 'removed' || status === 'replaced') {
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">

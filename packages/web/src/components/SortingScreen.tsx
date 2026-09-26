@@ -256,7 +256,12 @@ export function SortingScreen() {
   // The lobby screen already knows how to tell someone the room is gone, or
   // that they were taken out of it, and take them back to the form.
   useEffect(() => {
-    if (roomStatus === 'closed' || roomStatus === 'removed' || roomStatus === 'replaced') {
+    if (
+      roomStatus === 'closed' ||
+      roomStatus === 'ended' ||
+      roomStatus === 'removed' ||
+      roomStatus === 'replaced'
+    ) {
       setScreen('lobby');
     }
   }, [roomStatus, setScreen]);

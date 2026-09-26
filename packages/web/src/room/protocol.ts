@@ -17,7 +17,8 @@ export type GuestMessage =
 // answers a seat that returns mid-sort. `started` is the answer to a join once
 // registration has closed. `removed` is the last thing a guest hears from a
 // creator who took them out, and `replaced` what an older tab hears when the
-// same seat connects again from another.
+// same seat connects again from another. `closed` is the creator leaving on
+// purpose.
 export type HostMessage =
   | { type: 'welcome'; you: string; seat: string; criterion: string; participants: Participant[] }
   | {
@@ -33,7 +34,8 @@ export type HostMessage =
   | { type: 'start'; items: Item[]; criterion: string }
   | { type: 'started' }
   | { type: 'removed' }
-  | { type: 'replaced' };
+  | { type: 'replaced' }
+  | { type: 'closed' };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -147,6 +149,7 @@ export function parseHostMessage(data: unknown): HostMessage | null {
     case 'started':
     case 'removed':
     case 'replaced':
+    case 'closed':
       return { type: data.type };
     default:
       return null;

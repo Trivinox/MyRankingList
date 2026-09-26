@@ -359,6 +359,37 @@ describe('createRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'idle', participants: [], code: null });
   });
 
+  it('tells every guest the room is closed before destroying the Peer', async () => {
+    const host = await openRoom();
+    const juan = guestJoins(host, 'Juan');
+    const lucia = guestJoins(host, 'Lucía');
+
+    leaveRoom();
+
+    expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(lucia.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(host.destroyed).toBe(true);
+  });
+
+  it('tells every guest the room is closed when the tab is closed', async () => {
+    const host = await openRoom();
+    const juan = guestJoins(host, 'Juan');
+
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(host.destroyed).toBe(true);
+  });
+
+  it('says nothing to a channel that never joined', async () => {
+    const host = await openRoom();
+    const stranger = host.receive();
+
+    leaveRoom();
+
+    expect(stranger.sentBeforeClose).toEqual([]);
+  });
+
   it('writes nothing when left while the code is on its way', async () => {
     let answer: (room: OpenedRoom) => void = () => {};
     signaling.openRoom.mockReturnValue(new Promise((resolve) => (answer = resolve)));
@@ -936,13 +967,34 @@ describe('joinRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: { kind: 'unreachable' } });
   });
 
-  it('marks the room closed when the host goes, and lets go of the Peer', async () => {
+  it('marks the room ended when the host goes without a word, and lets go of the Peer', async () => {
     const { guest, channel } = await reachLobby();
 
     channel.close();
 
-    expect(useRoom.getState().status).toBe('closed');
+    expect(useRoom.getState().status).toBe('ended');
     expect(guest.destroyed).toBe(true);
+  });
+
+  it('marks the room closed when the creator says so', async () => {
+    const { guest, channel } = await reachLobby();
+    const written: string[] = [];
+    const stop = useRoom.subscribe((room) => written.push(room.status));
+
+    channel.emit('data', { type: 'closed' });
+    stop();
+
+    expect(written).toEqual(['closed']);
+    expect(guest.destroyed).toBe(true);
+  });
+
+  it('ignores a close before the welcome', async () => {
+    const { guest, channel } = await reachHost();
+
+    channel.emit('data', { type: 'closed' });
+
+    expect(guest.destroyed).toBe(false);
+    expect(useRoom.getState().status).toBe('connecting');
   });
 
   it('writes nothing when left during the lookup', async () => {
@@ -1181,7 +1233,7 @@ describe('joinRoom', () => {
       expect(signaling.findRoom.mock.calls).toHaveLength(calls + 1);
     });
 
-    it('stops, with the room closed and the record gone, once the code is released', async () => {
+    it('stops, with the room ended and the record gone, once the code is released', async () => {
       const { channel } = await sorting();
       signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
       channel.close();
@@ -1189,9 +1241,22 @@ describe('joinRoom', () => {
       await vi.advanceTimersByTimeAsync(2_000);
       await vi.advanceTimersByTimeAsync(60_000);
 
-      expect(useRoom.getState().status).toBe('closed');
+      expect(useRoom.getState().status).toBe('ended');
       expect(readTabRecord()).toBeNull();
       expect(signaling.findRoom).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops at once, with the record gone, when the creator closes the room', async () => {
+      const { guest, channel } = await sorting();
+
+      channel.emit('data', { type: 'closed' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(useRoom.getState().status).toBe('closed');
+      expect(guest.destroyed).toBe(true);
+      expect(peers).toHaveLength(1);
+      expect(signaling.findRoom).toHaveBeenCalledTimes(1);
+      expect(readTabRecord()).toBeNull();
     });
 
     it('ends up removed when it was taken out while away', async () => {
@@ -1361,11 +1426,11 @@ describe('resumeRoom', () => {
     expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
   });
 
-  it('ends with the room closed when the code no longer exists', async () => {
+  it('ends with the room ended when the code no longer exists', async () => {
     signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
     resumeRoom(reloadedTab());
 
-    await vi.waitFor(() => expect(useRoom.getState().status).toBe('closed'));
+    await vi.waitFor(() => expect(useRoom.getState().status).toBe('ended'));
     expect(peers).toHaveLength(0);
   });
 });
