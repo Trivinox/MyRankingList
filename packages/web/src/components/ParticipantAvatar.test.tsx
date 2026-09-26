@@ -6,6 +6,7 @@ import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
+import styles from './ParticipantAvatar.module.css';
 
 const juan: Participant = {
   id: 'j',
@@ -52,6 +53,16 @@ describe('ParticipantAvatar', () => {
         name: i18n.t('room.placed', { nickname: 'juan', placed: 3, total: 8 }),
       }),
     ).toBeInTheDocument();
+  });
+
+  it('says someone is away, keeping their count and fading their ring', () => {
+    const { i18n, fill } = renderAvatar({ participant: { ...juan, connected: false }, total: 8 });
+
+    const badge = screen.getByRole('img', {
+      name: i18n.t('room.placedAway', { nickname: 'juan', placed: 3, total: 8 }),
+    });
+    expect(badge).toHaveClass(styles.away);
+    expect(fill()).toBe('0.375 1');
   });
 
   // Nobody has a list in the lobby, so there is nothing to count yet.

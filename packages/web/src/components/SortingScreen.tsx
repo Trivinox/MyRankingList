@@ -179,7 +179,8 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const setScreen = useScreen((state) => state.setScreen);
   const roomStatus = useRoom((state) => state.status);
-  const inRoom = roomStatus === 'sorting';
+  const reconnecting = roomStatus === 'reconnecting';
+  const inRoom = roomStatus === 'sorting' || reconnecting;
   const [dragged, setDragged] = useState<DragSource | null>(null);
   // A placed item picked up with its move button, waiting for the tap that puts
   // it down. Null means a tap places the pool item. Kept here and not in the
@@ -255,7 +256,7 @@ export function SortingScreen() {
   // The lobby screen already knows how to tell someone the room is gone, or
   // that they were taken out of it, and take them back to the form.
   useEffect(() => {
-    if (roomStatus === 'closed' || roomStatus === 'removed') {
+    if (roomStatus === 'closed' || roomStatus === 'removed' || roomStatus === 'replaced') {
       setScreen('lobby');
     }
   }, [roomStatus, setScreen]);
@@ -491,6 +492,11 @@ export function SortingScreen() {
           {criterion}
         </h2>
         <ProgressBar placed={placed} total={items.length} />
+        {/* Always in the tree, so a screen reader hears it arrive and go.
+            Sorting goes on underneath: the list is this tab's own. */}
+        <p className={styles.reconnecting} role="status">
+          {reconnecting && t('room.reconnecting')}
+        </p>
       </div>
 
       <RoomProgress />

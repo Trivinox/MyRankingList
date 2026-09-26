@@ -50,6 +50,12 @@
   font-weight: 600;
 }
 
+/* Someone whose connection dropped mid-sort. Their count is kept, so the ring
+   stays as it was, only faded until they are back. */
+.away {
+  opacity: 0.4;
+}
+
 .nickname {
   overflow-wrap: anywhere;
 }

@@ -14,7 +14,7 @@ export function RoomProgress() {
   const total = usePlacement((state) => state.items.length);
   const removal = useRemoval(participants);
 
-  if (status !== 'sorting') return null;
+  if (status !== 'sorting' && status !== 'reconnecting') return null;
 
   return (
     <div className={styles.progress}>

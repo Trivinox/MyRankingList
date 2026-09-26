@@ -1900,6 +1900,30 @@ describe('in a room', () => {
     expect(useScreen.getState().screen).toBe('lobby');
   });
 
+  it('says it is reconnecting while the host is lost, and lets the sorting go on', () => {
+    renderScreen();
+    expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+
+    act(() => useRoom.getState().reconnect());
+    expect(screen.getByText(en.room.reconnecting)).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('list', { name: en.room.everyone })).toBeInTheDocument();
+
+    const before = started().pendingPool.length;
+    act(() => usePlacement.getState().drop({ from: 'pool' }, { kind: 'gap', index: 0 }));
+    expect(started().pendingPool).toHaveLength(before - 1);
+
+    act(() => useRoom.setState({ status: 'sorting' }));
+    expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+  });
+
+  it('goes back to the lobby screen when another tab takes its place', () => {
+    renderScreen();
+
+    act(() => useRoom.getState().replace());
+
+    expect(useScreen.getState().screen).toBe('lobby');
+  });
+
   it('is not there when sorting alone', () => {
     useRoom.getState().leave();
     fillUp();
