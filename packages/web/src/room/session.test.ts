@@ -705,12 +705,12 @@ describe('createRoom', () => {
       expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
     });
 
-    describe('away for too long', () => {
+    describe('someone away for too long', () => {
       const overdue = () => useRoom.getState().overdue;
 
       beforeEach(() => vi.useFakeTimers());
 
-      it('is nothing before 20 minutes, and overdue at 20', async () => {
+      it('is not overdue before 20 minutes, and is at 20', async () => {
         const { juan } = await sortingWithJuan();
         juan.close();
 
@@ -722,7 +722,7 @@ describe('createRoom', () => {
         expect(juanOf()).toMatchObject({ connected: false, progress: 2 });
       });
 
-      it('starts over when they come back before', async () => {
+      it('starts the count over after coming back in time', async () => {
         const { host, juan, seat } = await sortingWithJuan();
         juan.close();
         vi.advanceTimersByTime(19 * 60_000);
@@ -749,7 +749,7 @@ describe('createRoom', () => {
         expect(juanOf().connected).toBe(true);
       });
 
-      it('finishing without them takes them out, tells the rest and keeps their seat out', async () => {
+      it('is taken out, with the rest told and the seat refused, when finished without', async () => {
         const { host, juan, lucia, seat } = await sortingWithJuan();
         juan.close();
         vi.advanceTimersByTime(20 * 60_000);
@@ -773,7 +773,7 @@ describe('createRoom', () => {
         expect(overdue()).toEqual([]);
       });
 
-      it('is no one once the room is left', async () => {
+      it('leaves no timer behind once the room is left', async () => {
         const { juan } = await sortingWithJuan();
         juan.close();
 
@@ -784,7 +784,7 @@ describe('createRoom', () => {
         expect(vi.getTimerCount()).toBe(0);
       });
 
-      it('is no one in the lobby, where dropping is leaving', async () => {
+      it('is never counted in the lobby, where dropping is leaving', async () => {
         const host = await openRoom();
         guestJoins(host, 'Juan').close();
 

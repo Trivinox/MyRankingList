@@ -31,7 +31,8 @@ interface Room {
   items: Item[];
   status: RoomStatus;
   error: RoomError | null;
-  // The host's alone: ids of those away long enough to be finished without.
+  // Only ever filled on the host: ids of those away long enough to be
+  // finished without.
   overdue: string[];
   connect: (role: Role) => void;
   enterLobby: (room: {

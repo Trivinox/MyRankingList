@@ -19,8 +19,8 @@ export function useRemoval(participants: Participant[], overdue: string[] = []) 
   const target = participants.find(
     (p) => p.id === removing?.id && (!removing.finishing || overdue.includes(p.id)),
   );
-  // Dropped rather than kept for later: a prompt would pop back up on its own
-  // if they went away again.
+  // Kept for later, the question would pop back up by itself if they went
+  // away again.
   if (removing && !target) setRemoving(null);
 
   useEffect(() => {

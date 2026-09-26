@@ -4,7 +4,7 @@ import styles from './RemovalPrompt.module.css';
 
 interface RemovalPromptProps {
   nickname: string;
-  // Asked about someone away for too long, in words that fit that.
+  // Worded for someone away too long instead of for a plain removal.
   finishing?: boolean;
   onRemove: () => void;
   onCancel: () => void;
@@ -13,7 +13,7 @@ interface RemovalPromptProps {
 // Asked under the whole list rather than next to the person, since in the
 // sorting strip each person is a column too narrow to hold it. The focus comes
 // here on its own, landing on the choice that removes nobody, and goes back to
-// the Remove button that opened it when that is the choice made.
+// whichever button opened it when that is the choice made.
 export function RemovalPrompt({ nickname, finishing, onRemove, onCancel }: RemovalPromptProps) {
   const { t } = useTranslation();
   const words = finishing ? 'room.overdue' : 'room.remove';
