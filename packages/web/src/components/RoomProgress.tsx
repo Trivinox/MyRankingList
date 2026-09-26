@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { INACTIVITY_TIMEOUT_MS } from '../room/hostRoom.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
@@ -10,9 +11,10 @@ import styles from './RoomProgress.module.css';
 // where never reaches this browser.
 export function RoomProgress() {
   const { t } = useTranslation();
-  const { role, participants, you, status } = useRoom();
+  const { role, participants, you, status, overdue } = useRoom();
   const total = usePlacement((state) => state.items.length);
-  const removal = useRemoval(participants);
+  const removal = useRemoval(participants, overdue);
+  const late = participants.filter((p) => role === 'host' && overdue.includes(p.id));
 
   if (status !== 'sorting' && status !== 'reconnecting') return null;
   // A reloaded tab knows nobody until the host answers, and an empty list
@@ -48,10 +50,34 @@ export function RoomProgress() {
           </li>
         ))}
       </ul>
+      {/* There from the first render, so a notice turning up in it is read
+          out: it comes while the creator is busy with their own list. */}
+      <div aria-live="polite" className={styles.overdue}>
+        {late.map((participant) => (
+          <div key={participant.id} className={styles.late}>
+            <p className={styles.notice}>
+              {t('room.overdue.notice', {
+                nickname: participant.nickname,
+                count: INACTIVITY_TIMEOUT_MS / 60_000,
+              })}
+            </p>
+            <button
+              type="button"
+              className={styles.finish}
+              onClick={() => removal.ask(participant.id, true)}
+            >
+              {t('room.overdue.finish', { nickname: participant.nickname })}
+            </button>
+          </div>
+        ))}
+      </div>
+      {/* Keyed on the question too: switching from the cross to finishing
+          asks anew, with the focus on Cancel and the new opener to go back to. */}
       {removal.target && (
         <RemovalPrompt
-          key={removal.target.id}
+          key={`${removal.target.id}-${removal.finishing}`}
           nickname={removal.target.nickname}
+          finishing={removal.finishing}
           onRemove={removal.confirm}
           onCancel={removal.cancel}
         />

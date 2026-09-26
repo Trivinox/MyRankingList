@@ -6,6 +6,7 @@ import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
 import { SIGNALING_URL } from './config.ts';
 import {
+  INACTIVITY_TIMEOUT_MS,
   START_MINIMUM,
   admit,
   exclude,
@@ -60,6 +61,8 @@ let removeHere: ((id: string) => void) | null = null;
 let unfollow: (() => void) | null = null;
 // A guest's next try at getting back to the host.
 let retry: ReturnType<typeof setTimeout> | undefined;
+// On the host, one timer for each guest away mid-sort, by participant id.
+const awayTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function stopFollowing() {
   unfollow?.();
@@ -68,6 +71,8 @@ function stopFollowing() {
 
 function letGo() {
   clearTimeout(retry);
+  for (const timer of awayTimers.values()) clearTimeout(timer);
+  awayTimers.clear();
   peer?.destroy();
   peer = null;
   startHere = null;
@@ -158,6 +163,25 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   const seats = new Map<string, string>();
   const removedSeats = new Set<string>();
 
+  // Past the timeout the creator is offered to finish without them. Nothing
+  // happens on its own: they may still come back, and it is the creator's call.
+  const awaitReturn = (id: string) => {
+    awayTimers.set(
+      id,
+      setTimeout(() => {
+        awayTimers.delete(id);
+        if (mine !== attempt) return;
+        useRoom.getState().setOverdue([...useRoom.getState().overdue, id]);
+      }, INACTIVITY_TIMEOUT_MS),
+    );
+  };
+  const stopWaiting = (id: string) => {
+    clearTimeout(awayTimers.get(id));
+    awayTimers.delete(id);
+    const { overdue, setOverdue } = useRoom.getState();
+    if (overdue.includes(id)) setOverdue(overdue.filter((late) => late !== id));
+  };
+
   host.on('connection', (channel) => {
     let id: string | null = null;
     let seat: string | null = null;
@@ -197,6 +221,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         }
         id = known;
         seat = message.seat!;
+        stopWaiting(id);
         setParticipants(setConnected(room.participants, id, true));
         channels.set(id, channel);
         const { participants, items } = useRoom.getState();
@@ -245,6 +270,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
       const { participants, status } = useRoom.getState();
       if (status === 'sorting') {
         setParticipants(setConnected(participants, id, false));
+        awaitReturn(id);
       } else {
         if (seat !== null) seats.delete(seat);
         setParticipants(leave(participants, id));
@@ -273,6 +299,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     if (seat === undefined) return;
     seats.delete(seat);
     removedSeats.add(seat);
+    stopWaiting(id);
     const channel = channels.get(id);
     channels.delete(id);
     if (channel) {

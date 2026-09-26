@@ -128,6 +128,13 @@ export const es: typeof en = {
       yes: 'Sí, quitar',
       no: 'Cancelar',
     },
+    overdue: {
+      notice_one: '{{nickname}} lleva {{count}} minuto fuera.',
+      notice_other: '{{nickname}} lleva {{count}} minutos fuera.',
+      finish: 'Terminar sin {{nickname}}',
+      confirm: '¿Terminar sin {{nickname}}? Ya no podrá volver a la sala.',
+      yes: 'Sí, terminar sin esa persona',
+    },
     lobby: {
       code: 'Código de la sala',
       copyLink: 'Copiar enlace',

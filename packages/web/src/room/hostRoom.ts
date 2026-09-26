@@ -6,6 +6,10 @@ export const ROOM_LIMIT = 20;
 // Creator included. A room of one would be sorting alone.
 export const START_MINIMUM = 2;
 
+// How long someone can be away mid-sort before the creator is offered to
+// finish without them. A starting value, meant to be tuned.
+export const INACTIVITY_TIMEOUT_MS = 20 * 60_000;
+
 // The id is the host's own, never the peer ID behind it. A guest who knew
 // another's peer ID could open a channel straight to them, and the star would
 // stop being one.

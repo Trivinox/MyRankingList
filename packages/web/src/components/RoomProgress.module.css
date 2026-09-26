@@ -53,3 +53,37 @@
     flex-shrink: 0;
   }
 }
+
+.overdue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Taken out of the flow rather than hidden while empty: a live region that
+   was not displayed is not always read when something turns up in it. Out of
+   the flow it adds no gap under the strip. */
+.overdue:empty {
+  position: absolute;
+}
+
+.late {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.notice {
+  margin: 0;
+}
+
+.finish {
+  padding: 0.4rem 1rem;
+  border: 1px solid #b3261e;
+  border-radius: 6px;
+  background: none;
+  color: #b3261e;
+  font: inherit;
+  cursor: pointer;
+}

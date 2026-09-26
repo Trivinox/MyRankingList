@@ -31,6 +31,9 @@ interface Room {
   items: Item[];
   status: RoomStatus;
   error: RoomError | null;
+  // Only ever filled on the host: ids of those away long enough to be
+  // finished without.
+  overdue: string[];
   connect: (role: Role) => void;
   enterLobby: (room: {
     code: string;
@@ -40,6 +43,7 @@ interface Room {
     items?: Item[];
   }) => void;
   setParticipants: (participants: Participant[]) => void;
+  setOverdue: (overdue: string[]) => void;
   startSorting: (items: Item[]) => void;
   reconnect: (room?: { code: string; you: string }) => void;
   resume: (room: {
@@ -64,6 +68,7 @@ const empty = {
   items: [],
   status: 'idle',
   error: null,
+  overdue: [],
 } satisfies Partial<Room>;
 
 // The session writes here straight from its PeerJS callbacks, which run
@@ -77,6 +82,8 @@ export const useRoom = create<Room>((set) => ({
   enterLobby: (room) => set({ ...room, status: 'lobby', error: null }),
 
   setParticipants: (participants) => set({ participants }),
+
+  setOverdue: (overdue) => set({ overdue }),
 
   startSorting: (items) => set({ items, status: 'sorting' }),
 
