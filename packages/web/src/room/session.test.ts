@@ -704,6 +704,95 @@ describe('createRoom', () => {
 
       expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
     });
+
+    describe('away for too long', () => {
+      const overdue = () => useRoom.getState().overdue;
+
+      beforeEach(() => vi.useFakeTimers());
+
+      it('is nothing before 20 minutes, and overdue at 20', async () => {
+        const { juan } = await sortingWithJuan();
+        juan.close();
+
+        vi.advanceTimersByTime(20 * 60_000 - 1);
+        expect(overdue()).toEqual([]);
+        vi.advanceTimersByTime(1);
+        expect(overdue()).toEqual([juanOf().id]);
+        // Only the creator is offered anything. Juan's place is still there.
+        expect(juanOf()).toMatchObject({ connected: false, progress: 2 });
+      });
+
+      it('starts over when they come back before', async () => {
+        const { host, juan, seat } = await sortingWithJuan();
+        juan.close();
+        vi.advanceTimersByTime(19 * 60_000);
+
+        const back = returns(host, seat);
+        vi.advanceTimersByTime(60_000);
+        expect(overdue()).toEqual([]);
+
+        back.close();
+        vi.advanceTimersByTime(20 * 60_000 - 1);
+        expect(overdue()).toEqual([]);
+        vi.advanceTimersByTime(1);
+        expect(overdue()).toEqual([juanOf().id]);
+      });
+
+      it('is no longer overdue once back after it', async () => {
+        const { host, juan, seat } = await sortingWithJuan();
+        juan.close();
+        vi.advanceTimersByTime(20 * 60_000);
+
+        returns(host, seat);
+
+        expect(overdue()).toEqual([]);
+        expect(juanOf().connected).toBe(true);
+      });
+
+      it('finishing without them takes them out, tells the rest and keeps their seat out', async () => {
+        const { host, juan, lucia, seat } = await sortingWithJuan();
+        juan.close();
+        vi.advanceTimersByTime(20 * 60_000);
+
+        removeParticipant(juanOf().id);
+
+        const { participants } = useRoom.getState();
+        expect(participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
+        expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+        expect(overdue()).toEqual([]);
+
+        const back = returns(host, seat);
+        expect(back.sentBeforeClose).toEqual([{ type: 'removed' }]);
+      });
+
+      it('is never the creator, who has no channel to lose', async () => {
+        await sortingWithJuan();
+
+        vi.advanceTimersByTime(60 * 60_000);
+
+        expect(overdue()).toEqual([]);
+      });
+
+      it('is no one once the room is left', async () => {
+        const { juan } = await sortingWithJuan();
+        juan.close();
+
+        leaveRoom();
+        vi.advanceTimersByTime(20 * 60_000);
+
+        expect(overdue()).toEqual([]);
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it('is no one in the lobby, where dropping is leaving', async () => {
+        const host = await openRoom();
+        guestJoins(host, 'Juan').close();
+
+        vi.advanceTimersByTime(20 * 60_000);
+
+        expect(overdue()).toEqual([]);
+      });
+    });
   });
 });
 
