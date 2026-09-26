@@ -200,6 +200,23 @@ describe('RoomProgress', () => {
       expect(finish).toHaveFocus();
     });
 
+    it('asks again from the start when the creator switches from the cross to finishing', async () => {
+      overdue('host');
+      const i18n = renderStrip();
+      const finish = screen.getByRole('button', {
+        name: i18n.t('room.overdue.finish', { nickname: 'Juan' }),
+      });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: i18n.t('room.remove.label', { nickname: 'Juan' }) }),
+      );
+      await userEvent.click(finish);
+      expect(screen.getByRole('button', { name: en.room.remove.no })).toHaveFocus();
+
+      await userEvent.click(screen.getByRole('button', { name: en.room.remove.no }));
+      expect(finish).toHaveFocus();
+    });
+
     it('drops the question when they come back while it is asked', async () => {
       overdue('host');
       const i18n = renderStrip();

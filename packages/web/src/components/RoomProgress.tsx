@@ -71,9 +71,11 @@ export function RoomProgress() {
           </div>
         ))}
       </div>
+      {/* Keyed on the question too: switching from the cross to finishing
+          asks anew, with the focus on Cancel and the new opener to go back to. */}
       {removal.target && (
         <RemovalPrompt
-          key={removal.target.id}
+          key={`${removal.target.id}-${removal.finishing}`}
           nickname={removal.target.nickname}
           finishing={removal.finishing}
           onRemove={removal.confirm}
