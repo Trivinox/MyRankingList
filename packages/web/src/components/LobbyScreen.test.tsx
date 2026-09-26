@@ -124,6 +124,22 @@ describe('LobbyScreen', () => {
     expect(screen.getByText(en.room.lobby.copied)).toBeInTheDocument();
   });
 
+  it.each(['host', 'guest'] as const)(
+    'shows the new code, and copies it, once the room goes by one (%s)',
+    async (role) => {
+      const user = userEvent.setup();
+      inRoom(role, role === 'host' ? 'a' : 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().setCode('XY7Q'));
+      await user.click(screen.getByRole('button', { name: en.room.lobby.copyLink }));
+
+      expect(screen.getByText('XY7Q')).toBeInTheDocument();
+      expect(screen.queryByText('AB3K')).not.toBeInTheDocument();
+      expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/?room=XY7Q`);
+    },
+  );
+
   describe('as a guest', () => {
     it('leaves without asking, and drops the code from the address', async () => {
       window.history.replaceState(null, '', '/?room=AB3K');

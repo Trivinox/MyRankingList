@@ -52,6 +52,7 @@ interface Room {
     items?: Item[];
   }) => void;
   setParticipants: (participants: Participant[]) => void;
+  setCode: (code: string) => void;
   setOverdue: (overdue: string[]) => void;
   startSorting: (items: Item[]) => void;
   reconnect: (room?: { code: string; you: string }) => void;
@@ -92,6 +93,8 @@ export const useRoom = create<Room>((set) => ({
   enterLobby: (room) => set({ ...room, status: 'lobby', error: null }),
 
   setParticipants: (participants) => set({ participants }),
+
+  setCode: (code) => set({ code }),
 
   setOverdue: (overdue) => set({ overdue }),
 

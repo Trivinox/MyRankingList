@@ -2,6 +2,7 @@ import { isAllowedImageUrl } from '../core/images.ts';
 import type { Item } from '../core/types.ts';
 import type { Participant } from './hostRoom.ts';
 import { NICKNAME_LIMIT } from './nicknames.ts';
+import { readRoomCode } from './roomCode.ts';
 
 // The same bounds the form puts on a list.
 const MIN_ITEMS = 3;
@@ -18,7 +19,8 @@ export type GuestMessage =
 // registration has closed. `removed` is the last thing a guest hears from a
 // creator who took them out, and `replaced` what an older tab hears when the
 // same seat connects again from another. `closed` is the creator leaving on
-// purpose.
+// purpose, and `code` the new code of a room whose creator came back to the
+// signaling server too late to keep the old one.
 export type HostMessage =
   | { type: 'welcome'; you: string; seat: string; criterion: string; participants: Participant[] }
   | {
@@ -35,7 +37,8 @@ export type HostMessage =
   | { type: 'started' }
   | { type: 'removed' }
   | { type: 'replaced' }
-  | { type: 'closed' };
+  | { type: 'closed' }
+  | { type: 'code'; code: string };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -151,6 +154,12 @@ export function parseHostMessage(data: unknown): HostMessage | null {
     case 'replaced':
     case 'closed':
       return { type: data.type };
+    case 'code': {
+      // Checked for exactly what the server hands out, not read leniently:
+      // this one goes into the address and the next lookup as it is.
+      const code = typeof data.code === 'string' ? readRoomCode(data.code) : null;
+      return code !== null && code === data.code ? { type: 'code', code } : null;
+    }
     default:
       return null;
   }
