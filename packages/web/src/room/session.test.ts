@@ -425,7 +425,6 @@ describe('createRoom', () => {
       expect(signaling.openRoom).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(1);
 
-      // Asked with the ID it had, which peerjs forgets while away.
       expect(signaling.openRoom).toHaveBeenLastCalledWith('host-peer');
       expect(useRoom.getState()).toMatchObject({ status: 'lobby', code: 'AB3K' });
       expect(juan.sent).toHaveLength(sent);

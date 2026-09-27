@@ -246,7 +246,6 @@ test('the creator closes the room mid-sort and the guest is told so at once', as
   await join(juan, 'Juan');
   await ana.getByRole('button', { name: 'Start' }).click();
   await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
-  // The creator alone can close it.
   await expect(juan.getByRole('button', { name: 'Close the room' })).toHaveCount(0);
 
   await ana.getByRole('button', { name: 'Close the room' }).click();
@@ -258,8 +257,8 @@ test('the creator closes the room mid-sort and the guest is told so at once', as
   await juan.context().close();
 });
 
-// Without the goodbye the guest would take the silence for a drop, and keep
-// trying for as long as the server holds the code.
+// Without the goodbye the guest would think the host had only dropped, and
+// keep trying for as long as the server holds the code.
 // The creator is the one opened by hand here, since the fixture checks its own
 // page once the test is over.
 test('the creator closes their tab mid-sort and the guest is told so at once', async ({

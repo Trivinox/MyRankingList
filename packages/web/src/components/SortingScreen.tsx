@@ -32,7 +32,6 @@ import {
 } from '../core/dropTargets.ts';
 import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
-import { forgetRoomLink } from '../room/link.ts';
 import { leaveRoom } from '../room/session.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
@@ -581,7 +580,6 @@ export function SortingScreen() {
         <CloseRoom
           onClose={() => {
             leaveRoom();
-            forgetRoomLink();
             setScreen('list-input');
           }}
         />
