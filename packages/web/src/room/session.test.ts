@@ -1358,13 +1358,13 @@ describe('joinRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: found });
   });
 
-  it('opens a reliable JSON channel to the host and asks to join', async () => {
+  it('opens a reliable binary channel to the host and asks to join', async () => {
     const { guest, channel } = await reachHost();
 
     expect(signaling.findRoom).toHaveBeenCalledWith('AB3K');
     expect(guest.options).toMatchObject({ config: { iceServers: ICE_SERVERS } });
     expect(channel.peer).toBe('host-peer');
-    expect(channel.options).toEqual({ serialization: 'json', reliable: true });
+    expect(channel.options).toEqual({ serialization: 'binary', reliable: true });
     expect(channel.sent).toEqual([{ type: 'join', nickname: 'Juan' }]);
     expect(useRoom.getState().status).toBe('connecting');
   });

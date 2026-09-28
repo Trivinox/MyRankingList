@@ -509,7 +509,10 @@ async function reach(mine: number, guest: Guest, tries: number) {
   }
   if (mine !== attempt) return;
 
-  const channel = created.connect(found.peerId, { serialization: 'json', reliable: true });
+  // PeerJS's own binary format rather than JSON: its JSON channel refuses any
+  // message past about 16 KB instead of splitting it, and a result with every
+  // list of a full room in it is well past that.
+  const channel = created.connect(found.peerId, { serialization: 'binary', reliable: true });
   // Let in on this channel, by a welcome or a resume.
   let admitted = false;
   let over = false;
