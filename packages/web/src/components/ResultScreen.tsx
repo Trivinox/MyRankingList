@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { rankItems } from '../core/ranking.ts';
-import type { Item, RankedSlot } from '../core/types.ts';
+import type { Item } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -60,7 +59,7 @@ export function ResultScreen() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
-        <ResultList slots={placement.rankedSlots} items={items} />
+        <ResultList groups={placement.rankedSlots.map((slot) => slot.itemIds)} items={items} />
       </motion.div>
 
       <div className={styles.actions}>
@@ -76,23 +75,24 @@ export function ResultScreen() {
 }
 
 interface ResultListProps {
-  slots: RankedSlot[];
+  // Each group is one rank, in order.
+  groups: string[][];
   items: Item[];
 }
 
 // A tied position is one card holding a row per item, each row with the shared
 // number. Nothing here assumes two: a room's consensus can put more items on
-// one rank, and the card just grows.
-function ResultList({ slots, items }: ResultListProps) {
+// one rank, and the card just grows. The numbering is the competition one
+// either way, every item on a rank counting towards the next.
+export function ResultList({ groups, items }: ResultListProps) {
   const { t } = useTranslation();
   const byId = new Map(items.map((item) => [item.id, item]));
-  const entries = rankItems(slots);
   let seen = 0;
 
   return (
     <ol className={styles.list}>
-      {slots.map(({ itemIds }) => {
-        const { rank } = entries[seen];
+      {groups.map((itemIds) => {
+        const rank = seen + 1;
         seen += itemIds.length;
         const tied = itemIds.length > 1;
 
