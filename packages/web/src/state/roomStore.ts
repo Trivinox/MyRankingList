@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import type { Item } from '../core/types.ts';
 import type { Participant } from '../room/hostRoom.ts';
+import type { RoomResult } from '../room/result.ts';
 
 export type Role = 'host' | 'guest';
 
 // Idle is no room at all, the state before creating or joining and after
 // leaving. Sorting starts for everyone at once, when the creator says so, and
 // reconnecting is a guest still sorting while their way back to the host is
-// found again. The rest is a room over for a guest, who still has to see why
+// found again. Revealed is everyone's lists in and the result out. The rest is a room over for a guest, who still has to see why
 // before going back: closed by the creator, ended with the host gone without
 // a word, removed by the creator, or replaced by another tab that took over
 // the place.
@@ -17,6 +18,7 @@ export type RoomStatus =
   | 'lobby'
   | 'sorting'
   | 'reconnecting'
+  | 'revealed'
   | 'closed'
   | 'ended'
   | 'removed'
@@ -43,6 +45,9 @@ interface Room {
   // Only ever filled on the host: ids of those away long enough to be
   // finished without.
   overdue: string[];
+  // Kept once revealed, whatever happens to the room after it: a room that
+  // closes then takes nothing away from what everyone is looking at.
+  result: RoomResult | null;
   connect: (role: Role) => void;
   enterLobby: (room: {
     code: string;
@@ -55,6 +60,7 @@ interface Room {
   setCode: (code: string) => void;
   setOverdue: (overdue: string[]) => void;
   startSorting: (items: Item[]) => void;
+  reveal: (result: RoomResult) => void;
   reconnect: (room?: { code: string; you: string }) => void;
   resume: (room: {
     you: string;
@@ -80,6 +86,7 @@ const empty = {
   status: 'idle',
   error: null,
   overdue: [],
+  result: null,
 } satisfies Partial<Room>;
 
 // The session writes here straight from its PeerJS callbacks, which run
@@ -99,6 +106,8 @@ export const useRoom = create<Room>((set) => ({
   setOverdue: (overdue) => set({ overdue }),
 
   startSorting: (items) => set({ items, status: 'sorting' }),
+
+  reveal: (result) => set({ result, status: 'revealed' }),
 
   // Mid-sort everything else stays as it was. After a reload there is nothing
   // yet but what the tab kept, until the host answers.

@@ -358,3 +358,91 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage(data)).toBeNull();
   });
 });
+
+describe('the result', () => {
+  const result = {
+    consensus: [
+      { itemId: 'a', averagePosition: 1.5, rank: 1, tied: true },
+      { itemId: 'b', averagePosition: 1.5, rank: 1, tied: true },
+      { itemId: 'c', averagePosition: 3, rank: 3, tied: false },
+    ],
+    discrepancies: [
+      { itemId: 'a', dispersion: 0.5 },
+      { itemId: 'b', dispersion: 0.5 },
+      { itemId: 'c', dispersion: 0 },
+    ],
+    lists: [
+      {
+        id: 'p1',
+        nickname: 'Ana',
+        left: false,
+        slots: [{ itemIds: ['a'] }, { itemIds: ['b', 'c'] }],
+      },
+      {
+        id: 'p2',
+        nickname: 'Juan',
+        left: true,
+        slots: [{ itemIds: ['b'] }, { itemIds: ['a'] }, { itemIds: ['c'] }],
+      },
+    ],
+    affinity: [{ a: 'p1', b: 'p2', coefficient: 0.5 }],
+  };
+
+  // The message with one part of the result swapped for something else.
+  const changed = (part: Partial<Record<keyof typeof result, unknown>>) => ({
+    type: 'result',
+    result: { ...result, ...part },
+  });
+
+  it('reads a result, someone who left and a pair with no value included', () => {
+    const noValue = { ...result, affinity: [{ a: 'p1', b: 'p2', coefficient: null }] };
+
+    expect(parseHostMessage({ type: 'result', result })).toEqual({ type: 'result', result });
+    expect(parseHostMessage({ type: 'result', result: noValue })).toEqual({
+      type: 'result',
+      result: noValue,
+    });
+  });
+
+  it('keeps nothing a result was not supposed to carry', () => {
+    const parsed = parseHostMessage({
+      type: 'result',
+      result: {
+        ...result,
+        seats: ['s1'],
+        lists: result.lists.map((list) => ({ ...list, seat: 's1', progress: 3 })),
+        affinity: [{ ...result.affinity[0], nicknames: ['Ana', 'Juan'] }],
+      },
+    });
+
+    expect(parsed).toEqual({ type: 'result', result });
+  });
+
+  it.each([
+    ['no consensus', { consensus: undefined }],
+    ['a rank of 0', { consensus: [{ ...result.consensus[0], rank: 0 }] }],
+    ['a rank that is not whole', { consensus: [{ ...result.consensus[0], rank: 1.5 }] }],
+    ['an average that is text', { consensus: [{ ...result.consensus[0], averagePosition: '1' }] }],
+    ['a tie that is not true or false', { consensus: [{ ...result.consensus[0], tied: 1 }] }],
+    ['a negative dispersion', { discrepancies: [{ itemId: 'a', dispersion: -0.1 }] }],
+    ['an endless dispersion', { discrepancies: [{ itemId: 'a', dispersion: Infinity }] }],
+    [
+      'a list with a group of three',
+      { lists: [{ ...result.lists[0], slots: [{ itemIds: ['a', 'b', 'c'] }] }] },
+    ],
+    ['a list with no nickname', { lists: [{ ...result.lists[0], nickname: undefined }] }],
+    ['a list with no mark for leaving', { lists: [{ ...result.lists[0], left: 'no' }] }],
+    ['two lists with one id', { lists: [result.lists[0], { ...result.lists[1], id: 'p1' }] }],
+    ['a coefficient past 1', { affinity: [{ a: 'p1', b: 'p2', coefficient: 1.2 }] }],
+    ['a coefficient that is text', { affinity: [{ a: 'p1', b: 'p2', coefficient: '0.5' }] }],
+    ['a pair naming someone with no list', { affinity: [{ a: 'p1', b: 'p9', coefficient: 0.5 }] }],
+    ['a list paired with itself', { affinity: [{ a: 'p1', b: 'p1', coefficient: 1 }] }],
+  ])('drops a result with %s', (_, part) => {
+    expect(parseHostMessage(changed(part))).toBeNull();
+  });
+
+  it('drops a result message with no result in it', () => {
+    expect(parseHostMessage({ type: 'result' })).toBeNull();
+    expect(parseHostMessage({ type: 'result', result: [result] })).toBeNull();
+  });
+});

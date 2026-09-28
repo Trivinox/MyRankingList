@@ -2,6 +2,7 @@ import { isAllowedImageUrl } from '../core/images.ts';
 import type { Item, RankedSlot } from '../core/types.ts';
 import type { Participant } from './hostRoom.ts';
 import { NICKNAME_LIMIT } from './nicknames.ts';
+import type { Affinity, RoomResult } from './result.ts';
 import { readRoomCode } from './roomCode.ts';
 
 // The same bounds the form puts on a list.
@@ -23,7 +24,9 @@ export type GuestMessage =
 // creator who took them out, and `replaced` what an older tab hears when the
 // same seat connects again from another. `closed` is the creator leaving on
 // purpose, and `code` the new code of a room whose creator came back to the
-// signaling server too late to keep the old one.
+// signaling server too late to keep the old one. `result` is the reveal, the
+// same for everyone, sent once when the last list is in and again to anyone
+// who comes back after it.
 export type HostMessage =
   | { type: 'welcome'; you: string; seat: string; criterion: string; participants: Participant[] }
   | {
@@ -41,7 +44,8 @@ export type HostMessage =
   | { type: 'removed' }
   | { type: 'replaced' }
   | { type: 'closed' }
-  | { type: 'code'; code: string };
+  | { type: 'code'; code: string }
+  | { type: 'result'; result: RoomResult };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -94,6 +98,64 @@ function toSlots(value: unknown): RankedSlot[] | null {
     slots.push({ itemIds: ids.length === 1 ? [ids[0]] : [ids[0], ids[1]] });
   }
   return slots;
+}
+
+// Again shape only: whether it is about this tab's items is the session's to
+// check. What it does hold together on its own is checked here, since a pair
+// naming someone with no list, or a coefficient past 1, would reach the screen.
+function toResult(value: unknown): RoomResult | null {
+  if (!isRecord(value)) return null;
+  const { consensus, discrepancies, lists, affinity } = value;
+  if (!Array.isArray(consensus) || !Array.isArray(discrepancies)) return null;
+  if (!Array.isArray(lists) || !Array.isArray(affinity)) return null;
+
+  const parsed: RoomResult = { consensus: [], discrepancies: [], lists: [], affinity: [] };
+
+  for (const entry of consensus) {
+    if (!isRecord(entry) || typeof entry.itemId !== 'string') return null;
+    const { averagePosition, rank, tied } = entry;
+    if (!Number.isFinite(averagePosition) || !isCount(rank, 1) || typeof tied !== 'boolean') {
+      return null;
+    }
+    parsed.consensus.push({
+      itemId: entry.itemId,
+      averagePosition: averagePosition as number,
+      rank,
+      tied,
+    });
+  }
+
+  for (const entry of discrepancies) {
+    if (!isRecord(entry) || typeof entry.itemId !== 'string') return null;
+    const { dispersion } = entry;
+    if (!Number.isFinite(dispersion) || (dispersion as number) < 0) return null;
+    parsed.discrepancies.push({ itemId: entry.itemId, dispersion: dispersion as number });
+  }
+
+  const ids = new Set<string>();
+  for (const entry of lists) {
+    if (!isRecord(entry) || typeof entry.id !== 'string' || ids.has(entry.id)) return null;
+    const slots = toSlots(entry.slots);
+    if (typeof entry.nickname !== 'string' || typeof entry.left !== 'boolean' || !slots) {
+      return null;
+    }
+    ids.add(entry.id);
+    parsed.lists.push({ id: entry.id, nickname: entry.nickname, left: entry.left, slots });
+  }
+
+  for (const entry of affinity) {
+    if (!isRecord(entry) || !isPair(entry, ids)) return null;
+    parsed.affinity.push({ a: entry.a, b: entry.b, coefficient: entry.coefficient });
+  }
+
+  return parsed;
+}
+
+function isPair(entry: Fields, ids: Set<string>): entry is Fields & Affinity {
+  const { a, b, coefficient } = entry;
+  if (typeof a !== 'string' || typeof b !== 'string' || a === b) return false;
+  if (!ids.has(a) || !ids.has(b)) return false;
+  return coefficient === null || (typeof coefficient === 'number' && Math.abs(coefficient) <= 1);
 }
 
 // A list the form would not have let through is refused whole: sorting part of
@@ -182,6 +244,10 @@ export function parseHostMessage(data: unknown): HostMessage | null {
       // this one goes into the address and the next lookup as it is.
       const code = typeof data.code === 'string' ? readRoomCode(data.code) : null;
       return code !== null && code === data.code ? { type: 'code', code } : null;
+    }
+    case 'result': {
+      const result = toResult(data.result);
+      return result && { type: 'result', result };
     }
     default:
       return null;

@@ -19,6 +19,7 @@ const record: TabRecord = {
   criterion: 'Best noodle',
   placement: startPlacement(items),
   finished: false,
+  result: null,
 };
 
 // What a browser that refuses site data does on any touch of the storage.
@@ -42,6 +43,27 @@ describe('the tab record', () => {
     writeTabRecord(done);
 
     expect(readTabRecord()).toEqual(done);
+  });
+
+  it('keeps the result once the room is revealed', () => {
+    const revealed = {
+      ...record,
+      finished: true,
+      result: {
+        consensus: items.map((item, index) => ({
+          itemId: item.id,
+          averagePosition: index + 1,
+          rank: index + 1,
+          tied: false,
+        })),
+        discrepancies: items.map((item) => ({ itemId: item.id, dispersion: 0 })),
+        lists: [],
+        affinity: [],
+      },
+    };
+    writeTabRecord(revealed);
+
+    expect(readTabRecord()).toEqual(revealed);
   });
 
   it('is gone once cleared', () => {
@@ -71,6 +93,12 @@ describe('the tab record', () => {
     const older: Partial<TabRecord> = { ...record };
     delete older.finished;
     sessionStorage.setItem('myrankinglist-room', JSON.stringify(older));
+    expect(readTabRecord()).toBeNull();
+
+    // And by one from before a room had a result.
+    const unrevealed: Partial<TabRecord> = { ...record };
+    delete unrevealed.result;
+    sessionStorage.setItem('myrankinglist-room', JSON.stringify(unrevealed));
     expect(readTabRecord()).toBeNull();
   });
 

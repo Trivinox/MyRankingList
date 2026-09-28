@@ -21,6 +21,7 @@ import type { Participant } from './hostRoom.ts';
 import { rememberRoomLink } from './link.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 import type { GuestMessage, HostMessage } from './protocol.ts';
+import { buildResult, fitsItems } from './result.ts';
 import { createSignaling } from './signaling.ts';
 import { clearTabRecord, writeTabRecord } from './tabRecord.ts';
 import type { TabRecord } from './tabRecord.ts';
@@ -205,6 +206,19 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     if (overdue.includes(id)) setOverdue(overdue.filter((late) => late !== id));
   };
 
+  // Everything that can leave the room with nobody still owing a list comes
+  // through here: the last list arriving, or the last one missing taken out.
+  // Someone away who never finished keeps it waiting until they come back
+  // and do, or the creator finishes without them. The status changing is
+  // what makes it happen once.
+  const revealIfDone = () => {
+    const room = useRoom.getState();
+    if (room.status !== 'sorting' || !room.participants.every((p) => p.finished)) return;
+    const result = buildResult(room.participants, lists);
+    for (const channel of channels.values()) send(channel, { type: 'result', result });
+    room.reveal(result);
+  };
+
   host.on('connection', (channel) => {
     let id: string | null = null;
     let seat: string | null = null;
@@ -230,6 +244,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         if (!coversItems(message.slots, room.items)) return;
         lists.set(id, message.slots);
         setParticipants(markFinished(room.participants, id));
+        revealIfDone();
         return;
       }
 
@@ -257,19 +272,22 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         stopWaiting(id);
         setParticipants(setConnected(room.participants, id, true));
         channels.set(id, channel);
-        const { participants, items } = useRoom.getState();
+        const { participants, items, result } = useRoom.getState();
         send(
           channel,
-          room.status === 'sorting'
-            ? { type: 'resume', you: id, seat, criterion, participants, items }
-            : { type: 'welcome', you: id, seat, criterion, participants },
+          room.status === 'lobby'
+            ? { type: 'welcome', you: id, seat, criterion, participants }
+            : { type: 'resume', you: id, seat, criterion, participants, items },
         );
+        // Whoever comes back after the reveal missed it, and it is still the
+        // same for everyone.
+        if (result) send(channel, { type: 'result', result });
         return;
       }
 
       // Registration closes with the start. The code still resolves: the
       // signaling server knows nothing about rooms.
-      if (room.status === 'sorting') {
+      if (room.status !== 'lobby') {
         send(channel, { type: 'started' });
         return;
       }
@@ -296,19 +314,20 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     });
 
     // In the lobby a guest who drops has left, and coming back is joining
-    // again. Mid-sort nobody else can join, so the place waits for them.
+    // again. From the start on nobody else can join, so the place waits for
+    // them, through the reveal too.
     channel.on('close', () => {
       if (id === null || channels.get(id) !== channel || mine !== attempt) return;
       channels.delete(id);
       const { participants, status } = useRoom.getState();
-      // Someone whose list is in is not waited for: it counts whether they
-      // come back or not.
-      if (status === 'sorting') {
-        setParticipants(setConnected(participants, id, false));
-        if (!lists.has(id)) awaitReturn(id);
-      } else {
+      if (status === 'lobby') {
         if (seat !== null) seats.delete(seat);
         setParticipants(leave(participants, id));
+      } else {
+        setParticipants(setConnected(participants, id, false));
+        // Someone whose list is in is not waited for: it counts whether they
+        // come back or not.
+        if (!lists.has(id)) awaitReturn(id);
       }
     });
   });
@@ -347,6 +366,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
       channel.close({ flush: true });
     }
     setParticipants(exclude(useRoom.getState().participants, id));
+    revealIfDone();
   };
 
   closeHere = () => {
@@ -358,6 +378,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     if (!placement || lists.has(you)) return;
     lists.set(you, placement.rankedSlots);
     setParticipants(markFinished(useRoom.getState().participants, you));
+    revealIfDone();
   };
 
   // The socket to the signaling server dropped, and the channels are still
@@ -416,9 +437,10 @@ interface Guest {
 
 function save(guest: Guest) {
   const { items, criterion, placement, finished } = usePlacement.getState();
+  const { result } = useRoom.getState();
   if (!placement || guest.seat === null || guest.you === null) return;
   const { code, seat, you, nickname } = guest;
-  writeTabRecord({ code, seat, you, nickname, items, criterion, placement, finished });
+  writeTabRecord({ code, seat, you, nickname, items, criterion, placement, finished, result });
 }
 
 // Without a channel it goes after the resume instead, once the host's entry
@@ -546,6 +568,12 @@ async function reach(mine: number, guest: Guest, tries: number) {
       admitted = true;
       clearTimeout(timer);
       Object.assign(guest, { seat: message.seat, you: message.you, channel });
+      // Back after the reveal, which is already on screen. There is nothing
+      // left to report, and the result the host sends next is the same one.
+      if (room.status === 'revealed') {
+        room.setParticipants(message.participants);
+        return;
+      }
       // The list stays the one this tab was sorting: a return only happens
       // mid-sort or from a tab record, and both still hold it.
       room.resume({
@@ -578,6 +606,10 @@ async function reach(mine: number, guest: Guest, tries: number) {
     } else if (message.type === 'closed' && admitted) {
       stop();
       endHere('close');
+    } else if (message.type === 'result' && admitted && room.status === 'sorting') {
+      if (!fitsItems(message.result, room.items)) return;
+      room.reveal(message.result);
+      save(guest);
     } else if (message.type === 'code' && admitted) {
       // The lookup after a reload or a drop has to find the room under the
       // code it goes by now.
@@ -597,10 +629,15 @@ async function reach(mine: number, guest: Guest, tries: number) {
       return;
     }
     stop();
-    // Mid-sort the guest keeps going while the way back is found. In the
-    // lobby there is nothing to keep, and the host has already let them go.
-    if (useRoom.getState().status === 'sorting') {
+    // Mid-sort the guest keeps going while the way back is found. After the
+    // reveal they keep looking at it, and the way back is found all the same,
+    // without a word. In the lobby there is nothing to keep, and the host has
+    // already let them go.
+    const { status } = useRoom.getState();
+    if (status === 'sorting') {
       useRoom.getState().reconnect();
+      later(mine, guest, 0);
+    } else if (status === 'revealed') {
       later(mine, guest, 0);
     } else {
       endHere('end');
@@ -613,13 +650,14 @@ export async function joinRoom(code: string, nickname: string) {
   await reach(mine, { code, nickname, seat: null, you: null, channel: null }, 0);
 }
 
-// A reload mid-sort. The tab kept the list and the seat, and goes back in
-// without asking anything.
+// A reload mid-sort or after the reveal. The tab kept the list and the seat,
+// and the result once there was one, and goes back in without asking anything.
 export function resumeRoom(record: TabRecord) {
   const mine = begin('guest');
-  const { code, seat, you, nickname, items, criterion, placement, finished } = record;
+  const { code, seat, you, nickname, items, criterion, placement, finished, result } = record;
   usePlacement.setState({ items, criterion, placement, finished });
   useRoom.getState().reconnect({ code, you });
+  if (result) useRoom.getState().reveal(result);
   const guest: Guest = { code, nickname, seat, you, channel: null };
   followAsGuest(guest);
   void reach(mine, guest, 0);

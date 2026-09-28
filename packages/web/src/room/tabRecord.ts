@@ -1,4 +1,5 @@
 import type { Item, PlacementState } from '../core/types.ts';
+import type { RoomResult } from './result.ts';
 
 // What a guest's tab keeps while sorting in a room, so a reload can take them
 // back in with the same place and the same list. A new tab or another device
@@ -7,7 +8,8 @@ import type { Item, PlacementState } from '../core/types.ts';
 //
 // The nickname is kept for the join message, which always carries one. The
 // host only reads it when the seat means nothing to it any more. `finished`
-// brings a reload back to waiting, not to a list it could still change.
+// brings a reload back to waiting, not to a list it could still change, and
+// `result` back to the reveal rather than to waiting for one.
 export interface TabRecord {
   code: string;
   seat: string;
@@ -17,6 +19,7 @@ export interface TabRecord {
   criterion: string;
   placement: PlacementState;
   finished: boolean;
+  result: RoomResult | null;
 }
 
 const KEY = 'myrankinglist-room';
@@ -45,7 +48,8 @@ export function readTabRecord(): TabRecord | null {
       typeof record.criterion === 'string' &&
       Array.isArray(record.items) &&
       Array.isArray(record.placement?.pendingPool) &&
-      typeof record.finished === 'boolean';
+      typeof record.finished === 'boolean' &&
+      typeof record.result === 'object';
     return complete ? (record as TabRecord) : null;
   } catch {
     return null;
