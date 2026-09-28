@@ -18,6 +18,7 @@ const record: TabRecord = {
   items,
   criterion: 'Best noodle',
   placement: startPlacement(items),
+  finished: false,
 };
 
 // What a browser that refuses site data does on any touch of the storage.
@@ -34,6 +35,13 @@ describe('the tab record', () => {
     writeTabRecord(record);
 
     expect(readTabRecord()).toEqual(record);
+  });
+
+  it('keeps a list that was handed in as finished', () => {
+    const done = { ...record, finished: true };
+    writeTabRecord(done);
+
+    expect(readTabRecord()).toEqual(done);
   });
 
   it('is gone once cleared', () => {
@@ -57,6 +65,12 @@ describe('the tab record', () => {
     expect(readTabRecord()).toBeNull();
 
     sessionStorage.setItem('myrankinglist-room', 'not json');
+    expect(readTabRecord()).toBeNull();
+
+    // Written by a build from before a list could be finished.
+    const older: Partial<TabRecord> = { ...record };
+    delete older.finished;
+    sessionStorage.setItem('myrankinglist-room', JSON.stringify(older));
     expect(readTabRecord()).toBeNull();
   });
 

@@ -14,6 +14,7 @@ const juan: Participant = {
   isCreator: false,
   progress: 3,
   connected: true,
+  finished: false,
 };
 
 function renderAvatar(props: Partial<Parameters<typeof ParticipantAvatar>[0]> = {}) {

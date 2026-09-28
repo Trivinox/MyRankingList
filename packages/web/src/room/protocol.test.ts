@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { NICKNAME_LIMIT } from './nicknames.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 
-const ana = { id: 'p1', nickname: 'Ana', isCreator: true, progress: 0, connected: true };
-const juan = { id: 'p2', nickname: 'Juan', isCreator: false, progress: 0, connected: true };
+const ana = {
+  id: 'p1',
+  nickname: 'Ana',
+  isCreator: true,
+  progress: 0,
+  connected: true,
+  finished: false,
+};
+const juan = { ...ana, id: 'p2', nickname: 'Juan', isCreator: false };
 
 const items = [
   { id: 'a', text: 'Mango' },
@@ -53,6 +60,25 @@ describe('parseGuestMessage', () => {
     });
   });
 
+  it('reads a finished list, ties included', () => {
+    const slots = [{ itemIds: ['c'] }, { itemIds: ['a', 'b'] }];
+
+    expect(parseGuestMessage({ type: 'finish', slots })).toEqual({ type: 'finish', slots });
+  });
+
+  it('keeps nothing a finished list was not supposed to carry', () => {
+    const parsed = parseGuestMessage({
+      type: 'finish',
+      slots: [{ itemIds: ['a'], rank: 1 }, { itemIds: ['b', 'c'] }],
+      placement: {},
+    });
+
+    expect(parsed).toEqual({
+      type: 'finish',
+      slots: [{ itemIds: ['a'] }, { itemIds: ['b', 'c'] }],
+    });
+  });
+
   it.each([
     ['a join with no nickname', { type: 'join' }],
     ['a nickname that is not text', { type: 'join', nickname: 7 }],
@@ -63,6 +89,13 @@ describe('parseGuestMessage', () => {
     ['a negative count', { type: 'progress', placed: -2 }],
     ['a count that is text', { type: 'progress', placed: '3' }],
     ['a progress with no count', { type: 'progress' }],
+    ['a finish with no list', { type: 'finish' }],
+    ['a finish whose list is not an array', { type: 'finish', slots: { 0: { itemIds: ['a'] } } }],
+    ['a finish with a group of three', { type: 'finish', slots: [{ itemIds: ['a', 'b', 'c'] }] }],
+    ['a finish with an empty group', { type: 'finish', slots: [{ itemIds: [] }] }],
+    ['a finish with an id that is a number', { type: 'finish', slots: [{ itemIds: [1] }] }],
+    ['a finish with a group that is a bare id', { type: 'finish', slots: ['a'] }],
+    ['a finish with a group that is a bare array', { type: 'finish', slots: [['a']] }],
     ['an unknown type', { type: 'shout', nickname: 'Juan' }],
     ['a string', 'join'],
     ['a number', 42],
@@ -108,6 +141,16 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage({ type: 'participants', participants: [ana, away] })).toEqual({
       type: 'participants',
       participants: [ana, away],
+    });
+  });
+
+  it('reads someone finished, away or not', () => {
+    const done = { ...juan, progress: 3, finished: true };
+    const participants = [done, { ...done, id: 'p3', connected: false }];
+
+    expect(parseHostMessage({ type: 'participants', participants })).toEqual({
+      type: 'participants',
+      participants,
     });
   });
 
@@ -254,6 +297,19 @@ describe('parseHostMessage', () => {
     [
       'a connection state that is text',
       { type: 'participants', participants: [{ ...ana, connected: 'yes' }] },
+    ],
+    [
+      'a participant with no finished state',
+      {
+        type: 'participants',
+        participants: [
+          { id: 'p1', nickname: 'Ana', isCreator: true, progress: 0, connected: true },
+        ],
+      },
+    ],
+    [
+      'a finished state that is text',
+      { type: 'participants', participants: [{ ...ana, finished: 'no' }] },
     ],
     ['a list that is not an array', { type: 'participants', participants: { 0: ana } }],
     [

@@ -6,7 +6,8 @@ import type { Item, PlacementState } from '../core/types.ts';
 // older of the two it has been replaced.
 //
 // The nickname is kept for the join message, which always carries one. The
-// host only reads it when the seat means nothing to it any more.
+// host only reads it when the seat means nothing to it any more. `finished`
+// brings a reload back to waiting, not to a list it could still change.
 export interface TabRecord {
   code: string;
   seat: string;
@@ -15,6 +16,7 @@ export interface TabRecord {
   items: Item[];
   criterion: string;
   placement: PlacementState;
+  finished: boolean;
 }
 
 const KEY = 'myrankinglist-room';
@@ -42,7 +44,8 @@ export function readTabRecord(): TabRecord | null {
       typeof record.nickname === 'string' &&
       typeof record.criterion === 'string' &&
       Array.isArray(record.items) &&
-      Array.isArray(record.placement?.pendingPool);
+      Array.isArray(record.placement?.pendingPool) &&
+      typeof record.finished === 'boolean';
     return complete ? (record as TabRecord) : null;
   } catch {
     return null;

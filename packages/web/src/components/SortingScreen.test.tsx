@@ -130,7 +130,7 @@ const renderScreen = () =>
   );
 
 beforeEach(() => {
-  usePlacement.setState({ items: [], criterion: '', placement: null });
+  usePlacement.setState({ items: [], criterion: '', placement: null, finished: false });
   useScreen.setState({ screen: 'list-input' });
   useRoom.getState().leave();
 });
@@ -1816,8 +1816,22 @@ describe('on a phone-wide screen', () => {
 });
 
 describe('in a room', () => {
-  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1, connected: true };
-  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1, connected: true };
+  const ana = {
+    id: 'a',
+    nickname: 'Ana',
+    isCreator: true,
+    progress: 1,
+    connected: true,
+    finished: false,
+  };
+  const juan = {
+    id: 'j',
+    nickname: 'Juan',
+    isCreator: false,
+    progress: 1,
+    connected: true,
+    finished: false,
+  };
 
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');

@@ -1,3 +1,4 @@
+import type { Item, RankedSlot } from '../core/types.ts';
 import { uniqueNickname } from './nicknames.ts';
 
 // Creator included. It is the most connections one browser is asked to hold.
@@ -19,12 +20,16 @@ export const INACTIVITY_TIMEOUT_MS = 20 * 60_000;
 //
 // `connected` goes false for someone whose channel dropped mid-sort. Their
 // place and their count stay, waiting for them to come back.
+//
+// `finished` is someone whose list has reached the host. It is final: the
+// list is never replaced, and it counts whether they come back or not.
 export interface Participant {
   id: string;
   nickname: string;
   isCreator: boolean;
   progress: number;
   connected: boolean;
+  finished: boolean;
 }
 
 export type Admission =
@@ -44,6 +49,7 @@ export function admit(participants: Participant[], wanted: string, isCreator = f
     isCreator,
     progress: 0,
     connected: true,
+    finished: false,
   };
   return { ok: true, participant, participants: [...participants, participant] };
 }
@@ -61,7 +67,7 @@ export function exclude(participants: Participant[], id: string): Participant[] 
 
 // Everyone's list opens with one item already down, so the count starts at 1.
 export function startAll(participants: Participant[]): Participant[] {
-  return participants.map((p) => ({ ...p, progress: 1 }));
+  return participants.map((p) => ({ ...p, progress: 1, finished: false }));
 }
 
 export function setProgress(participants: Participant[], id: string, placed: number) {
@@ -70,4 +76,21 @@ export function setProgress(participants: Participant[], id: string, placed: num
 
 export function setConnected(participants: Participant[], id: string, connected: boolean) {
   return participants.map((p) => (p.id === id ? { ...p, connected } : p));
+}
+
+export function markFinished(participants: Participant[], id: string) {
+  return participants.map((p) => (p.id === id ? { ...p, finished: true } : p));
+}
+
+// A finished list has to hold the room's items, each once and nothing else.
+// The parser only vouched for its shape, and the averages taken over the lists
+// at the end would break on a repeat or a stranger.
+export function coversItems(slots: RankedSlot[], items: Item[]) {
+  const ids = slots.flatMap((slot) => slot.itemIds);
+  const wanted = new Set(items.map((item) => item.id));
+  return (
+    ids.length === wanted.size &&
+    new Set(ids).size === ids.length &&
+    ids.every((id) => wanted.has(id))
+  );
 }

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { RankedSlot } from '../core/types.ts';
 import {
   ROOM_LIMIT,
   admit,
+  coversItems,
   exclude,
   leave,
+  markFinished,
   setConnected,
   setProgress,
   startAll,
@@ -34,6 +37,7 @@ describe('admit', () => {
       isCreator: true,
       progress: 0,
       connected: true,
+      finished: false,
     });
     expect(participants).toEqual([participant]);
   });
@@ -140,6 +144,13 @@ describe('startAll', () => {
     ]);
     expect(participants.map((p) => p.progress)).toEqual([0, 0]);
   });
+
+  it('leaves nobody finished, whatever the round before them left', () => {
+    const ana = seat([], 'Ana', true);
+    const done = markFinished(ana.participants, ana.participant.id);
+
+    expect(startAll(done)[0].finished).toBe(false);
+  });
 });
 
 describe('setProgress', () => {
@@ -172,5 +183,43 @@ describe('setConnected', () => {
     expect(away[1]).toMatchObject({ connected: false, progress: 3 });
     expect(away[0]).toBe(placed[0]);
     expect(setConnected(away, juan.participant.id, true)[1]).toEqual(placed[1]);
+  });
+});
+
+describe('markFinished', () => {
+  it('marks only the one named, keeping everything else about them', () => {
+    const ana = seat([], 'Ana', true);
+    const juan = seat(ana.participants, 'Juan');
+    const placed = setProgress(startAll(juan.participants), juan.participant.id, 3);
+
+    const after = markFinished(placed, juan.participant.id);
+
+    expect(after[1]).toEqual({ ...placed[1], finished: true });
+    expect(after[0]).toBe(placed[0]);
+  });
+});
+
+describe('coversItems', () => {
+  const items = [
+    { id: 'a', text: 'Udon' },
+    { id: 'b', text: 'Soba' },
+    { id: 'c', text: 'Ramen' },
+  ];
+
+  it('takes every item once, ties included, in any order', () => {
+    expect(coversItems([{ itemIds: ['c'] }, { itemIds: ['a', 'b'] }], items)).toBe(true);
+  });
+
+  it.each<[string, RankedSlot[]]>([
+    ['one missing', [{ itemIds: ['a'] }, { itemIds: ['b'] }]],
+    ['one extra', [{ itemIds: ['a'] }, { itemIds: ['b'] }, { itemIds: ['c', 'd'] }]],
+    ['one repeated', [{ itemIds: ['a', 'b'] }, { itemIds: ['b'] }]],
+    [
+      'one repeated in place of another',
+      [{ itemIds: ['a'] }, { itemIds: ['a'] }, { itemIds: ['c'] }],
+    ],
+    ['nothing at all', []],
+  ])('refuses a list with %s', (_, slots) => {
+    expect(coversItems(slots, items)).toBe(false);
   });
 });
