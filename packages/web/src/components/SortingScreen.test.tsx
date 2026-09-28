@@ -130,7 +130,7 @@ const renderScreen = () =>
   );
 
 beforeEach(() => {
-  usePlacement.setState({ items: [], criterion: '', placement: null });
+  usePlacement.setState({ items: [], criterion: '', placement: null, finished: false });
   useScreen.setState({ screen: 'list-input' });
   useRoom.getState().leave();
 });
@@ -1816,8 +1816,22 @@ describe('on a phone-wide screen', () => {
 });
 
 describe('in a room', () => {
-  const ana = { id: 'a', nickname: 'Ana', isCreator: true, progress: 1, connected: true };
-  const juan = { id: 'j', nickname: 'Juan', isCreator: false, progress: 1, connected: true };
+  const ana = {
+    id: 'a',
+    nickname: 'Ana',
+    isCreator: true,
+    progress: 1,
+    connected: true,
+    finished: false,
+  };
+  const juan = {
+    id: 'j',
+    nickname: 'Juan',
+    isCreator: false,
+    progress: 1,
+    connected: true,
+    finished: false,
+  };
 
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
@@ -1855,6 +1869,108 @@ describe('in a room', () => {
 
     expect(screen.queryByRole('button', { name: en.sorting.seeResult })).not.toBeInTheDocument();
     expect(screen.getByText(en.sorting.allPlacedInRoom)).toBeInTheDocument();
+  });
+
+  describe('finishing', () => {
+    const finishButton = () => screen.queryByRole('button', { name: en.sorting.finish.button });
+
+    const handIn = async () => {
+      await userEvent.click(finishButton()!);
+      await userEvent.click(screen.getByRole('button', { name: en.sorting.finish.yes }));
+    };
+
+    it('is offered only once the pool is empty', async () => {
+      const { drop } = usePlacement.getState();
+      for (let index = 1; index < items.length - 1; index++) {
+        drop({ from: 'pool' }, { kind: 'gap', index });
+      }
+      renderScreen();
+      expect(finishButton()).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Put it at position 1' }));
+
+      expect(finishButton()).toBeInTheDocument();
+    });
+
+    it('asks first, with the focus on keeping sorting', async () => {
+      fillUp();
+      renderScreen();
+
+      await userEvent.click(finishButton()!);
+
+      expect(screen.getByRole('group', { name: en.sorting.finish.confirm })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: en.sorting.finish.no })).toHaveFocus();
+      expect(usePlacement.getState().finished).toBe(false);
+    });
+
+    it('goes back to the list on Keep sorting, with the focus on Finish', async () => {
+      fillUp();
+      renderScreen();
+
+      await userEvent.click(finishButton()!);
+      await userEvent.click(screen.getByRole('button', { name: en.sorting.finish.no }));
+
+      expect(finishButton()).toHaveFocus();
+      expect(usePlacement.getState().finished).toBe(false);
+      expect(screen.getAllByRole('button', { name: /^Move / })).toHaveLength(items.length);
+    });
+
+    it('waits while an item is in hand, and leaves the item there', async () => {
+      fillUp();
+      renderScreen();
+      const [first] = started().rankedSlots[0].itemIds;
+      const move = screen.getByRole('button', { name: `Move ${textOf(first)}` });
+
+      await userEvent.click(move);
+      expect(finishButton()).toHaveAttribute('aria-disabled', 'true');
+      await userEvent.click(finishButton()!);
+
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+      expect(move).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('locks the list once handed in, and says the room is waiting', async () => {
+      fillUp();
+      renderScreen();
+      const before = started();
+
+      await handIn();
+
+      expect(usePlacement.getState().finished).toBe(true);
+      expect(screen.getByText(en.sorting.finish.waiting)).toHaveFocus();
+      expect(finishButton()).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('button', { name: /^Move / })).toHaveLength(0);
+      for (const target of screen.getAllByRole('button', { name: /^Put it at position/ })) {
+        expect(target).toHaveAttribute('aria-disabled', 'true');
+      }
+
+      letGo(`placed:${before.rankedSlots[0].itemIds[0]}`, `gap:${before.rankedSlots.length}`);
+      expect(started()).toBe(before);
+    });
+
+    it('is back to waiting after a reload, with the focus on the question', () => {
+      fillUp();
+      usePlacement.getState().finish();
+      renderScreen();
+
+      expect(screen.getByText(en.sorting.finish.waiting)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Which one do you like more?' })).toHaveFocus();
+      expect(screen.queryAllByRole('button', { name: /^Move / })).toHaveLength(0);
+    });
+
+    it('warns the creator that closing throws the lists away, once one is in', async () => {
+      useRoom.setState({ role: 'host', you: 'a' });
+      renderScreen();
+
+      await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+      expect(screen.queryByText(en.room.lobby.confirmCloseLists)).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: en.room.lobby.confirmNo }));
+
+      act(() => useRoom.setState({ participants: [ana, { ...juan, finished: true }] }));
+      await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+
+      expect(screen.getByText(en.room.lobby.confirmCloseLists)).toBeInTheDocument();
+    });
   });
 
   it('keeps saying where a held item goes while the pool is empty', async () => {
@@ -1954,5 +2070,8 @@ describe('in a room', () => {
 
     expect(screen.queryByRole('list', { name: en.room.everyone })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: en.sorting.seeResult })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: en.sorting.finish.button }),
+    ).not.toBeInTheDocument();
   });
 });

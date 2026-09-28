@@ -24,6 +24,7 @@ const ana: Participant = {
   isCreator: true,
   progress: 0,
   connected: true,
+  finished: false,
 };
 const juan: Participant = {
   id: 'j',
@@ -31,6 +32,7 @@ const juan: Participant = {
   isCreator: false,
   progress: 0,
   connected: true,
+  finished: false,
 };
 const lucia: Participant = {
   id: 'l',
@@ -38,6 +40,7 @@ const lucia: Participant = {
   isCreator: false,
   progress: 0,
   connected: true,
+  finished: false,
 };
 
 const renderLobby = () => {

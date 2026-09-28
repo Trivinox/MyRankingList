@@ -4,16 +4,19 @@ import styles from './CloseRoom.module.css';
 
 interface CloseRoomProps {
   onClose: () => void;
+  // Once anyone has handed a list in, closing also throws those away.
+  listsIn?: boolean;
 }
 
 // The creator's way out, in the waiting room and while sorting. Leaving takes
 // the room with them, and everyone in it, so it asks first. Like the removal
 // prompt, the question opens on the choice that keeps the room, and declining
 // puts the focus back on the button.
-export function CloseRoom({ onClose }: CloseRoomProps) {
+export function CloseRoom({ onClose, listsIn = false }: CloseRoomProps) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
   const promptId = useId();
+  const warningId = useId();
   const closeButton = useRef<HTMLButtonElement>(null);
   const stayButton = useRef<HTMLButtonElement>(null);
   // Only after a Stay: on the first render nothing was declined, and the
@@ -44,10 +47,20 @@ export function CloseRoom({ onClose }: CloseRoomProps) {
   };
 
   return (
-    <div className={styles.prompt} role="group" aria-labelledby={promptId}>
+    <div
+      className={styles.prompt}
+      role="group"
+      aria-labelledby={promptId}
+      aria-describedby={listsIn ? warningId : undefined}
+    >
       <p id={promptId} className={styles.question}>
         {t('room.lobby.confirmClose')}
       </p>
+      {listsIn && (
+        <p id={warningId} className={styles.question}>
+          {t('room.lobby.confirmCloseLists')}
+        </p>
+      )}
       <div className={styles.actions}>
         <button type="button" className={styles.confirm} onClick={onClose}>
           {t('room.lobby.confirmYes')}

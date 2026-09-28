@@ -16,6 +16,7 @@ import App from './App.tsx';
 // Only the room flow reaches it, and the session has a suite of its own.
 vi.mock('./room/session.ts', () => ({
   createRoom: vi.fn(),
+  finishRoom: vi.fn(),
   joinRoom: vi.fn(),
   leaveRoom: vi.fn(),
 }));
@@ -154,7 +155,9 @@ describe('App', () => {
         code: 'AB3K',
         you: 'a',
         criterion,
-        participants: [{ id: 'a', nickname, isCreator: true, progress: 0, connected: true }],
+        participants: [
+          { id: 'a', nickname, isCreator: true, progress: 0, connected: true, finished: false },
+        ],
         items,
       });
     });

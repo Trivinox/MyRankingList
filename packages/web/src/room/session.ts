@@ -1,6 +1,6 @@
 import { Peer } from 'peerjs';
 import type { DataConnection } from 'peerjs';
-import type { Item } from '../core/types.ts';
+import type { Item, RankedSlot } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
@@ -9,8 +9,10 @@ import {
   INACTIVITY_TIMEOUT_MS,
   START_MINIMUM,
   admit,
+  coversItems,
   exclude,
   leave,
+  markFinished,
   setConnected,
   setProgress,
   startAll,
@@ -63,6 +65,8 @@ let attempt = 0;
 let startHere: (() => void) | null = null;
 let removeHere: ((id: string) => void) | null = null;
 let closeHere: (() => void) | null = null;
+// A guest's is set once sorting starts, with the channel it sends on.
+let finishHere: (() => void) | null = null;
 let unfollow: (() => void) | null = null;
 // The next try at getting back: a guest's to the host, or the host's to the
 // signaling server.
@@ -90,6 +94,7 @@ function letGo() {
   startHere = null;
   removeHere = null;
   closeHere = null;
+  finishHere = null;
   stopFollowing();
 }
 
@@ -177,6 +182,9 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   // everyone, so it proves nothing.
   const seats = new Map<string, string>();
   const removedSeats = new Set<string>();
+  // Finished lists by participant id. Kept here and not in the store, like
+  // the seats: nobody sees anyone else's list before the reveal.
+  const lists = new Map<string, RankedSlot[]>();
 
   // Past the timeout the creator is offered to finish without them. Nothing
   // happens on its own: they may still come back, and it is the creator's call.
@@ -212,6 +220,16 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         if (id === null || channels.get(id) !== channel) return;
         if (room.status !== 'sorting' || message.placed > room.items.length) return;
         setParticipants(setProgress(room.participants, id, message.placed));
+        return;
+      }
+
+      // Taken once and never replaced, so a second one changes nothing.
+      if (message.type === 'finish') {
+        if (id === null || channels.get(id) !== channel) return;
+        if (room.status !== 'sorting' || lists.has(id)) return;
+        if (!coversItems(message.slots, room.items)) return;
+        lists.set(id, message.slots);
+        setParticipants(markFinished(room.participants, id));
         return;
       }
 
@@ -283,9 +301,11 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
       if (id === null || channels.get(id) !== channel || mine !== attempt) return;
       channels.delete(id);
       const { participants, status } = useRoom.getState();
+      // Someone whose list is in is not waited for: it counts whether they
+      // come back or not.
       if (status === 'sorting') {
         setParticipants(setConnected(participants, id, false));
-        awaitReturn(id);
+        if (!lists.has(id)) awaitReturn(id);
       } else {
         if (seat !== null) seats.delete(seat);
         setParticipants(leave(participants, id));
@@ -314,6 +334,8 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     if (seat === undefined) return;
     seats.delete(seat);
     removedSeats.add(seat);
+    // A list they already handed in goes with them.
+    lists.delete(id);
     stopWaiting(id);
     const channel = channels.get(id);
     channels.delete(id);
@@ -329,6 +351,13 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
 
   closeHere = () => {
     for (const channel of channels.values()) send(channel, { type: 'closed' });
+  };
+
+  finishHere = () => {
+    const { placement } = usePlacement.getState();
+    if (!placement || lists.has(you)) return;
+    lists.set(you, placement.rankedSlots);
+    setParticipants(markFinished(useRoom.getState().participants, you));
   };
 
   // The socket to the signaling server dropped, and the channels are still
@@ -386,10 +415,18 @@ interface Guest {
 }
 
 function save(guest: Guest) {
-  const { items, criterion, placement } = usePlacement.getState();
+  const { items, criterion, placement, finished } = usePlacement.getState();
   if (!placement || guest.seat === null || guest.you === null) return;
   const { code, seat, you, nickname } = guest;
-  writeTabRecord({ code, seat, you, nickname, items, criterion, placement });
+  writeTabRecord({ code, seat, you, nickname, items, criterion, placement, finished });
+}
+
+// Without a channel it goes after the resume instead, once the host's entry
+// shows it never arrived.
+function handIn(guest: Guest) {
+  const { placement, finished } = usePlacement.getState();
+  if (!placement || !finished) return;
+  void guest.channel?.send({ type: 'finish', slots: placement.rankedSlots } satisfies GuestMessage);
 }
 
 function followAsGuest(guest: Guest) {
@@ -397,6 +434,7 @@ function followAsGuest(guest: Guest) {
     (placed) => void guest.channel?.send({ type: 'progress', placed } satisfies GuestMessage),
     () => save(guest),
   );
+  finishHere = () => handIn(guest);
   save(guest);
 }
 
@@ -517,8 +555,10 @@ async function reach(mine: number, guest: Guest, tries: number) {
         items: message.items,
       });
       // The count only goes out when it changes, and whatever was placed
-      // while away changed it with nobody to tell.
+      // while away changed it with nobody to tell. The same goes for a list
+      // handed in with the connection already gone.
       void channel.send({ type: 'progress', placed: placedCount() } satisfies GuestMessage);
+      if (!message.participants.find((p) => p.id === message.you)?.finished) handIn(guest);
     } else if (message.type === 'participants' && admitted) {
       room.setParticipants(message.participants);
     } else if (message.type === 'start' && admitted && room.status === 'lobby') {
@@ -577,8 +617,8 @@ export async function joinRoom(code: string, nickname: string) {
 // without asking anything.
 export function resumeRoom(record: TabRecord) {
   const mine = begin('guest');
-  const { code, seat, you, nickname, items, criterion, placement } = record;
-  usePlacement.setState({ items, criterion, placement });
+  const { code, seat, you, nickname, items, criterion, placement, finished } = record;
+  usePlacement.setState({ items, criterion, placement, finished });
   useRoom.getState().reconnect({ code, you });
   const guest: Guest = { code, nickname, seat, you, channel: null };
   followAsGuest(guest);
@@ -602,6 +642,17 @@ export function startRoom() {
   startHere?.();
 }
 
+// Hands this person's list in: only in a room, only with nothing left in the
+// pool, and only once. The list is locked from here on.
+export function finishRoom() {
+  const { placement, finished, finish } = usePlacement.getState();
+  const { status } = useRoom.getState();
+  if (!placement || finished || placement.pendingPool.length > 0) return;
+  if (status !== 'sorting' && status !== 'reconnecting') return;
+  finish();
+  finishHere?.();
+}
+
 // Only the host holds the channels, so on a guest this does nothing.
 export function removeParticipant(id: string) {
   removeHere?.(id);
@@ -613,3 +664,13 @@ export function removeParticipant(id: string) {
 // room is closed, which a crash never does: they only find out once the code
 // is gone.
 window.addEventListener('pagehide', letGo);
+
+// A guest whose list is in has to stay for the reveal. The browser words the
+// question itself and may not ask at all, on a phone above all, so it is a
+// warning and nothing more: the list counts either way. The creator is not
+// asked, since leaving is closing the room, and Close the room already asks.
+window.addEventListener('beforeunload', (event) => {
+  const { role, status } = useRoom.getState();
+  const waiting = status === 'sorting' || status === 'reconnecting';
+  if (role === 'guest' && waiting && usePlacement.getState().finished) event.preventDefault();
+});

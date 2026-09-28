@@ -1,5 +1,5 @@
 import { isAllowedImageUrl } from '../core/images.ts';
-import type { Item } from '../core/types.ts';
+import type { Item, RankedSlot } from '../core/types.ts';
 import type { Participant } from './hostRoom.ts';
 import { NICKNAME_LIMIT } from './nicknames.ts';
 import { readRoomCode } from './roomCode.ts';
@@ -9,9 +9,12 @@ const MIN_ITEMS = 3;
 const TEXT_LIMIT = 80;
 
 // `seat` is only sent by someone coming back, to get their place again.
-// `placed` counts the opening item, so it is never below 1.
+// `placed` counts the opening item, so it is never below 1. `finish` carries
+// the whole list, the one time it ever leaves the guest's browser.
 export type GuestMessage =
-  { type: 'join'; nickname: string; seat?: string } | { type: 'progress'; placed: number };
+  | { type: 'join'; nickname: string; seat?: string }
+  | { type: 'progress'; placed: number }
+  | { type: 'finish'; slots: RankedSlot[] };
 
 // `you` tells the guest which of the participants is them, and `seat` is the
 // secret that gets that place back later. It goes to its owner alone. `resume`
@@ -62,7 +65,8 @@ function toParticipants(value: unknown): Participant[] | null {
       typeof entry.nickname !== 'string' ||
       typeof entry.isCreator !== 'boolean' ||
       !isCount(entry.progress, 0) ||
-      typeof entry.connected !== 'boolean'
+      typeof entry.connected !== 'boolean' ||
+      typeof entry.finished !== 'boolean'
     ) {
       return null;
     }
@@ -72,9 +76,24 @@ function toParticipants(value: unknown): Participant[] | null {
       isCreator: entry.isCreator,
       progress: entry.progress,
       connected: entry.connected,
+      finished: entry.finished,
     });
   }
   return participants;
+}
+
+// Shape only. Which items the list has to hold is the host's to check, being
+// the one that knows them.
+function toSlots(value: unknown): RankedSlot[] | null {
+  if (!Array.isArray(value)) return null;
+  const slots: RankedSlot[] = [];
+  for (const entry of value) {
+    const ids = isRecord(entry) ? entry.itemIds : null;
+    if (!Array.isArray(ids) || ids.length < 1 || ids.length > 2) return null;
+    if (!ids.every((id) => typeof id === 'string')) return null;
+    slots.push({ itemIds: ids.length === 1 ? [ids[0]] : [ids[0], ids[1]] });
+  }
+  return slots;
 }
 
 // A list the form would not have let through is refused whole: sorting part of
@@ -118,6 +137,10 @@ export function parseGuestMessage(data: unknown): GuestMessage | null {
     }
     case 'progress':
       return isCount(data.placed, 1) ? { type: 'progress', placed: data.placed } : null;
+    case 'finish': {
+      const slots = toSlots(data.slots);
+      return slots && { type: 'finish', slots };
+    }
     default:
       return null;
   }

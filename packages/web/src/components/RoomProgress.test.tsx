@@ -23,6 +23,7 @@ const ana: Participant = {
   isCreator: true,
   progress: 1,
   connected: true,
+  finished: false,
 };
 const juan: Participant = {
   id: 'j',
@@ -30,6 +31,7 @@ const juan: Participant = {
   isCreator: false,
   progress: 3,
   connected: true,
+  finished: false,
 };
 
 function inRoom(status: RoomStatus, role: 'host' | 'guest' = 'guest') {

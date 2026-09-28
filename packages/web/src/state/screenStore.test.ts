@@ -28,6 +28,7 @@ beforeEach(() => {
     items,
     criterion: 'Best noodle',
     placement: startPlacement(items),
+    finished: false,
   });
 });
 

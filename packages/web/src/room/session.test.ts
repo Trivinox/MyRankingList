@@ -7,6 +7,7 @@ import type { Participant } from './hostRoom.ts';
 import { linkedCode } from './link.ts';
 import {
   createRoom,
+  finishRoom,
   joinRoom,
   leaveRoom,
   removeParticipant,
@@ -163,6 +164,11 @@ const placeOne = () => {
   return usePlacement.getState().placement!.rankedSlots;
 };
 
+// Empties the pool onto the top of the list.
+const placeAll = () => {
+  while (usePlacement.getState().placement!.pendingPool.length > 0) placeOne();
+};
+
 // Takes the item at the top and puts it at the bottom, which places nothing.
 const reorder = () => {
   const [top] = usePlacement.getState().placement!.rankedSlots;
@@ -177,7 +183,7 @@ beforeEach(() => {
   signaling.openRoom.mockReset();
   signaling.findRoom.mockReset();
   signaling.iceServers.mockReset().mockResolvedValue(ICE_SERVERS);
-  usePlacement.setState({ items: [], criterion: '', placement: null });
+  usePlacement.setState({ items: [], criterion: '', placement: null, finished: false });
   sessionStorage.clear();
 });
 
@@ -246,7 +252,14 @@ describe('createRoom', () => {
     expect(room.code).toBe('AB3K');
     expect(room.criterion).toBe('Best noodle');
     expect(room.participants).toEqual([
-      { id: room.you, nickname: 'Ana', isCreator: true, progress: 0, connected: true },
+      {
+        id: room.you,
+        nickname: 'Ana',
+        isCreator: true,
+        progress: 0,
+        connected: true,
+        finished: false,
+      },
     ]);
   });
 
@@ -965,6 +978,121 @@ describe('createRoom', () => {
       });
     });
   });
+
+  describe('finishing', () => {
+    const whole = [{ itemIds: ['a'] }, { itemIds: ['b', 'c'] }];
+    const finish = (slots: unknown = whole) => ({ type: 'finish', slots });
+    const entryOf = (nickname: string) =>
+      useRoom.getState().participants.find((p) => p.nickname === nickname)!;
+    const seatOf = (channel: { sent: unknown[] }) => (channel.sent[0] as { seat: string }).seat;
+
+    async function sortingWithJuan() {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      startRoom();
+      return { host, juan, lucia };
+    }
+
+    it('marks a guest finished once their whole list arrives, and tells everyone', async () => {
+      const { juan, lucia } = await sortingWithJuan();
+
+      juan.emit('data', finish());
+
+      expect(entryOf('Juan').finished).toBe(true);
+      expect(entryOf('Lucía').finished).toBe(false);
+      const { participants } = useRoom.getState();
+      expect(lucia.sent.at(-1)).toEqual({ type: 'participants', participants });
+      expect(juan.sent.at(-1)).toEqual({ type: 'participants', participants });
+    });
+
+    it.each([
+      ['an item missing', [{ itemIds: ['a'] }, { itemIds: ['b'] }]],
+      ['an item the room does not have', [...whole, { itemIds: ['d'] }]],
+      ['an item twice', [{ itemIds: ['a', 'b'] }, { itemIds: ['b', 'c'] }]],
+      ['a group of three', [{ itemIds: ['a', 'b', 'c'] }]],
+    ])('ignores a list with %s', async (_, slots) => {
+      const { juan } = await sortingWithJuan();
+      const before = useRoom.getState().participants;
+
+      juan.emit('data', finish(slots));
+
+      expect(useRoom.getState().participants).toBe(before);
+    });
+
+    it('takes the first list and ignores a second one', async () => {
+      const { juan, lucia } = await sortingWithJuan();
+      juan.emit('data', finish());
+      const sent = lucia.sent.length;
+
+      juan.emit('data', finish([{ itemIds: ['c'] }, { itemIds: ['b'] }, { itemIds: ['a'] }]));
+
+      expect(lucia.sent).toHaveLength(sent);
+    });
+
+    it('ignores a list from the lobby, from a stranger and from someone removed', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      juan.emit('data', finish());
+      expect(entryOf('Juan').finished).toBe(false);
+
+      startRoom();
+      host.receive().emit('data', finish());
+      removeParticipant(entryOf('Lucía').id);
+      const before = useRoom.getState().participants;
+      lucia.emit('data', finish());
+
+      expect(useRoom.getState().participants).toBe(before);
+      expect(before.some((p) => p.finished)).toBe(false);
+    });
+
+    it('marks the creator finished once they hand their list in, and only then', async () => {
+      const { juan } = await sortingWithJuan();
+
+      finishRoom();
+      expect(entryOf('Ana').finished).toBe(false);
+
+      placeAll();
+      finishRoom();
+
+      expect(entryOf('Ana').finished).toBe(true);
+      expect(usePlacement.getState().finished).toBe(true);
+      expect(juan.sent.at(-1)).toEqual({
+        type: 'participants',
+        participants: useRoom.getState().participants,
+      });
+    });
+
+    it('keeps a finished guest who drops in the room, away and still finished', async () => {
+      const { host, juan } = await sortingWithJuan();
+      juan.emit('data', finish());
+      const seat = seatOf(juan);
+
+      juan.close();
+      expect(entryOf('Juan')).toMatchObject({ connected: false, finished: true });
+
+      const back = host.receive();
+      back.emit('data', { type: 'join', nickname: 'Juan', seat });
+      expect(back.sent[0]).toMatchObject({
+        type: 'resume',
+        participants: useRoom.getState().participants,
+      });
+      expect(entryOf('Juan')).toMatchObject({ connected: true, finished: true });
+    });
+
+    it('never waits on a finished guest who drops', async () => {
+      vi.useFakeTimers();
+      const { juan, lucia } = await sortingWithJuan();
+      juan.emit('data', finish());
+
+      juan.close();
+      lucia.close();
+      vi.advanceTimersByTime(20 * 60_000);
+
+      expect(useRoom.getState().overdue).toEqual([entryOf('Lucía').id]);
+    });
+  });
 });
 
 describe('joinRoom', () => {
@@ -974,6 +1102,7 @@ describe('joinRoom', () => {
     isCreator: true,
     progress: 0,
     connected: true,
+    finished: false,
   };
   const juan: Participant = {
     id: 'j',
@@ -981,6 +1110,7 @@ describe('joinRoom', () => {
     isCreator: false,
     progress: 0,
     connected: true,
+    finished: false,
   };
 
   // Gets as far as the guest's channel to the host, open and with the join sent.
@@ -1285,6 +1415,80 @@ describe('joinRoom', () => {
     expect(channel.isOpen).toBe(false);
   });
 
+  describe('handing the list in', () => {
+    const start = { type: 'start', items, criterion: 'Best noodle' };
+
+    async function sorting() {
+      const reached = await reachLobby();
+      reached.channel.emit('data', start);
+      return reached;
+    }
+
+    // What the browser does on a reload or a closed tab, before either.
+    const leaving = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+
+    it('sends the whole list once the pool is empty, and not before', async () => {
+      const { channel } = await sorting();
+
+      finishRoom();
+      expect(channel.sent.map((m) => (m as { type: string }).type)).not.toContain('finish');
+
+      placeAll();
+      finishRoom();
+
+      const { rankedSlots } = usePlacement.getState().placement!;
+      expect(channel.sent.at(-1)).toEqual({ type: 'finish', slots: rankedSlots });
+    });
+
+    it('locks the list, and sends it only once', async () => {
+      const { channel } = await sorting();
+      placeAll();
+      finishRoom();
+      const before = usePlacement.getState().placement;
+      const sent = channel.sent.length;
+
+      reorder();
+      finishRoom();
+
+      expect(usePlacement.getState().placement).toBe(before);
+      expect(channel.sent).toHaveLength(sent);
+    });
+
+    it('keeps it finished in the tab record', async () => {
+      await sorting();
+      placeAll();
+      expect(readTabRecord()?.finished).toBe(false);
+
+      finishRoom();
+
+      expect(readTabRecord()?.finished).toBe(true);
+    });
+
+    it('asks before the tab is left once the list is in, and only then', async () => {
+      await sorting();
+      placeAll();
+      expect(leaving()).toBe(false);
+
+      finishRoom();
+
+      expect(leaving()).toBe(true);
+    });
+
+    it('lets the tab go without asking once the room is over', async () => {
+      const { channel } = await sorting();
+      placeAll();
+      finishRoom();
+
+      channel.emit('data', { type: 'closed' });
+
+      expect(leaving()).toBe(false);
+    });
+  });
+
   describe('losing the host mid-sort', () => {
     const start = { type: 'start', items, criterion: 'Best noodle' };
 
@@ -1347,6 +1551,37 @@ describe('joinRoom', () => {
 
       placeOne();
       expect(next.channel.sent.at(-1)).toEqual({ type: 'progress', placed: 3 });
+    });
+
+    it('sends a list finished while away once back, if the host never got it', async () => {
+      const { channel } = await sorting();
+      placeAll();
+      channel.close();
+      finishRoom();
+
+      const next = await nextTry(2_000);
+      next.channel.emit('data', resume);
+
+      const { rankedSlots } = usePlacement.getState().placement!;
+      expect(next.channel.sent.at(-1)).toEqual({ type: 'finish', slots: rankedSlots });
+    });
+
+    it('does not send it again when the host already has it', async () => {
+      const { channel } = await sorting();
+      placeAll();
+      finishRoom();
+      channel.close();
+
+      const next = await nextTry(2_000);
+      next.channel.emit('data', {
+        ...resume,
+        participants: [ana, { ...juan, progress: 3, finished: true }],
+      });
+
+      expect(next.channel.sent.map((m) => (m as { type: string }).type)).toEqual([
+        'join',
+        'progress',
+      ]);
     });
 
     it('waits longer after each failed try, up to 15 seconds', async () => {
@@ -1521,6 +1756,7 @@ describe('resumeRoom', () => {
     isCreator: true,
     progress: 2,
     connected: true,
+    finished: false,
   };
   const juan: Participant = {
     id: 'j',
@@ -1528,6 +1764,7 @@ describe('resumeRoom', () => {
     isCreator: false,
     progress: 2,
     connected: true,
+    finished: false,
   };
 
   // What a tab that had placed one item before the reload kept.
@@ -1542,6 +1779,7 @@ describe('resumeRoom', () => {
       items,
       criterion: 'Best noodle',
       placement: usePlacement.getState().placement!,
+      finished: false,
     };
     usePlacement.setState({ items: [], criterion: '', placement: null });
     return record;
@@ -1594,6 +1832,16 @@ describe('resumeRoom', () => {
       items,
     });
     expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+  });
+
+  it('comes back to a list still handed in, which does not move', async () => {
+    signaling.findRoom.mockResolvedValue({ kind: 'found', peerId: 'host-peer' });
+    const record = reloadedTab();
+    resumeRoom({ ...record, finished: true });
+
+    expect(usePlacement.getState().finished).toBe(true);
+    reorder();
+    expect(usePlacement.getState().placement).toBe(record.placement);
   });
 
   it('ends with the room ended when the code no longer exists', async () => {
