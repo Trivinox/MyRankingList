@@ -2070,5 +2070,8 @@ describe('in a room', () => {
 
     expect(screen.queryByRole('list', { name: en.room.everyone })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: en.sorting.seeResult })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: en.sorting.finish.button }),
+    ).not.toBeInTheDocument();
   });
 });
