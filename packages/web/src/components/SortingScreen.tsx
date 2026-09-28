@@ -32,7 +32,7 @@ import {
 } from '../core/dropTargets.ts';
 import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
-import { leaveRoom } from '../room/session.ts';
+import { finishRoom, leaveRoom } from '../room/session.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
@@ -178,10 +178,11 @@ function focusOnArrival(heading: HTMLHeadingElement | null) {
 
 export function SortingScreen() {
   const { t } = useTranslation();
-  const { items, criterion, placement, drop } = usePlacement();
+  const { items, criterion, placement, drop, finished } = usePlacement();
   const setScreen = useScreen((state) => state.setScreen);
   const roomStatus = useRoom((state) => state.status);
   const isHost = useRoom((state) => state.role === 'host');
+  const listsIn = useRoom((state) => state.participants.some((p) => p.finished));
   const reconnecting = roomStatus === 'reconnecting';
   const inRoom = roomStatus === 'sorting' || reconnecting;
   const [dragged, setDragged] = useState<DragSource | null>(null);
@@ -531,6 +532,8 @@ export function SortingScreen() {
               onRelease={() => release(false)}
               onFinish={() => setScreen('result')}
               inRoom={inRoom}
+              onHandIn={finishRoom}
+              handedIn={finished}
               mobile={mobile}
             />
           </aside>
@@ -545,8 +548,9 @@ export function SortingScreen() {
               // than the breakpoint gets the phone behaviour too.
               onHover={(current || held) && !mobile ? handleHover : undefined}
               held={held?.itemId}
-              onPickUp={handlePickUp}
-              draggable={!mobile}
+              // A list handed in is locked: nothing to pick up or drag.
+              onPickUp={finished ? undefined : handlePickUp}
+              draggable={!mobile && !finished}
             />
           </section>
         </div>
@@ -578,6 +582,7 @@ export function SortingScreen() {
           and it ends the room for everyone. */}
       {isHost && inRoom && (
         <CloseRoom
+          listsIn={listsIn}
           onClose={() => {
             leaveRoom();
             setScreen('list-input');

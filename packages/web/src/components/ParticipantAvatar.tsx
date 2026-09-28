@@ -27,7 +27,7 @@ export function ParticipantAvatar({
   stacked = false,
 }: ParticipantAvatarProps) {
   const { t } = useTranslation();
-  const { nickname, progress, isCreator, connected } = participant;
+  const { nickname, progress, isCreator, connected, finished } = participant;
   // The count comes from the host's browser, and the parser only checks it is
   // a whole number.
   const fill = total ? Math.min(progress / total, 1) : 0;
@@ -41,12 +41,22 @@ export function ParticipantAvatar({
   // A second tag under a stacked name made the whole row twice as tall, and
   // who opened the room matters less once everyone is sorting.
   const markCreator = isCreator && !stacked;
-  const label = connected ? 'room.placed' : 'room.placedAway';
+  // Someone finished has every item placed, so the count would say nothing new.
+  const label = finished
+    ? connected
+      ? 'room.finished'
+      : 'room.finishedAway'
+    : connected
+      ? 'room.placed'
+      : 'room.placedAway';
+  const badge = [styles.badge, !connected && styles.away, finished && styles.finished]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <span className={stacked ? `${styles.avatar} ${styles.stacked}` : styles.avatar}>
       <span
-        className={connected ? styles.badge : `${styles.badge} ${styles.away}`}
+        className={badge}
         style={{ '--tint': tints[place % tints.length] } as CSSProperties}
         role={labelled ? 'img' : undefined}
         aria-label={labelled ? t(label, { nickname, placed: progress, total }) : undefined}
@@ -64,6 +74,11 @@ export function ParticipantAvatar({
           />
         </svg>
         <span className={styles.initial}>{initial}</span>
+        {finished && (
+          <span className={styles.check} aria-hidden="true">
+            ✓
+          </span>
+        )}
       </span>
       <span className={styles.nickname} aria-hidden={labelled || undefined}>
         {nickname}

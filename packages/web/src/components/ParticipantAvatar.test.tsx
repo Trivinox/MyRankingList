@@ -66,6 +66,32 @@ describe('ParticipantAvatar', () => {
     expect(fill()).toBe('0.375 1');
   });
 
+  it('says someone has finished, and marks the ring', () => {
+    const done = { ...juan, progress: 8, finished: true };
+    const { i18n } = renderAvatar({ participant: done, total: 8 });
+
+    const badge = screen.getByRole('img', { name: i18n.t('room.finished', { nickname: 'juan' }) });
+    expect(badge).toHaveClass(styles.finished);
+    expect(badge.querySelector(`.${styles.check}`)).toBeInTheDocument();
+  });
+
+  it('says someone finished is away, without taking the mark off', () => {
+    const done = { ...juan, progress: 8, finished: true, connected: false };
+    const { i18n } = renderAvatar({ participant: done, total: 8 });
+
+    const badge = screen.getByRole('img', {
+      name: i18n.t('room.finishedAway', { nickname: 'juan' }),
+    });
+    expect(badge).toHaveClass(styles.finished, styles.away);
+  });
+
+  it('leaves the mark off someone still sorting', () => {
+    renderAvatar({ total: 8 });
+
+    expect(screen.getByRole('img')).not.toHaveClass(styles.finished);
+    expect(document.querySelector(`.${styles.check}`)).not.toBeInTheDocument();
+  });
+
   // Nobody has a list in the lobby, so there is nothing to count yet.
   it('leaves the ring empty and says only the name when there is no list', () => {
     const { fill } = renderAvatar();

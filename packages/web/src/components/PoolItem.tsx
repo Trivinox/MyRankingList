@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { dragSourceId } from '../core/dropTargets.ts';
@@ -13,9 +14,11 @@ interface PoolItemProps {
   held?: Item | null;
   onRelease?: () => void;
   onFinish?: () => void;
-  // A room has no result of one person's to show, so an empty pool there only
-  // says the list can still change.
+  // A room has no result of one person's to show. An empty pool there offers
+  // to hand the list in instead, and once it is in, says the room is waiting.
   inRoom?: boolean;
+  onHandIn?: () => void;
+  handedIn?: boolean;
   // On a phone the list is the main element, so the card shrinks to a row and
   // is only ever placed by tapping.
   mobile?: boolean;
@@ -27,6 +30,8 @@ export function PoolItem({
   onRelease,
   onFinish,
   inRoom = false,
+  onHandIn,
+  handedIn = false,
   mobile = false,
 }: PoolItemProps) {
   const { t } = useTranslation();
@@ -47,8 +52,12 @@ export function PoolItem({
           <Handle key={item.id} item={item} dimmed={Boolean(held)} mobile={mobile} />
           <p className={styles.hint}>{hint}</p>
         </>
+      ) : handedIn ? (
+        <p ref={focusIfLost} className={styles.hint} tabIndex={-1}>
+          {t('sorting.finish.waiting')}
+        </p>
       ) : inRoom ? (
-        <p className={styles.hint}>{held ? hint : t('sorting.allPlacedInRoom')}</p>
+        <HandIn held={Boolean(held)} hint={held ? hint : null} onHandIn={onHandIn} />
       ) : (
         <>
           {/* Leaving now would drop the held item without a word, so the
@@ -74,6 +83,82 @@ export function PoolItem({
         </>
       )}
     </div>
+  );
+}
+
+// The Yes that handed the list in is gone with the question, which leaves the
+// focus nowhere. A reload lands here too, but the question heading has the
+// focus by then, and keeps it.
+function focusIfLost(line: HTMLParagraphElement | null) {
+  if (line && (document.activeElement === null || document.activeElement === document.body)) {
+    line.focus();
+  }
+}
+
+interface HandInProps {
+  held: boolean;
+  hint: string | null;
+  onHandIn?: () => void;
+}
+
+// Handing the list in cannot be taken back, so it asks first, opening on the
+// choice that keeps sorting. Like See result, the button waits for a held item
+// to be put down.
+function HandIn({ held, hint, onHandIn }: HandInProps) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  const promptId = useId();
+  const finishButton = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  // As in CloseRoom: only a Keep sorting sends the focus back to the button.
+  const declined = useRef(false);
+
+  useEffect(() => {
+    if (asking) keepButton.current?.focus();
+    else if (declined.current) finishButton.current?.focus();
+  }, [asking]);
+
+  if (asking) {
+    const keep = () => {
+      declined.current = true;
+      setAsking(false);
+    };
+    return (
+      <div className={styles.prompt} role="group" aria-labelledby={promptId}>
+        <p id={promptId} className={styles.question}>
+          {t('sorting.finish.confirm')}
+        </p>
+        <div className={styles.actions}>
+          <button type="button" className={styles.finish} onClick={onHandIn}>
+            {t('sorting.finish.yes')}
+          </button>
+          <button ref={keepButton} type="button" className={styles.keep} onClick={keep}>
+            {t('sorting.finish.no')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.hint}>{hint ?? t('sorting.allPlacedInRoom')}</p>
+      <button
+        ref={finishButton}
+        type="button"
+        className={styles.finish}
+        aria-disabled={held}
+        onClick={(event) => {
+          if (held) {
+            event.stopPropagation();
+            return;
+          }
+          setAsking(true);
+        }}
+      >
+        {t('sorting.finish.button')}
+      </button>
+    </>
   );
 }
 

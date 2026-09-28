@@ -82,9 +82,17 @@ export const en = {
       outside: 'Dropped outside the list. The list is unchanged.',
       cancelled: 'Drag cancelled. The list is unchanged.',
       allPlaced: 'Every item is placed. You can still move them, or press See result.',
-      allPlacedInRoom: 'Every item is placed. You can still move them.',
+      allPlacedInRoom: 'Every item is placed. You can still move them, or press Finish.',
     },
-    allPlacedInRoom: 'Everything is placed. You can still move items around.',
+    allPlacedInRoom: 'Everything is placed. You can still move items around, or finish.',
+    finish: {
+      button: 'Finish',
+      confirm: 'Hand in your list? You will not be able to change it afterwards.',
+      yes: 'Yes, hand it in',
+      no: 'Keep sorting',
+      waiting:
+        'Your list is in. Waiting for the others to finish. Keep this page open until the results are shown.',
+    },
   },
   result: {
     title: 'Your final list',
@@ -114,6 +122,8 @@ export const en = {
     notOpened: 'The room could not be opened. Check your connection and try again.',
     placed: '{{nickname}}, {{placed}} of {{total}} placed',
     placedAway: '{{nickname}}, away, {{placed}} of {{total}} placed',
+    finished: '{{nickname}}, finished',
+    finishedAway: '{{nickname}}, away, finished',
     reconnecting: 'Reconnecting... You can keep sorting.',
     everyone: 'Everyone in the room',
     remove: {
@@ -144,6 +154,7 @@ export const en = {
       leave: 'Leave the room',
       close: 'Close the room',
       confirmClose: 'Close the room? Everyone in it will be sent out.',
+      confirmCloseLists: 'The lists handed in so far will be lost.',
       confirmYes: 'Close it',
       confirmNo: 'Stay',
       closed: 'The creator closed the room.',

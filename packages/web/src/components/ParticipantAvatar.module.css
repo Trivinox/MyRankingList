@@ -50,6 +50,29 @@
   font-weight: 600;
 }
 
+/* A list handed in: the ring turns green and a tick sits on its corner, the
+   one opposite the creator's cross. */
+.finished .fill {
+  stroke: #3f9a78;
+}
+
+.check {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.2rem;
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #3f9a78;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* Someone whose connection dropped mid-sort. Their count is kept, so the ring
    stays as it was, only faded until they are back. */
 .away {

@@ -7,11 +7,11 @@ import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { CloseRoom } from './CloseRoom.tsx';
 
-const renderClose = () => {
+const renderClose = (listsIn = false) => {
   const onClose = vi.fn();
   render(
     <I18nextProvider i18n={createI18n()}>
-      <CloseRoom onClose={onClose} />
+      <CloseRoom onClose={onClose} listsIn={listsIn} />
     </I18nextProvider>,
   );
   return onClose;
@@ -32,6 +32,27 @@ describe('CloseRoom', () => {
     expect(screen.getByRole('group', { name: en.room.lobby.confirmClose })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: en.room.lobby.confirmNo })).toHaveFocus();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('says nothing about lists while nobody has handed one in', async () => {
+    renderClose();
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+
+    expect(screen.queryByText(en.room.lobby.confirmCloseLists)).not.toBeInTheDocument();
+  });
+
+  it('warns that the lists handed in will be lost, once there are any', async () => {
+    renderClose(true);
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+
+    expect(
+      screen.getByRole('group', {
+        name: en.room.lobby.confirmClose,
+        description: en.room.lobby.confirmCloseLists,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('closes nothing on Stay, and hands the focus back to its button', async () => {

@@ -87,9 +87,17 @@ export const es: typeof en = {
       outside: 'Lo has soltado fuera de la lista. La lista sigue igual.',
       cancelled: 'Arrastre cancelado. La lista sigue igual.',
       allPlaced: 'Ya están todos colocados. Aún puedes moverlos, o pulsa Ver resultado.',
-      allPlacedInRoom: 'Ya están todos colocados. Aún puedes moverlos.',
+      allPlacedInRoom: 'Ya están todos colocados. Aún puedes moverlos, o pulsa Terminar.',
     },
-    allPlacedInRoom: 'Ya está todo colocado. Aún puedes cambiar cosas de sitio.',
+    allPlacedInRoom: 'Ya está todo colocado. Aún puedes cambiar cosas de sitio, o terminar.',
+    finish: {
+      button: 'Terminar',
+      confirm: '¿Entregar tu lista? Después no podrás cambiarla.',
+      yes: 'Sí, entregarla',
+      no: 'Seguir ordenando',
+      waiting:
+        'Tu lista ya está entregada. Esperando a que terminen los demás. Deja esta página abierta hasta que salgan los resultados.',
+    },
   },
   result: {
     title: 'Tu lista final',
@@ -119,6 +127,8 @@ export const es: typeof en = {
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
     placed: '{{nickname}}, {{placed}} de {{total}} colocados',
     placedAway: '{{nickname}}, ausente, {{placed}} de {{total}} colocados',
+    finished: '{{nickname}}, terminó',
+    finishedAway: '{{nickname}}, ausente, terminó',
     reconnecting: 'Reconectando... Puedes seguir ordenando.',
     everyone: 'Todos los de la sala',
     remove: {
@@ -149,6 +159,7 @@ export const es: typeof en = {
       leave: 'Salir de la sala',
       close: 'Cerrar la sala',
       confirmClose: '¿Cerrar la sala? Todos los que están dentro saldrán.',
+      confirmCloseLists: 'Se perderán las listas entregadas hasta ahora.',
       confirmYes: 'Cerrarla',
       confirmNo: 'Quedarme',
       closed: 'Quien creó la sala la cerró.',

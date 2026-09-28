@@ -38,7 +38,9 @@ interface RankedListProps {
   // The placed item picked up for a tap, if any. The pool item is in hand
   // otherwise, and nothing here needs to know which one that is.
   held?: string | null;
-  onPickUp: (itemId: string) => void;
+  // Left out for a list that can no longer change, which takes the move
+  // buttons away.
+  onPickUp?: (itemId: string) => void;
   // Off on a phone, where a finger on a card has to scroll the page.
   draggable?: boolean;
 }
@@ -176,7 +178,7 @@ interface SlotProps extends TargetProps {
   tied: boolean;
   items: Item[];
   held?: string | null;
-  onPickUp: (itemId: string) => void;
+  onPickUp?: (itemId: string) => void;
   draggable: boolean;
   feedback?: Feedback;
   moveHover: ReturnType<typeof hoverHandlers>;
@@ -272,7 +274,7 @@ function Slot({
 interface PlacedProps {
   item: Item;
   held: boolean;
-  onPickUp: (itemId: string) => void;
+  onPickUp?: (itemId: string) => void;
   draggable: boolean;
   hover: ReturnType<typeof hoverHandlers>;
 }
@@ -296,7 +298,7 @@ function Placed({ item, held, onPickUp, draggable, hover }: PlacedProps) {
   const pickUp = (event: MouseEvent) => {
     event.stopPropagation();
     if (event.detail <= 1) {
-      onPickUp(item.id);
+      onPickUp?.(item.id);
     }
   };
 
@@ -316,16 +318,18 @@ function Placed({ item, held, onPickUp, draggable, hover }: PlacedProps) {
       >
         <ItemCard item={item} />
       </div>
-      <button
-        type="button"
-        className={styles.move}
-        aria-label={t('sorting.select.moveItem', { item: item.text })}
-        aria-pressed={held}
-        onClick={pickUp}
-        {...hover}
-      >
-        {t('sorting.select.move')}
-      </button>
+      {onPickUp && (
+        <button
+          type="button"
+          className={styles.move}
+          aria-label={t('sorting.select.moveItem', { item: item.text })}
+          aria-pressed={held}
+          onClick={pickUp}
+          {...hover}
+        >
+          {t('sorting.select.move')}
+        </button>
+      )}
     </div>
   );
 }
