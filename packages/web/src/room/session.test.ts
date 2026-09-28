@@ -1226,6 +1226,25 @@ describe('createRoom', () => {
       expect(juans).toMatchObject({ left: true, slots: juanList });
     });
 
+    it('comes when everyone else finished and dropped, with their lists marked as gone', async () => {
+      const { juan, lucia } = await sortingWithJuan();
+      juan.emit('data', finish(juanList));
+      lucia.emit('data', finish(luciaList));
+      juan.close();
+      lucia.close();
+
+      anaFinishes();
+
+      const { status, result } = useRoom.getState();
+      expect(status).toBe('revealed');
+      expect(result?.lists.map((list) => [list.nickname, list.left])).toEqual([
+        ['Ana', false],
+        ['Juan', true],
+        ['Lucía', true],
+      ]);
+      expect(result?.affinity).toHaveLength(3);
+    });
+
     it('comes with a single list when the creator is the only one left', async () => {
       const { juan, lucia } = await sortingWithJuan();
       removeParticipant(entryOf('Juan').id);
@@ -1799,6 +1818,32 @@ describe('joinRoom', () => {
       expect(back.sent).toHaveLength(1);
     });
 
+    it('takes the result that follows the resume when it dropped before the reveal', async () => {
+      vi.useFakeTimers();
+      const { channel, result } = await finished();
+      channel.close();
+      expect(useRoom.getState().status).toBe('reconnecting');
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      const guest = lastPeer();
+      guest.open('guest-peer');
+      await vi.advanceTimersByTimeAsync(0);
+      const back = guest.channels[0];
+      back.open();
+      back.emit('data', {
+        type: 'resume',
+        you: 'j',
+        seat: 's1',
+        criterion: 'Best noodle',
+        participants: [ana, { ...juan, finished: true }],
+        items,
+      });
+      back.emit('data', { type: 'result', result });
+
+      expect(useRoom.getState()).toMatchObject({ status: 'revealed', result });
+      expect(readTabRecord()?.result).toEqual(result);
+    });
+
     it('keeps the result when the creator closes the room after it', async () => {
       const { channel, result } = await finished();
       channel.emit('data', { type: 'result', result });
@@ -2179,6 +2224,24 @@ describe('resumeRoom', () => {
     resumeRoom({ ...record, finished: true, result });
 
     expect(useRoom.getState()).toMatchObject({ status: 'revealed', result, code: 'AB3K' });
+  });
+
+  it('keeps the result from the record when the room turns out to be gone', async () => {
+    signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
+    const record = reloadedTab();
+    const result: RoomResult = {
+      consensus: [],
+      discrepancies: [],
+      lists: [{ id: 'j', nickname: 'Juan', left: false, slots: record.placement.rankedSlots }],
+      affinity: [],
+    };
+
+    resumeRoom({ ...record, finished: true, result });
+
+    await vi.waitFor(() => expect(useRoom.getState().status).toBe('ended'));
+    expect(useRoom.getState().result).toEqual(result);
+    expect(readTabRecord()).toBeNull();
+    expect(peers).toHaveLength(0);
   });
 
   it('ends with the room ended when the code no longer exists', async () => {

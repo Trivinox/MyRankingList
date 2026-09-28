@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
@@ -13,6 +13,10 @@ import { AFFINITY_MATRIX_LIMIT, buildResult } from '../room/result.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
+
+const confetti = vi.hoisted(() => Object.assign(vi.fn(), { reset: vi.fn() }));
+
+vi.mock('canvas-confetti', () => ({ default: confetti }));
 
 const items: Item[] = ['Udon', 'Soba', 'Ramen', 'Pho'].map((text) => ({ id: text, text }));
 const criterion = 'Best noodle';
@@ -77,6 +81,8 @@ const rows = (within_: HTMLElement) =>
     );
 
 beforeEach(() => {
+  confetti.mockClear();
+  confetti.reset.mockClear();
   useRoom.getState().leave();
   usePlacement.getState().start(items, criterion);
   useScreen.setState({ screen: 'room-result' });
@@ -89,6 +95,20 @@ describe('RoomResultScreen', () => {
 
     expect(screen.getByText(en.roomResult.title)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: criterion })).toHaveFocus();
+  });
+
+  it('celebrates once, leaving reduced motion to the library, and stops once left', async () => {
+    reveal(rotating, 'guest');
+    renderApp();
+
+    expect(confetti).toHaveBeenCalledTimes(1);
+    expect(confetti).toHaveBeenCalledWith(
+      expect.objectContaining({ disableForReducedMotion: true }),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.leave }));
+
+    expect(confetti.reset).toHaveBeenCalled();
   });
 
   it('puts three items level on one rank in one card, and the next one at 4', () => {
