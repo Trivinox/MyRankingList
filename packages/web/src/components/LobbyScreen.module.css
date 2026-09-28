@@ -118,25 +118,8 @@
   font-size: 0.9rem;
 }
 
-.confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.prompt {
-  margin: 0;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
 .primary,
-.secondary,
-.danger {
+.secondary {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
   border-radius: 6px;
@@ -158,12 +141,6 @@
 .secondary {
   border: 1px solid #b8b8c2;
   background: none;
-}
-
-.danger {
-  border: none;
-  background: #b3261e;
-  color: #fff;
 }
 
 .closed {

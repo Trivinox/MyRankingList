@@ -124,6 +124,22 @@ describe('LobbyScreen', () => {
     expect(screen.getByText(en.room.lobby.copied)).toBeInTheDocument();
   });
 
+  it.each(['host', 'guest'] as const)(
+    'shows the new code, and copies it, once the room goes by one (%s)',
+    async (role) => {
+      const user = userEvent.setup();
+      inRoom(role, role === 'host' ? 'a' : 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().setCode('XY7Q'));
+      await user.click(screen.getByRole('button', { name: en.room.lobby.copyLink }));
+
+      expect(screen.getByText('XY7Q')).toBeInTheDocument();
+      expect(screen.queryByText('AB3K')).not.toBeInTheDocument();
+      expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/?room=XY7Q`);
+    },
+  );
+
   describe('as a guest', () => {
     it('leaves without asking, and drops the code from the address', async () => {
       window.history.replaceState(null, '', '/?room=AB3K');
@@ -137,7 +153,7 @@ describe('LobbyScreen', () => {
       expect(useScreen.getState().screen).toBe('list-input');
     });
 
-    it('is told when the room closes under them and can go back to the form', async () => {
+    it('is told when the creator closes the room and can go back to the form', async () => {
       window.history.replaceState(null, '', '/?room=AB3K');
       inRoom('guest', 'j');
       renderLobby();
@@ -145,6 +161,21 @@ describe('LobbyScreen', () => {
       act(() => useRoom.getState().close());
 
       expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.closed);
+      await userEvent.click(screen.getByRole('button', { name: en.room.back }));
+      expect(leaveRoom).toHaveBeenCalled();
+      expect(window.location.search).toBe('');
+      expect(useScreen.getState().screen).toBe('list-input');
+    });
+
+    it('is told the room ended when the creator went without a word', async () => {
+      window.history.replaceState(null, '', '/?room=AB3K');
+      inRoom('guest', 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().end());
+
+      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.ended);
+      expect(screen.getByRole('alert')).not.toHaveTextContent(en.room.lobby.closed);
       await userEvent.click(screen.getByRole('button', { name: en.room.back }));
       expect(leaveRoom).toHaveBeenCalled();
       expect(window.location.search).toBe('');

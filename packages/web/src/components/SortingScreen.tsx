@@ -32,12 +32,14 @@ import {
 } from '../core/dropTargets.ts';
 import type { DragSource, DropOutcome, DropTarget } from '../core/dropTargets.ts';
 import type { RankedSlot } from '../core/types.ts';
+import { leaveRoom } from '../room/session.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
+import { CloseRoom } from './CloseRoom.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import { useIsMobile } from './useIsMobile.ts';
 import { ItemCard } from './ItemCard.tsx';
@@ -179,6 +181,7 @@ export function SortingScreen() {
   const { items, criterion, placement, drop } = usePlacement();
   const setScreen = useScreen((state) => state.setScreen);
   const roomStatus = useRoom((state) => state.status);
+  const isHost = useRoom((state) => state.role === 'host');
   const reconnecting = roomStatus === 'reconnecting';
   const inRoom = roomStatus === 'sorting' || reconnecting;
   const [dragged, setDragged] = useState<DragSource | null>(null);
@@ -256,7 +259,12 @@ export function SortingScreen() {
   // The lobby screen already knows how to tell someone the room is gone, or
   // that they were taken out of it, and take them back to the form.
   useEffect(() => {
-    if (roomStatus === 'closed' || roomStatus === 'removed' || roomStatus === 'replaced') {
+    if (
+      roomStatus === 'closed' ||
+      roomStatus === 'ended' ||
+      roomStatus === 'removed' ||
+      roomStatus === 'replaced'
+    ) {
       setScreen('lobby');
     }
   }, [roomStatus, setScreen]);
@@ -565,6 +573,17 @@ export function SortingScreen() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Last on the page, out of the way of the sorting: closing is rare,
+          and it ends the room for everyone. */}
+      {isHost && inRoom && (
+        <CloseRoom
+          onClose={() => {
+            leaveRoom();
+            setScreen('list-input');
+          }}
+        />
+      )}
 
       <Announcer announcement={announcement} />
     </div>

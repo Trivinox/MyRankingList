@@ -7,11 +7,20 @@ export type Role = 'host' | 'guest';
 // Idle is no room at all, the state before creating or joining and after
 // leaving. Sorting starts for everyone at once, when the creator says so, and
 // reconnecting is a guest still sorting while their way back to the host is
-// found again. Closed is a room that ended under a guest, removed a guest the
-// creator took out, and replaced a tab whose place another tab took over.
-// Whichever it was, they still have to see it happened before going back.
+// found again. The rest is a room over for a guest, who still has to see why
+// before going back: closed by the creator, ended with the host gone without
+// a word, removed by the creator, or replaced by another tab that took over
+// the place.
 export type RoomStatus =
-  'idle' | 'connecting' | 'lobby' | 'sorting' | 'reconnecting' | 'closed' | 'removed' | 'replaced';
+  | 'idle'
+  | 'connecting'
+  | 'lobby'
+  | 'sorting'
+  | 'reconnecting'
+  | 'closed'
+  | 'ended'
+  | 'removed'
+  | 'replaced';
 
 export type RoomError =
   | { kind: 'not-found' }
@@ -43,6 +52,7 @@ interface Room {
     items?: Item[];
   }) => void;
   setParticipants: (participants: Participant[]) => void;
+  setCode: (code: string) => void;
   setOverdue: (overdue: string[]) => void;
   startSorting: (items: Item[]) => void;
   reconnect: (room?: { code: string; you: string }) => void;
@@ -54,6 +64,7 @@ interface Room {
   }) => void;
   fail: (error: RoomError) => void;
   close: () => void;
+  end: () => void;
   remove: () => void;
   replace: () => void;
   leave: () => void;
@@ -83,6 +94,8 @@ export const useRoom = create<Room>((set) => ({
 
   setParticipants: (participants) => set({ participants }),
 
+  setCode: (code) => set({ code }),
+
   setOverdue: (overdue) => set({ overdue }),
 
   startSorting: (items) => set({ items, status: 'sorting' }),
@@ -97,6 +110,8 @@ export const useRoom = create<Room>((set) => ({
   fail: (error) => set({ ...empty, error }),
 
   close: () => set({ status: 'closed' }),
+
+  end: () => set({ status: 'ended' }),
 
   remove: () => set({ status: 'removed' }),
 

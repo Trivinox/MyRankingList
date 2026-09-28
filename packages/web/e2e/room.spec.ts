@@ -234,3 +234,50 @@ test('a guest who reloads mid-sort is back on their own list, and away until the
   await expectNoViolations(juan);
   await juan.context().close();
 });
+
+test('the creator closes the room mid-sort and the guest is told so at once', async ({
+  page: ana,
+  browser,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+  await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+  await expect(juan.getByRole('button', { name: 'Close the room' })).toHaveCount(0);
+
+  await ana.getByRole('button', { name: 'Close the room' }).click();
+  await ana.getByRole('button', { name: 'Close it' }).click();
+
+  await expect(ana.getByLabel('What are you comparing them by?')).toBeVisible();
+  await expect(juan.getByRole('alert')).toHaveText('The creator closed the room.');
+  await expectNoViolations(juan);
+  await juan.context().close();
+});
+
+// Without the goodbye the guest would think the host had only dropped, and
+// keep trying for as long as the server holds the code.
+// The creator is the one opened by hand here, since the fixture checks its own
+// page once the test is over.
+test('the creator closes their tab mid-sort and the guest is told so at once', async ({
+  page: juan,
+  browser,
+}, testInfo) => {
+  const ana = await openPerson(browser, testInfo);
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+  await expect(juan.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+
+  await ana.close();
+
+  await expect(juan.getByRole('alert')).toHaveText('The creator closed the room.');
+  await expect(juan.getByText('Reconnecting... You can keep sorting.')).toHaveCount(0);
+  await juan.getByRole('button', { name: 'Back to my list' }).click();
+  await expect(juan).toHaveURL('/');
+  await ana.context().close();
+});

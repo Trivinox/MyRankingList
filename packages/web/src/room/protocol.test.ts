@@ -129,6 +129,24 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage({ type: 'replaced', by: 'x' })).toEqual({ type: 'replaced' });
   });
 
+  it('reads the creator closing the room', () => {
+    expect(parseHostMessage({ type: 'closed', by: 'x' })).toEqual({ type: 'closed' });
+  });
+
+  it('reads a new room code, and only one the server could have handed out', () => {
+    expect(parseHostMessage({ type: 'code', code: 'XY7Q', extra: 1 })).toEqual({
+      type: 'code',
+      code: 'XY7Q',
+    });
+    expect(parseHostMessage({ type: 'code' })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: 42 })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: 'XY7' })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: 'XY0Q' })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: 'xy7q' })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: ' XY7Q' })).toBeNull();
+    expect(parseHostMessage({ type: 'code', code: 'XY7Q&x=1' })).toBeNull();
+  });
+
   it('reads the start of sorting, with the list and the criterion', () => {
     const start = { type: 'start', items, criterion: 'Best fruit' };
 

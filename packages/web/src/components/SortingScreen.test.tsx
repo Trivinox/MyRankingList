@@ -1884,13 +1884,16 @@ describe('in a room', () => {
     expect(announced()).toBe(en.sorting.announce.allPlacedInRoom);
   });
 
-  it('goes back to the lobby screen, which says so, when the room closes', () => {
-    renderScreen();
+  it.each(['close', 'end'] as const)(
+    'goes back to the lobby screen, which says so, when the room is over (%s)',
+    (how) => {
+      renderScreen();
 
-    act(() => useRoom.getState().close());
+      act(() => useRoom.getState()[how]());
 
-    expect(useScreen.getState().screen).toBe('lobby');
-  });
+      expect(useScreen.getState().screen).toBe('lobby');
+    },
+  );
 
   it('goes back to the lobby screen when the creator removes them', () => {
     renderScreen();
@@ -1914,6 +1917,26 @@ describe('in a room', () => {
 
     act(() => useRoom.setState({ status: 'sorting' }));
     expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+  });
+
+  it('offers only the creator a way to close the room', () => {
+    renderScreen();
+    expect(screen.queryByRole('button', { name: en.room.lobby.close })).not.toBeInTheDocument();
+
+    act(() => useRoom.setState({ role: 'host', you: 'a' }));
+    expect(screen.getByRole('button', { name: en.room.lobby.close })).toBeInTheDocument();
+  });
+
+  it('closes the room mid-sort once the creator confirms, and goes back to the form', async () => {
+    useRoom.setState({ role: 'host', you: 'a', code: 'AB3K' });
+    renderScreen();
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+    expect(useRoom.getState().status).toBe('sorting');
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.confirmYes }));
+
+    expect(useRoom.getState()).toMatchObject({ status: 'idle', code: null });
+    expect(useScreen.getState().screen).toBe('list-input');
   });
 
   it('goes back to the lobby screen when another tab takes its place', () => {

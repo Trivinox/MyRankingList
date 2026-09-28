@@ -16,6 +16,7 @@ import {
   startAll,
 } from './hostRoom.ts';
 import type { Participant } from './hostRoom.ts';
+import { rememberRoomLink } from './link.ts';
 import { parseGuestMessage, parseHostMessage } from './protocol.ts';
 import type { GuestMessage, HostMessage } from './protocol.ts';
 import { createSignaling } from './signaling.ts';
@@ -32,8 +33,11 @@ const WELCOME_TIMEOUT_MS = 20_000;
 
 // How long a guest who lost the host waits before each new try. The last one
 // repeats for as long as the code still resolves: the signaling server keeps
-// it a while for a host who may be coming back.
+// it a while for a host who may be coming back. The host waits the same
+// between its own tries at getting back to the server.
 const RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 15_000];
+
+const delayAfter = (tries: number) => RETRY_DELAYS_MS[Math.min(tries, RETRY_DELAYS_MS.length - 1)];
 
 const signaling = createSignaling(SIGNALING_URL);
 
@@ -58,8 +62,10 @@ let attempt = 0;
 // Set by createRoom once the lobby is open, for the host's buttons to call.
 let startHere: (() => void) | null = null;
 let removeHere: ((id: string) => void) | null = null;
+let closeHere: (() => void) | null = null;
 let unfollow: (() => void) | null = null;
-// A guest's next try at getting back to the host.
+// The next try at getting back: a guest's to the host, or the host's to the
+// signaling server.
 let retry: ReturnType<typeof setTimeout> | undefined;
 // On the host, one timer for each guest away mid-sort, by participant id.
 const awayTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -73,10 +79,17 @@ function letGo() {
   clearTimeout(retry);
   for (const timer of awayTimers.values()) clearTimeout(timer);
   awayTimers.clear();
-  peer?.destroy();
+  // Guests hear it from the host before their channels go, instead of taking
+  // the silence for a drop and trying to get back in.
+  closeHere?.();
+  // Cleared first: destroying a Peer fires its `disconnected`, and the host's
+  // handler must see that this Peer is no longer the room's.
+  const leaving = peer;
   peer = null;
+  leaving?.destroy();
   startHere = null;
   removeHere = null;
+  closeHere = null;
   stopFollowing();
 }
 
@@ -145,6 +158,8 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   const creator = admit([], nickname, true);
   if (!creator.ok) return;
 
+  // Taken now: peerjs forgets the ID while the Peer is away from the server.
+  const peerId = host.id;
   const channels = new Map<string, DataConnection>();
   const send = (channel: DataConnection, message: HostMessage) => void channel.send(message);
   const tellEveryone = () => {
@@ -312,6 +327,43 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
     setParticipants(exclude(useRoom.getState().participants, id));
   };
 
+  closeHere = () => {
+    for (const channel of channels.values()) send(channel, { type: 'closed' });
+  };
+
+  // The socket to the signaling server dropped, and the channels are still
+  // up: the room goes on, but nobody new can find it. When peerjs takes the
+  // new socket in place of an old one the server has not closed yet, it never
+  // fires `open`, so being back is the server giving the code again. A 409 is
+  // the server not having the new socket yet.
+  let away = false;
+  const getBack = (tries: number) => {
+    if (host.disconnected) host.reconnect();
+    retry = setTimeout(async () => {
+      const answer = await signaling.openRoom(peerId);
+      if (peer !== host) return;
+      if (answer.kind !== 'opened') {
+        getBack(tries + 1);
+        return;
+      }
+      away = false;
+      // Past the grace window the old code was freed, and may already be
+      // someone else's. Everyone inside needs the new one to find the room
+      // again after a reload.
+      if (answer.code !== useRoom.getState().code) {
+        useRoom.getState().setCode(answer.code);
+        for (const channel of channels.values()) send(channel, { type: 'code', code: answer.code });
+      }
+    }, delayAfter(tries));
+  };
+  // A reconnection that fails drops the socket again and lands back here,
+  // while the tries already under way carry on.
+  host.on('disconnected', () => {
+    if (peer !== host || away) return;
+    away = true;
+    getBack(0);
+  });
+
   useRoom.getState().enterLobby({
     code: result.code,
     you,
@@ -350,15 +402,14 @@ function followAsGuest(guest: Guest) {
 
 // The room is over for this tab, whatever the reason, and a reload must not
 // try to get back into it.
-function end(how: 'close' | 'remove' | 'replace') {
+function endHere(how: 'close' | 'end' | 'remove' | 'replace') {
   letGo();
   clearTabRecord();
   useRoom.getState()[how]();
 }
 
 function later(mine: number, guest: Guest, tries: number, wait?: number) {
-  const delay = wait ?? RETRY_DELAYS_MS[Math.min(tries, RETRY_DELAYS_MS.length - 1)];
-  retry = setTimeout(() => void reach(mine, guest, tries + 1), delay);
+  retry = setTimeout(() => void reach(mine, guest, tries + 1), wait ?? delayAfter(tries));
 }
 
 // One try at the host: lookup, Peer, channel, join. A first join that fails
@@ -373,7 +424,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
     if (!returning) {
       useRoom.getState().fail(found);
     } else if (found.kind === 'not-found') {
-      end('close');
+      endHere('end');
     } else {
       later(
         mine,
@@ -420,7 +471,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
     if (!returning) useRoom.getState().fail({ kind });
     else if (kind === 'unreachable') later(mine, guest, tries);
     // The seat means nothing to the host any more.
-    else end('close');
+    else endHere('end');
   };
   const timer = setTimeout(() => giveUp('unreachable'), WELCOME_TIMEOUT_MS);
 
@@ -480,10 +531,20 @@ async function reach(mine: number, guest: Guest, tries: number) {
       // Stopped before letting go: destroying the Peer closes the channel,
       // and its close handler would take it for a drop.
       stop();
-      end('remove');
+      endHere('remove');
     } else if (message.type === 'replaced' && admitted) {
       stop();
-      end('replace');
+      endHere('replace');
+    } else if (message.type === 'closed' && admitted) {
+      stop();
+      endHere('close');
+    } else if (message.type === 'code' && admitted) {
+      // The lookup after a reload or a drop has to find the room under the
+      // code it goes by now.
+      guest.code = message.code;
+      room.setCode(message.code);
+      rememberRoomLink(message.code);
+      save(guest);
     } else if ((message.type === 'full' || message.type === 'started') && !admitted) {
       giveUp(message.type);
     }
@@ -502,7 +563,7 @@ async function reach(mine: number, guest: Guest, tries: number) {
       useRoom.getState().reconnect();
       later(mine, guest, 0);
     } else {
-      end('close');
+      endHere('end');
     }
   });
 }
@@ -524,8 +585,8 @@ export function resumeRoom(record: TabRecord) {
   void reach(mine, guest, 0);
 }
 
-// Every channel goes with the Peer: a host's guests see the room close, and a
-// guest's host drops them from the list.
+// Every channel goes with the Peer: a host's guests are told the room is
+// closed, and a guest's host drops them from the list.
 export function leaveRoom() {
   attempt++;
   letGo();
@@ -548,5 +609,7 @@ export function removeParticipant(id: string) {
 
 // A closed tab does not close its channels on its own. The other end only
 // notices once ICE gives up on it, around half a minute later, and until then
-// a guest who left is still listed.
-window.addEventListener('pagehide', () => peer?.destroy());
+// a guest who left is still listed. A creator's tab also tells its guests the
+// room is closed, which a crash never does: they only find out once the code
+// is gone.
+window.addEventListener('pagehide', letGo);

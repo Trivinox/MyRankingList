@@ -6,6 +6,7 @@ import { leaveRoom, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
+import { CloseRoom } from './CloseRoom.tsx';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 import { RemovalPrompt } from './RemovalPrompt.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
@@ -17,7 +18,6 @@ export function LobbyScreen() {
   const setScreen = useScreen((state) => state.setScreen);
   const { role, code, you, participants, criterion, status } = useRoom();
   const [copied, setCopied] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const removal = useRemoval(participants);
   const headingId = useId();
   const { announcement, say } = useAnnouncer();
@@ -48,7 +48,7 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed' || status === 'removed' || status === 'replaced') {
+  if (status === 'closed' || status === 'ended' || status === 'removed' || status === 'replaced') {
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">
@@ -160,26 +160,11 @@ export function LobbyScreen() {
         <p className={styles.notice}>{t('room.lobby.waiting')}</p>
       )}
 
-      {role === 'host' && confirming ? (
-        <div className={styles.confirm}>
-          <p className={styles.prompt}>{t('room.lobby.confirmClose')}</p>
-          <div className={styles.actions}>
-            <button type="button" className={styles.danger} onClick={backToForm}>
-              {t('room.lobby.confirmYes')}
-            </button>
-            <button type="button" className={styles.secondary} onClick={() => setConfirming(false)}>
-              {t('room.lobby.confirmNo')}
-            </button>
-          </div>
-        </div>
+      {role === 'host' ? (
+        <CloseRoom onClose={backToForm} />
       ) : (
-        <button
-          type="button"
-          className={styles.secondary}
-          // The host leaving takes the room with them, and everyone in it.
-          onClick={role === 'host' ? () => setConfirming(true) : backToForm}
-        >
-          {t(role === 'host' ? 'room.lobby.close' : 'room.lobby.leave')}
+        <button type="button" className={styles.secondary} onClick={backToForm}>
+          {t('room.lobby.leave')}
         </button>
       )}
 

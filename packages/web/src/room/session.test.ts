@@ -4,6 +4,7 @@ import type { Item } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Participant } from './hostRoom.ts';
+import { linkedCode } from './link.ts';
 import {
   createRoom,
   joinRoom,
@@ -77,9 +78,14 @@ const fakes = vi.hoisted(() => {
     }
   }
 
+  // Like peerjs, it forgets its ID while away from the server, and destroying
+  // it counts as leaving the server too.
   class FakePeer extends Emitter {
     id = '';
+    lastId = '';
     destroyed = false;
+    disconnected = false;
+    reconnects = 0;
     channels: FakeChannel[] = [];
     options: unknown;
     constructor(options: unknown) {
@@ -89,7 +95,20 @@ const fakes = vi.hoisted(() => {
     }
     open(id: string) {
       this.id = id;
+      this.lastId = id;
       this.emit('open', id);
+    }
+    // The socket to the signaling server dropping, with the channels still up.
+    drop() {
+      if (this.disconnected) return;
+      this.disconnected = true;
+      this.id = '';
+      this.emit('disconnected', this.lastId);
+    }
+    reconnect() {
+      this.reconnects++;
+      this.disconnected = false;
+      this.id = this.lastId;
     }
     connect(peerId: string, options: unknown) {
       const channel = new FakeChannel(peerId, options);
@@ -106,6 +125,7 @@ const fakes = vi.hoisted(() => {
     }
     destroy() {
       if (this.destroyed) return;
+      this.drop();
       for (const channel of this.channels) channel.close();
       this.destroyed = true;
     }
@@ -357,6 +377,157 @@ describe('createRoom', () => {
     expect(host.destroyed).toBe(true);
     expect(juan.isOpen).toBe(false);
     expect(useRoom.getState()).toMatchObject({ status: 'idle', participants: [], code: null });
+  });
+
+  it('tells every guest the room is closed before destroying the Peer', async () => {
+    const host = await openRoom();
+    const juan = guestJoins(host, 'Juan');
+    const lucia = guestJoins(host, 'Lucía');
+
+    leaveRoom();
+
+    expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(lucia.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(host.destroyed).toBe(true);
+  });
+
+  it('tells every guest the room is closed when the tab is closed', async () => {
+    const host = await openRoom();
+    const juan = guestJoins(host, 'Juan');
+
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(juan.sentBeforeClose?.at(-1)).toEqual({ type: 'closed' });
+    expect(host.destroyed).toBe(true);
+  });
+
+  it('says nothing to a channel that never joined', async () => {
+    const host = await openRoom();
+    const stranger = host.receive();
+
+    leaveRoom();
+
+    expect(stranger.sentBeforeClose).toEqual([]);
+  });
+
+  describe('losing the signaling server', () => {
+    beforeEach(() => vi.useFakeTimers());
+
+    it('reconnects, and counts itself back once the server gives the code again', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const sent = juan.sent.length;
+
+      host.drop();
+      expect(host.reconnects).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(signaling.openRoom).toHaveBeenLastCalledWith('host-peer');
+      expect(useRoom.getState()).toMatchObject({ status: 'lobby', code: 'AB3K' });
+      expect(juan.sent).toHaveLength(sent);
+      expect(juan.isOpen).toBe(true);
+    });
+
+    it('tries again, a little later each time, while the server does not have it back', async () => {
+      const host = await openRoom();
+      signaling.openRoom
+        .mockResolvedValueOnce({ kind: 'refused' } satisfies OpenedRoom)
+        .mockResolvedValueOnce({ kind: 'unreachable' } satisfies OpenedRoom);
+
+      host.drop();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(3_999);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(3);
+
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(4);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(4);
+    });
+
+    it('reconnects again when the socket drops once more, without doubling the tries', async () => {
+      const host = await openRoom();
+      signaling.openRoom.mockResolvedValueOnce({ kind: 'refused' } satisfies OpenedRoom);
+
+      host.drop();
+      await vi.advanceTimersByTimeAsync(1_000);
+      host.drop();
+      expect(host.reconnects).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(2);
+      expect(host.reconnects).toBe(2);
+
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(3);
+    });
+
+    it('takes a new code, and gives it to every guest, when the old one was let go', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      signaling.openRoom.mockResolvedValueOnce({
+        kind: 'opened',
+        code: 'XY7Q',
+      } satisfies OpenedRoom);
+
+      host.drop();
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(useRoom.getState().code).toBe('XY7Q');
+      expect(juan.sent.at(-1)).toEqual({ type: 'code', code: 'XY7Q' });
+      expect(lucia.sent.at(-1)).toEqual({ type: 'code', code: 'XY7Q' });
+      expect([juan.isOpen, lucia.isOpen]).toEqual([true, true]);
+    });
+
+    it('comes back mid-sort with the room as it was', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      startRoom();
+      const before = useRoom.getState().participants;
+
+      host.drop();
+      await vi.advanceTimersByTimeAsync(2_000);
+      juan.emit('data', { type: 'progress', placed: 2 });
+
+      expect(useRoom.getState().status).toBe('sorting');
+      expect(useRoom.getState().participants[1]).toMatchObject({
+        id: before[1].id,
+        progress: 2,
+        connected: true,
+      });
+    });
+
+    it('stops trying once the room is left', async () => {
+      const host = await openRoom();
+
+      host.drop();
+      leaveRoom();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(signaling.openRoom).toHaveBeenCalledTimes(1);
+    });
+
+    // Destroying a Peer drops its socket too, which is no reason to try.
+    it.each([
+      ['the room is left', leaveRoom],
+      ['the tab is closed', () => window.dispatchEvent(new Event('pagehide'))],
+    ])('does not try when the Peer goes because %s', async (_, go) => {
+      const host = await openRoom();
+
+      go();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(host.reconnects).toBe(0);
+      expect(signaling.openRoom).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('writes nothing when left while the code is on its way', async () => {
@@ -936,13 +1107,53 @@ describe('joinRoom', () => {
     expect(useRoom.getState()).toMatchObject({ status: 'idle', error: { kind: 'unreachable' } });
   });
 
-  it('marks the room closed when the host goes, and lets go of the Peer', async () => {
+  it('marks the room ended when the host goes without a word, and lets go of the Peer', async () => {
     const { guest, channel } = await reachLobby();
 
     channel.close();
 
-    expect(useRoom.getState().status).toBe('closed');
+    expect(useRoom.getState().status).toBe('ended');
     expect(guest.destroyed).toBe(true);
+  });
+
+  it('marks the room closed when the creator says so', async () => {
+    const { guest, channel } = await reachLobby();
+    const written: string[] = [];
+    const stop = useRoom.subscribe((room) => written.push(room.status));
+
+    channel.emit('data', { type: 'closed' });
+    stop();
+
+    expect(written).toEqual(['closed']);
+    expect(guest.destroyed).toBe(true);
+  });
+
+  it('ignores a close before the welcome', async () => {
+    const { guest, channel } = await reachHost();
+
+    channel.emit('data', { type: 'closed' });
+
+    expect(guest.destroyed).toBe(false);
+    expect(useRoom.getState().status).toBe('connecting');
+  });
+
+  it('takes a new code into the room and the address', async () => {
+    const { channel } = await reachLobby();
+
+    channel.emit('data', { type: 'code', code: 'XY7Q' });
+
+    expect(useRoom.getState()).toMatchObject({ status: 'lobby', code: 'XY7Q' });
+    expect(linkedCode()).toBe('XY7Q');
+  });
+
+  it('ignores a code that is not one', async () => {
+    const { channel } = await reachLobby();
+    window.history.replaceState(null, '', '/?room=AB3K');
+
+    channel.emit('data', { type: 'code', code: 'no' });
+
+    expect(useRoom.getState().code).toBe('AB3K');
+    expect(linkedCode()).toBe('AB3K');
   });
 
   it('writes nothing when left during the lookup', async () => {
@@ -1181,7 +1392,7 @@ describe('joinRoom', () => {
       expect(signaling.findRoom.mock.calls).toHaveLength(calls + 1);
     });
 
-    it('stops, with the room closed and the record gone, once the code is released', async () => {
+    it('stops, with the room ended and the record gone, once the code is released', async () => {
       const { channel } = await sorting();
       signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
       channel.close();
@@ -1189,9 +1400,33 @@ describe('joinRoom', () => {
       await vi.advanceTimersByTimeAsync(2_000);
       await vi.advanceTimersByTimeAsync(60_000);
 
-      expect(useRoom.getState().status).toBe('closed');
+      expect(useRoom.getState().status).toBe('ended');
       expect(readTabRecord()).toBeNull();
       expect(signaling.findRoom).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops at once, with the record gone, when the creator closes the room', async () => {
+      const { guest, channel } = await sorting();
+
+      channel.emit('data', { type: 'closed' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(useRoom.getState().status).toBe('closed');
+      expect(guest.destroyed).toBe(true);
+      expect(peers).toHaveLength(1);
+      expect(signaling.findRoom).toHaveBeenCalledTimes(1);
+      expect(readTabRecord()).toBeNull();
+    });
+
+    it('looks the room up by its new code after a drop, and keeps it in the record', async () => {
+      const { channel } = await sorting();
+
+      channel.emit('data', { type: 'code', code: 'XY7Q' });
+      expect(readTabRecord()?.code).toBe('XY7Q');
+      channel.close();
+      await nextTry(2_000);
+
+      expect(signaling.findRoom).toHaveBeenLastCalledWith('XY7Q');
     });
 
     it('ends up removed when it was taken out while away', async () => {
@@ -1361,11 +1596,11 @@ describe('resumeRoom', () => {
     expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
   });
 
-  it('ends with the room closed when the code no longer exists', async () => {
+  it('ends with the room ended when the code no longer exists', async () => {
     signaling.findRoom.mockResolvedValue({ kind: 'not-found' });
     resumeRoom(reloadedTab());
 
-    await vi.waitFor(() => expect(useRoom.getState().status).toBe('closed'));
+    await vi.waitFor(() => expect(useRoom.getState().status).toBe('ended'));
     expect(peers).toHaveLength(0);
   });
 });
