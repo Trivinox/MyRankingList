@@ -12,8 +12,9 @@ There are no user accounts. Rooms run peer to peer over WebRTC, with the creator
 - A catalog of preset lists, searchable by title or content, per language.
 - Rooms joined with a 4-character code or a link. The creator starts the sort, sees everyone's progress and can remove people.
 - Reconnection: a guest who drops or reloads mid-sort gets their place and their list back, and a creator who drops gets the room back, under a new code if it took too long.
+- In a room, each person hands their list in with Finish once everything is placed. After that it is locked, the others see a tick on their avatar, and a reload comes back to the waiting screen.
 
-Finishing a room and comparing results (consensus ranking, affinity between participants, the most disputed items) comes in a later phase.
+Comparing results at the end of a room (consensus ranking, affinity between participants, the most disputed items) comes with the rest of Phase 13.
 
 ## Stack
 

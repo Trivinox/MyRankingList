@@ -235,6 +235,56 @@ test('a guest who reloads mid-sort is back on their own list, and away until the
   await juan.context().close();
 });
 
+test('a guest who finishes waits with the list locked, and is still waiting after a reload', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  const top = juan.getByRole('button', { name: 'Put it at position 1', exact: true });
+  for (let placed = 2; placed <= 3; placed++) {
+    if (isMobile) {
+      await top.tap();
+    } else {
+      await top.click();
+    }
+    await expect(juan.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(placed));
+  }
+  await juan.getByRole('button', { name: 'Finish' }).click();
+  await juan.getByRole('button', { name: 'Yes, hand it in' }).click();
+
+  const waiting = juan.getByText('Your list is in. Waiting for the others to finish.', {
+    exact: false,
+  });
+  await expect(waiting).toBeVisible();
+  await expect(juan.getByRole('button', { name: /^Move / })).toHaveCount(0);
+  await expect(ana.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
+  await expect(ana.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+  const list = juan.getByRole('region', { name: 'Your list so far' });
+  const before = (await list.textContent()) ?? '';
+
+  // Leaving now asks first. Staying is what the question is for, but a
+  // reload has to go through for the tab record to be put to the test.
+  juan.on('dialog', (dialog) => void dialog.accept());
+  await juan.reload();
+
+  await expect(waiting).toBeVisible();
+  await expect(juan.getByText('Reconnecting... You can keep sorting.')).toHaveCount(0);
+  await expect(juan.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
+  await expect(juan.getByRole('button', { name: /^Move / })).toHaveCount(0);
+  await expect(list).toHaveText(before);
+  await expect(ana.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
+
+  await expectNoViolations(juan);
+  await juan.context().close();
+});
+
 test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
