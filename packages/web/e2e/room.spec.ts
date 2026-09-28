@@ -285,6 +285,69 @@ test('a guest who finishes waits with the list locked, and is still waiting afte
   await juan.context().close();
 });
 
+test('the reveal reaches everyone once the last list is in, and a reload keeps it', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  const handIn = async (page: Page) => {
+    const top = page.getByRole('button', { name: 'Put it at position 1', exact: true });
+    for (let placed = 2; placed <= 3; placed++) {
+      if (isMobile) {
+        await top.tap();
+      } else {
+        await top.click();
+      }
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(placed));
+    }
+    await page.getByRole('button', { name: 'Finish' }).click();
+    await page.getByRole('button', { name: 'Yes, hand it in' }).click();
+  };
+
+  await handIn(juan);
+  await expect(ana.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
+  await expect(juan.getByRole('table', { name: 'How alike the lists are' })).toHaveCount(0);
+  await handIn(ana);
+
+  for (const page of [ana, juan]) {
+    await expect(
+      page.getByRole('heading', { name: 'Which fruit do you like more?' }),
+    ).toBeFocused();
+    const consensus = page.getByRole('region', { name: 'All the lists together' });
+    for (const fruit of ['Mango', 'Kiwi', 'Peach']) {
+      await expect(consensus.getByText(fruit, { exact: true })).toBeVisible();
+    }
+    const grid = page.getByRole('table', { name: 'How alike the lists are' });
+    await expect(grid.getByRole('columnheader')).toHaveText(['Ana', 'Juan']);
+    await expect(grid.getByRole('rowheader')).toHaveText(['Ana', 'Juan']);
+    await expect(page.getByRole('combobox', { name: 'Compare your list with' })).toBeVisible();
+  }
+  await expect(ana.getByRole('button', { name: 'Close the room' })).toBeVisible();
+  await expect(juan.getByRole('button', { name: 'Leave the room' })).toBeVisible();
+
+  // Nothing is left to wait for, so the tab goes without asking.
+  let asked = false;
+  juan.on('dialog', (dialog) => {
+    asked = true;
+    void dialog.accept();
+  });
+  await juan.reload();
+
+  await expect(juan.getByRole('table', { name: 'How alike the lists are' })).toBeVisible();
+  await expect(juan.getByRole('option', { name: 'Ana' })).toBeAttached();
+  expect(asked).toBe(false);
+
+  await expectNoViolations(juan);
+  await juan.context().close();
+});
+
 test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
