@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startPlacement } from '../core/placement.ts';
-import { writeTabRecord } from '../room/tabRecord.ts';
+import { readTabRecord, writeTabRecord } from '../room/tabRecord.ts';
 
 const items = [
   { id: 'a', text: 'Udon' },
@@ -29,6 +29,7 @@ beforeEach(() => {
     criterion: 'Best noodle',
     placement: startPlacement(items),
     finished: false,
+    result: null,
   });
 });
 
@@ -37,6 +38,17 @@ afterEach(() => window.history.replaceState(null, '', '/'));
 describe('the opening screen', () => {
   it('is the sorting screen when the tab was sorting in the linked room', async () => {
     expect(await opening('/?room=AB3K')).toBe('sorting');
+  });
+
+  it('is the result when the linked room had been revealed', async () => {
+    const record = readTabRecord()!;
+    writeTabRecord({
+      ...record,
+      finished: true,
+      result: { consensus: [], discrepancies: [], lists: [], affinity: [] },
+    });
+
+    expect(await opening('/?room=AB3K')).toBe('room-result');
   });
 
   it('is the join screen when the tab was sorting in another room', async () => {

@@ -86,7 +86,13 @@ export function markFinished(participants: Participant[], id: string) {
 // The parser only vouched for its shape, and the averages taken over the lists
 // at the end would break on a repeat or a stranger.
 export function coversItems(slots: RankedSlot[], items: Item[]) {
-  const ids = slots.flatMap((slot) => slot.itemIds);
+  return holdsEachItem(
+    slots.flatMap((slot) => slot.itemIds),
+    items,
+  );
+}
+
+export function holdsEachItem(ids: string[], items: Item[]) {
   const wanted = new Set(items.map((item) => item.id));
   return (
     ids.length === wanted.size &&

@@ -258,9 +258,12 @@ export function SortingScreen() {
   useEffect(preload, []);
 
   // The lobby screen already knows how to tell someone the room is gone, or
-  // that they were taken out of it, and take them back to the form.
+  // that they were taken out of it, and take them back to the form. The last
+  // list in sends everyone to the reveal at once, whoever handed it in.
   useEffect(() => {
-    if (
+    if (roomStatus === 'revealed') {
+      setScreen('room-result');
+    } else if (
       roomStatus === 'closed' ||
       roomStatus === 'ended' ||
       roomStatus === 'removed' ||

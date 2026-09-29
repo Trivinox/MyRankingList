@@ -9,6 +9,7 @@ import { LobbyScreen } from './components/LobbyScreen.tsx';
 import { MuteButton } from './components/MuteButton.tsx';
 import { ResultScreen } from './components/ResultScreen.tsx';
 import { RoomEntryScreen } from './components/RoomEntryScreen.tsx';
+import { RoomResultScreen } from './components/RoomResultScreen.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
 import { useAnnouncer } from './components/useAnnouncer.ts';
 import { useScreen } from './state/screenStore.ts';
@@ -26,6 +27,7 @@ const widths: Record<Screen, string> = {
   'room-create': styles.page,
   'room-join': styles.page,
   lobby: styles.page,
+  'room-result': styles.page,
 };
 
 function App() {
@@ -76,6 +78,7 @@ function App() {
         {screen === 'room-create' && <RoomEntryScreen mode="create" />}
         {screen === 'room-join' && <RoomEntryScreen mode="join" />}
         {screen === 'lobby' && <LobbyScreen />}
+        {screen === 'room-result' && <RoomResultScreen />}
       </MotionConfig>
       {announcing && <Announcer announcement={announcement} />}
     </div>

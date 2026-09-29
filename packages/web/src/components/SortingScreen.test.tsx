@@ -2055,6 +2055,16 @@ describe('in a room', () => {
     expect(useScreen.getState().screen).toBe('list-input');
   });
 
+  it('goes to the reveal as soon as the room has its result', () => {
+    renderScreen();
+
+    act(() =>
+      useRoom.getState().reveal({ consensus: [], discrepancies: [], lists: [], affinity: [] }),
+    );
+
+    expect(useScreen.getState().screen).toBe('room-result');
+  });
+
   it('goes back to the lobby screen when another tab takes its place', () => {
     renderScreen();
 

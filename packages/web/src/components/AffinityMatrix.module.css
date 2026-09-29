@@ -1,0 +1,77 @@
+/* Colours are literals until the design system lands. */
+.scroller {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.scroller:focus-visible {
+  outline: 2px solid #6b6bd6;
+  outline-offset: 2px;
+}
+
+.matrix {
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 0.9rem;
+}
+
+.matrix th {
+  max-width: 7rem;
+  padding: 0.3rem 0.4rem;
+  overflow: hidden;
+  color: #4a4a55;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrix th[scope='row'] {
+  text-align: right;
+}
+
+.you {
+  color: #33333f;
+  text-decoration: underline;
+  text-decoration-color: #b7a8e8;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.cell,
+.none,
+.self {
+  min-width: 3.2rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell {
+  background: var(--shade);
+  color: #33333f;
+}
+
+.none {
+  background: #ececf1;
+  color: #6b6b76;
+}
+
+.self {
+  background: repeating-linear-gradient(45deg, #f4f4f8 0 4px, #e9e9ef 4px 8px);
+}
+
+@media (max-width: 767px) {
+  .cell,
+  .none,
+  .self {
+    min-width: 2.8rem;
+    height: 2.2rem;
+    font-size: 0.85rem;
+  }
+
+  .matrix th {
+    max-width: 5rem;
+  }
+}
