@@ -383,6 +383,8 @@ test('the creator plays again with the same items, and then with a list of their
     juan.getByText('Whether there is another round is up to the creator.'),
   ).toBeVisible();
   await expect(juan.getByRole('button', { name: 'Same items' })).toHaveCount(0);
+  const everyone = ana.getByRole('list', { name: 'Everyone in the room' });
+  await expect(everyone.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
 
   const next = ana.getByLabel('What is the next round comparing them by?');
   await expect(next).toHaveValue('Which fruit do you like more?');

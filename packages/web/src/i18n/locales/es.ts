@@ -126,6 +126,8 @@ export const es: typeof en = {
     you: 'Tú',
     leftName: '{{nickname}} (se fue)',
     again: 'Otra ronda',
+    awayLeftOut:
+      'Quien no esté conectado cuando empiece la próxima ronda se quedará fuera de ella.',
     nextCriterion: '¿Con qué criterio se comparan en la próxima ronda?',
     sameItems: 'Los mismos elementos',
     changeList: 'Cambiar la lista',

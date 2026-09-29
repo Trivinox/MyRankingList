@@ -319,6 +319,25 @@ describe('RoomResultScreen', () => {
       expect(same).toHaveAccessibleDescription(en.room.alone);
     });
 
+    it('shows the creator who is in the room, and warns that anyone away is left out', () => {
+      const [ana, juan, eva] = rotating;
+      reveal([ana, [person('Juan', false), juan[1]], eva]);
+      const i18n = renderApp();
+
+      const strip = within(screen.getByRole('list', { name: en.room.everyone }));
+      expect(
+        strip.getByRole('img', { name: i18n.t('room.finishedAway', { nickname: 'Juan' }) }),
+      ).toBeInTheDocument();
+      expect(
+        strip.getByRole('img', { name: i18n.t('room.finished', { nickname: 'Eva' }) }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(en.roomResult.awayLeftOut)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: en.roomResult.sameItems })).toBeEnabled();
+
+      act(() => useRoom.setState({ participants: rotating.map(([participant]) => participant) }));
+      expect(screen.queryByText(en.roomResult.awayLeftOut)).not.toBeInTheDocument();
+    });
+
     it('takes the creator to the form for a new list, holding the criterion', async () => {
       reveal(rotating);
       renderApp();
@@ -342,6 +361,7 @@ describe('RoomResultScreen', () => {
         screen.queryByRole('button', { name: en.roomResult.sameItems }),
       ).not.toBeInTheDocument();
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: en.room.everyone })).not.toBeInTheDocument();
     });
 
     it('takes a guest to wait for the new list, back to the result, and on to sort', () => {

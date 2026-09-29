@@ -121,6 +121,7 @@ export const en = {
     you: 'You',
     leftName: '{{nickname}} (left)',
     again: 'Another round',
+    awayLeftOut: 'Anyone away when the next round starts is left out of it.',
     nextCriterion: 'What is the next round comparing them by?',
     sameItems: 'Same items',
     changeList: 'Change the list',

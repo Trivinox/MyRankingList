@@ -19,6 +19,7 @@ import { AffinitySummary } from './AffinitySummary.tsx';
 import { CloseRoom } from './CloseRoom.tsx';
 import { ItemCard } from './ItemCard.tsx';
 import { CRITERION_LIMIT } from './ListInputForm.tsx';
+import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 import { ResultList } from './ResultScreen.tsx';
 import { formatCoefficient, useListName } from './useListName.ts';
 import styles from './RoomResultScreen.module.css';
@@ -159,7 +160,7 @@ export function RoomResultScreen() {
         )}
       </motion.div>
 
-      {role === 'host' && !over && <PlayAgain criterion={criterion} />}
+      {role === 'host' && !over && <PlayAgain criterion={criterion} total={items.length} />}
       {role === 'guest' && !over && <p className={styles.note}>{t('roomResult.creatorDecides')}</p>}
 
       {role === 'host' && !over ? (
@@ -175,19 +176,21 @@ export function RoomResultScreen() {
 
 interface PlayAgainProps {
   criterion: string;
+  // The length of the list, for the rings.
+  total: number;
 }
 
 // The creator's choice once the room has its result: the same items again, or
 // a new list written on the form. The criterion field goes with either, and
 // the form opens holding it.
-function PlayAgain({ criterion }: PlayAgainProps) {
+function PlayAgain({ criterion, total }: PlayAgainProps) {
   const { t } = useTranslation();
   const setScreen = useScreen((state) => state.setScreen);
   const setDraftCriterion = useListDraft((state) => state.setCriterion);
+  const { participants, you } = useRoom();
   // A round needs someone to sort with, as the first one did.
-  const alone = useRoom(
-    (state) => state.participants.filter((p) => p.connected).length < START_MINIMUM,
-  );
+  const alone = participants.filter((p) => p.connected).length < START_MINIMUM;
+  const away = participants.some((p) => !p.connected);
   const [next, setNext] = useState(criterion);
   const headingId = useId();
   const aloneId = useId();
@@ -203,6 +206,22 @@ function PlayAgain({ criterion }: PlayAgainProps) {
       <h3 id={headingId} className={styles.heading}>
         {t('roomResult.again')}
       </h3>
+      {/* Who a new round would take along. It starts with whoever is
+          connected, so the creator sees who is away before deciding. */}
+      <ul className={styles.strip} aria-label={t('room.everyone')}>
+        {participants.map((participant, place) => (
+          <li key={participant.id}>
+            <ParticipantAvatar
+              participant={participant}
+              place={place}
+              isYou={participant.id === you}
+              total={total}
+              stacked
+            />
+          </li>
+        ))}
+      </ul>
+      {away && !alone && <p className={styles.note}>{t('roomResult.awayLeftOut')}</p>}
       <label className={styles.next}>
         <span className={styles.pickerLabel}>{t('roomResult.nextCriterion')}</span>
         <input
