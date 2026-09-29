@@ -348,6 +348,81 @@ test('the reveal reaches everyone once the last list is in, and a reload keeps i
   await juan.context().close();
 });
 
+test('the creator plays again with the same items, and then with a list of their own', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto(`/?room=${code}`);
+  await join(juan, 'Juan');
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  const place = async (page: Page) => {
+    const top = page.getByRole('button', { name: 'Put it at position 1', exact: true });
+    for (let placed = 2; placed <= 3; placed++) {
+      if (isMobile) {
+        await top.tap();
+      } else {
+        await top.click();
+      }
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(placed));
+    }
+  };
+  const handIn = async (page: Page) => {
+    await place(page);
+    await page.getByRole('button', { name: 'Finish' }).click();
+    await page.getByRole('button', { name: 'Yes, hand it in' }).click();
+  };
+
+  await handIn(juan);
+  await handIn(ana);
+  await expect(
+    juan.getByText('Whether there is another round is up to the creator.'),
+  ).toBeVisible();
+  await expect(juan.getByRole('button', { name: 'Same items' })).toHaveCount(0);
+
+  const next = ana.getByLabel('What is the next round comparing them by?');
+  await expect(next).toHaveValue('Which fruit do you like more?');
+  await next.fill('Which fruit is easiest to peel?');
+  await ana.getByRole('button', { name: 'Same items' }).click();
+
+  // Back at the start, each with a list of one and a shuffle of their own.
+  for (const page of [ana, juan]) {
+    await expect(
+      page.getByRole('heading', { name: 'Which fruit is easiest to peel?' }),
+    ).toBeFocused();
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    await expect(page.getByRole('img', { name: 'Ana, 1 of 3 placed' })).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Juan, 1 of 3 placed' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Finish' })).toHaveCount(0);
+  }
+
+  await handIn(juan);
+  await handIn(ana);
+  await expect(juan.getByRole('table', { name: 'How alike the lists are' })).toBeVisible();
+
+  await ana.getByRole('button', { name: 'Change the list' }).click();
+  await expect(juan.getByText('The creator is preparing another list.')).toBeFocused();
+  await expect(ana.getByLabel('What are you comparing them by?')).toHaveValue(
+    'Which fruit is easiest to peel?',
+  );
+  await ana.getByLabel('Item 3', { exact: true }).fill('Plum');
+  await ana.getByRole('button', { name: 'Start the new round' }).click();
+
+  await expect(ana.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+  await place(juan);
+  const list = juan.getByRole('region', { name: 'Your list so far' });
+  await expect(list.getByText('Plum', { exact: true })).toBeVisible();
+  await expect(list.getByText('Peach', { exact: true })).toHaveCount(0);
+  await expect(ana.getByRole('img', { name: 'Juan, 3 of 3 placed' })).toBeVisible();
+
+  await expectNoViolations(juan);
+  await juan.context().close();
+});
+
 test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
