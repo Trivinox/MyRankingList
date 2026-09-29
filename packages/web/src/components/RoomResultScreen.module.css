@@ -117,6 +117,57 @@
   font-variant-numeric: tabular-nums;
 }
 
+.again {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e6e6ee;
+}
+
+.again .heading {
+  margin: 0;
+}
+
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.next input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d5d5de;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.againActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.same {
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-radius: 6px;
+  background: #33333f;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.same:disabled {
+  background: #c9c9d1;
+  cursor: not-allowed;
+}
+
+.again .note {
+  margin: 0;
+}
+
 .leave {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
@@ -128,6 +179,7 @@
 }
 
 .picker:focus-visible,
+.same:focus-visible,
 .leave:focus-visible {
   outline: 2px solid #6b6bd6;
   outline-offset: 2px;

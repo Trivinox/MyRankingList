@@ -7,11 +7,11 @@ import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import { CloseRoom } from './CloseRoom.tsx';
 
-const renderClose = (listsIn = false) => {
+const renderClose = (listsIn = false, revealed = false) => {
   const onClose = vi.fn();
   render(
     <I18nextProvider i18n={createI18n()}>
-      <CloseRoom onClose={onClose} listsIn={listsIn} />
+      <CloseRoom onClose={onClose} listsIn={listsIn} revealed={revealed} />
     </I18nextProvider>,
   );
   return onClose;
@@ -53,6 +53,17 @@ describe('CloseRoom', () => {
         description: en.room.lobby.confirmCloseLists,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('says everyone keeps the result when asked after the reveal', async () => {
+    renderClose(false, true);
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+
+    expect(
+      screen.getByRole('group', { name: en.room.lobby.confirmCloseRevealed }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(en.room.lobby.confirmClose)).not.toBeInTheDocument();
   });
 
   it('closes nothing on Stay, and hands the focus back to its button', async () => {

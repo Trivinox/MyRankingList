@@ -12,6 +12,7 @@ import { RoomEntryScreen } from './components/RoomEntryScreen.tsx';
 import { RoomResultScreen } from './components/RoomResultScreen.tsx';
 import { SortingScreen } from './components/SortingScreen.tsx';
 import { useAnnouncer } from './components/useAnnouncer.ts';
+import { useRoom } from './state/roomStore.ts';
 import { useScreen } from './state/screenStore.ts';
 import type { Screen } from './state/screenStore.ts';
 import styles from './App.module.css';
@@ -33,6 +34,8 @@ const widths: Record<Screen, string> = {
 function App() {
   const { t } = useTranslation();
   const { screen, setScreen } = useScreen();
+  // A creator back on the form for another round is still holding their room.
+  const hosting = useRoom((state) => state.role === 'host');
   // For a message sent as the screen changes under it. A region that arrives
   // with the new screen is already holding its text when it shows up, and a
   // screen reader only reads a region it has seen change.
@@ -65,9 +68,15 @@ function App() {
             <div className={styles.intro}>
               <p>{t('app.tagline')}</p>
               {/* Up here because a guest has no list to write. */}
-              <button type="button" className={styles.join} onClick={() => setScreen('room-join')}>
-                {t('room.join')}
-              </button>
+              {!hosting && (
+                <button
+                  type="button"
+                  className={styles.join}
+                  onClick={() => setScreen('room-join')}
+                >
+                  {t('room.join')}
+                </button>
+              )}
             </div>
             <ListInputForm />
           </>

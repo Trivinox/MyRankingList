@@ -15,10 +15,13 @@ import App from './App.tsx';
 
 // Only the room flow reaches it, and the session has a suite of its own.
 vi.mock('./room/session.ts', () => ({
+  backToResult: vi.fn(),
+  changeList: vi.fn(),
   createRoom: vi.fn(),
   finishRoom: vi.fn(),
   joinRoom: vi.fn(),
   leaveRoom: vi.fn(),
+  playAgain: vi.fn(),
 }));
 
 const renderApp = () =>
@@ -175,6 +178,15 @@ describe('App', () => {
     expect(screen.getByText('Best noodle')).toBeInTheDocument();
     expect(within(screen.getByRole('list')).getByText('Ana')).toBeInTheDocument();
     expect(useRoom.getState().items.map((item) => item.text)).toEqual(['Udon', 'Soba', 'Ramen']);
+  });
+
+  it('offers no other room to a creator writing the next round of their own', () => {
+    useRoom.setState({ role: 'host', status: 'revealed' });
+    renderApp();
+
+    expect(screen.getByText(en.app.tagline)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: en.room.join })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en.form.startRound })).toBeInTheDocument();
   });
 
   it('opens the join screen for someone with no list to write', async () => {

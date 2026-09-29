@@ -7,7 +7,11 @@ import { probeImage } from '../core/imageProbe.ts';
 import type { Item } from '../core/types.ts';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
+import type { Participant } from '../room/hostRoom.ts';
+import { backToResult, playAgain } from '../room/session.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
+import { usePlacement } from '../state/placementStore.ts';
+import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { LONG_LIST_THRESHOLD, ListInputForm } from './ListInputForm.tsx';
 import { PROBE_DELAY } from './useRejectedImages.ts';
@@ -15,6 +19,8 @@ import { PROBE_DELAY } from './useRejectedImages.ts';
 // The probe has its own suite, and a real one here would put the network and
 // the debounce timer into every test that types a link.
 vi.mock('../core/imageProbe.ts', () => ({ probeImage: vi.fn() }));
+
+vi.mock('../room/session.ts', () => ({ playAgain: vi.fn(), backToResult: vi.fn() }));
 
 const blankRows = (count: number): Item[] =>
   Array.from({ length: count }, () => ({ id: crypto.randomUUID(), text: '' }));
@@ -41,7 +47,10 @@ const renderForm = () => {
 beforeEach(() => {
   useScreen.setState({ screen: 'list-input' });
   useListDraft.setState({ items: blankRows(3), criterion: '' });
+  useRoom.getState().leave();
   vi.mocked(probeImage).mockReset().mockResolvedValue(null);
+  vi.mocked(playAgain).mockReset();
+  vi.mocked(backToResult).mockReset();
 });
 
 afterEach(() => {
@@ -387,5 +396,61 @@ describe('ListInputForm', () => {
     expect(screen.getByLabelText('Elemento 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Añadir elemento' })).toBeInTheDocument();
     expect(screen.getByText('1 elemento')).toBeInTheDocument();
+  });
+
+  describe('opened from a room for its next round', () => {
+    const person = (nickname: string, connected = true): Participant => ({
+      id: nickname.toLowerCase(),
+      nickname,
+      isCreator: nickname === 'Ana',
+      progress: 3,
+      connected,
+      finished: true,
+    });
+
+    function hosting(participants = [person('Ana'), person('Juan')]) {
+      useRoom.setState({ role: 'host', status: 'revealed', participants });
+      useListDraft.setState({ items: filledRows(3), criterion: 'Best soup' });
+      usePlacement.setState({ placement: null });
+    }
+
+    it('starts the round with the list and criterion written, instead of a sort alone', async () => {
+      hosting();
+      renderForm();
+      const { items } = useListDraft.getState();
+
+      await userEvent.click(screen.getByRole('button', { name: en.form.startRound }));
+
+      expect(playAgain).toHaveBeenCalledWith({ items, criterion: 'Best soup' });
+      expect(usePlacement.getState().placement).toBeNull();
+      expect(useScreen.getState().screen).toBe('sorting');
+    });
+
+    it('goes back to the result without starting anything', async () => {
+      hosting();
+      renderForm();
+
+      await userEvent.click(screen.getByRole('button', { name: en.form.backToResult }));
+
+      expect(backToResult).toHaveBeenCalled();
+      expect(playAgain).not.toHaveBeenCalled();
+      expect(useScreen.getState().screen).toBe('room-result');
+    });
+
+    it('offers no room of its own to create', () => {
+      hosting();
+      renderForm();
+
+      expect(screen.queryByRole('button', { name: en.room.create })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: en.form.continue })).not.toBeInTheDocument();
+    });
+
+    it('will not start the round with nobody else connected, and says why', () => {
+      hosting([person('Ana'), person('Juan', false)]);
+      renderForm();
+
+      expect(screen.getByRole('button', { name: en.form.startRound })).toBeDisabled();
+      expect(screen.getByText(en.room.alone)).toBeInTheDocument();
+    });
   });
 });

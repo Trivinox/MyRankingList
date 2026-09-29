@@ -6,6 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n/index.ts';
 import { en } from '../i18n/locales/en.ts';
 import type { Participant } from '../room/hostRoom.ts';
+import type { RoomResult } from '../room/result.ts';
 import { leaveRoom, removeParticipant, startRoom } from '../room/session.ts';
 import { useRoom } from '../state/roomStore.ts';
 import type { Role } from '../state/roomStore.ts';
@@ -62,6 +63,7 @@ function inRoom(role: Role, you: string, participants = [ana, juan]) {
     criterion: 'Best noodle',
     status: 'lobby',
     error: null,
+    result: null,
   });
 }
 
@@ -216,6 +218,56 @@ describe('LobbyScreen', () => {
 
       expect(screen.getByText(en.room.lobby.waiting)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: en.room.lobby.start })).not.toBeInTheDocument();
+    });
+
+    it('is told it missed the round when the room started another without it', () => {
+      inRoom('guest', 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().miss());
+
+      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.missed);
+      expect(screen.getByRole('button', { name: en.room.back })).toBeInTheDocument();
+    });
+
+    describe('between rounds', () => {
+      const result: RoomResult = { consensus: [], discrepancies: [], lists: [], affinity: [] };
+
+      function preparing() {
+        inRoom('guest', 'j');
+        useRoom.setState({ status: 'preparing', result });
+      }
+
+      it('says the creator is preparing another list, without the code or the last criterion', () => {
+        preparing();
+        renderLobby();
+
+        expect(screen.getByText(en.room.lobby.preparing)).toHaveFocus();
+        expect(screen.queryByText('AB3K')).not.toBeInTheDocument();
+        expect(screen.queryByText('Best noodle')).not.toBeInTheDocument();
+        expect(screen.queryByText(en.room.lobby.waiting)).not.toBeInTheDocument();
+        expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
+        expect(screen.getByRole('button', { name: en.room.lobby.leave })).toBeInTheDocument();
+      });
+
+      it('goes back to the result when the creator does', () => {
+        preparing();
+        renderLobby();
+
+        act(() => useRoom.getState().reveal(result));
+
+        expect(useScreen.getState().screen).toBe('room-result');
+      });
+
+      it('goes back to the result, which says why, when the room ends meanwhile', () => {
+        preparing();
+        renderLobby();
+
+        act(() => useRoom.getState().close());
+
+        expect(useScreen.getState().screen).toBe('room-result');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
     });
   });
 

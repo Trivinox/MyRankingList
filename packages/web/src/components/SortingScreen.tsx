@@ -36,7 +36,7 @@ import { finishRoom, leaveRoom } from '../room/session.ts';
 import { play, preload } from '../sound/sounds.ts';
 import type { SoundName } from '../sound/sounds.ts';
 import { usePlacement } from '../state/placementStore.ts';
-import { useRoom } from '../state/roomStore.ts';
+import { isOver, useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { CloseRoom } from './CloseRoom.tsx';
@@ -258,17 +258,14 @@ export function SortingScreen() {
   useEffect(preload, []);
 
   // The lobby screen already knows how to tell someone the room is gone, or
-  // that they were taken out of it, and take them back to the form. The last
-  // list in sends everyone to the reveal at once, whoever handed it in.
+  // that they were taken out of it, and take them back to the form. It is also
+  // where a guest waits who missed the reveal and came back with the creator
+  // already writing the next list. The last list in sends everyone to the
+  // reveal at once, whoever handed it in.
   useEffect(() => {
     if (roomStatus === 'revealed') {
       setScreen('room-result');
-    } else if (
-      roomStatus === 'closed' ||
-      roomStatus === 'ended' ||
-      roomStatus === 'removed' ||
-      roomStatus === 'replaced'
-    ) {
+    } else if (roomStatus === 'preparing' || isOver(roomStatus)) {
       setScreen('lobby');
     }
   }, [roomStatus, setScreen]);

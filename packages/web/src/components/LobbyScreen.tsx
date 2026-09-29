@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ROOM_LIMIT, START_MINIMUM } from '../room/hostRoom.ts';
 import { forgetRoomLink, roomLink } from '../room/link.ts';
 import { leaveRoom, startRoom } from '../room/session.ts';
-import { useRoom } from '../state/roomStore.ts';
+import { isOver, useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { CloseRoom } from './CloseRoom.tsx';
@@ -16,12 +16,17 @@ import styles from './LobbyScreen.module.css';
 export function LobbyScreen() {
   const { t } = useTranslation();
   const setScreen = useScreen((state) => state.setScreen);
-  const { role, code, you, participants, criterion, status } = useRoom();
+  const { role, code, you, participants, criterion, status, result } = useRoom();
   const [copied, setCopied] = useState(false);
   const removal = useRemoval(participants);
   const headingId = useId();
   const { announcement, say } = useAnnouncer();
   const seen = useRef(participants);
+  const preparingLine = useRef<HTMLParagraphElement>(null);
+  // Between rounds, while the creator writes the next list. Nobody can join
+  // any more, so the code has nothing left to do here, and the criterion on
+  // show would be last round's.
+  const preparing = status === 'preparing';
 
   // Comings and goings are said out loud; the list alone changes silently.
   useEffect(() => {
@@ -37,10 +42,18 @@ export function LobbyScreen() {
   }, [participants, say, t]);
 
   // The host's own Start and a guest's start message both land here, as the
-  // session sets the room sorting.
+  // session sets the room sorting. Between rounds the result is still this
+  // guest's to keep: the creator going back to it brings them back too, and
+  // a room that ends meanwhile shows why on top of it.
   useEffect(() => {
     if (status === 'sorting') setScreen('sorting');
-  }, [status, setScreen]);
+    else if (result && (status === 'revealed' || isOver(status))) setScreen('room-result');
+  }, [status, result, setScreen]);
+
+  // Nothing was pressed to get here: the result was simply taken away.
+  useEffect(() => {
+    if (preparing) preparingLine.current?.focus();
+  }, [preparing]);
 
   const backToForm = () => {
     leaveRoom();
@@ -48,7 +61,9 @@ export function LobbyScreen() {
     setScreen('list-input');
   };
 
-  if (status === 'closed' || status === 'ended' || status === 'removed' || status === 'replaced') {
+  if (isOver(status)) {
+    // The effect above is on its way to the result, which says it there.
+    if (result) return null;
     return (
       <div className={styles.screen}>
         <p className={styles.closed} role="alert">
@@ -78,22 +93,30 @@ export function LobbyScreen() {
 
   return (
     <div className={styles.screen}>
-      <div className={styles.bar}>
-        <span className={styles.codeLabel}>{t('room.lobby.code')}</span>
-        <strong className={styles.code}>{code}</strong>
-        {canCopy && (
-          <button type="button" className={styles.copy} onClick={copy}>
-            {t('room.lobby.copyLink')}
-          </button>
-        )}
-        <span className={styles.copied} role="status">
-          {copied && t('room.lobby.copied')}
-        </span>
-      </div>
+      {preparing ? (
+        <p ref={preparingLine} className={styles.preparing} tabIndex={-1}>
+          {t('room.lobby.preparing')}
+        </p>
+      ) : (
+        <>
+          <div className={styles.bar}>
+            <span className={styles.codeLabel}>{t('room.lobby.code')}</span>
+            <strong className={styles.code}>{code}</strong>
+            {canCopy && (
+              <button type="button" className={styles.copy} onClick={copy}>
+                {t('room.lobby.copyLink')}
+              </button>
+            )}
+            <span className={styles.copied} role="status">
+              {copied && t('room.lobby.copied')}
+            </span>
+          </div>
 
-      <p className={styles.criterion}>
-        <span className={styles.criterionLabel}>{t('room.lobby.criterion')}</span> {criterion}
-      </p>
+          <p className={styles.criterion}>
+            <span className={styles.criterionLabel}>{t('room.lobby.criterion')}</span> {criterion}
+          </p>
+        </>
+      )}
 
       <div className={styles.listHeader}>
         <h2 id={headingId} className={styles.heading}>
@@ -157,7 +180,7 @@ export function LobbyScreen() {
           )}
         </div>
       ) : (
-        <p className={styles.notice}>{t('room.lobby.waiting')}</p>
+        !preparing && <p className={styles.notice}>{t('room.lobby.waiting')}</p>
       )}
 
       {role === 'host' ? (

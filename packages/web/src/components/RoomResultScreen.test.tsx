@@ -10,6 +10,8 @@ import { en } from '../i18n/locales/en.ts';
 import { es } from '../i18n/locales/es.ts';
 import type { Participant } from '../room/hostRoom.ts';
 import { AFFINITY_MATRIX_LIMIT, buildResult } from '../room/result.ts';
+import { changeList, playAgain } from '../room/session.ts';
+import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
@@ -17,6 +19,15 @@ import { useScreen } from '../state/screenStore.ts';
 const confetti = vi.hoisted(() => Object.assign(vi.fn(), { reset: vi.fn() }));
 
 vi.mock('canvas-confetti', () => ({ default: confetti }));
+
+// Leaving stays real, since the tests of the way out rely on it. The two that
+// lead to another round are stubbed: only a room the session opened itself
+// could act on them, and the session has a suite of its own.
+vi.mock('../room/session.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../room/session.ts')>()),
+  playAgain: vi.fn(),
+  changeList: vi.fn(),
+}));
 
 const items: Item[] = ['Udon', 'Soba', 'Ramen', 'Pho'].map((text) => ({ id: text, text }));
 const criterion = 'Best noodle';
@@ -46,7 +57,16 @@ function reveal(lists: [Participant, RankedSlot[]][], role: 'host' | 'guest' = '
     participants,
     new Map(lists.map(([participant, slots]) => [participant.id, slots])),
   );
-  useRoom.setState({ role, you: 'ana', status: 'revealed', result, participants, items });
+  useRoom.setState({
+    role,
+    code: 'AB3K',
+    you: 'ana',
+    status: 'revealed',
+    result,
+    participants,
+    items,
+    criterion,
+  });
   return result;
 }
 
@@ -83,6 +103,8 @@ const rows = (within_: HTMLElement) =>
 beforeEach(() => {
   confetti.mockClear();
   confetti.reset.mockClear();
+  vi.mocked(playAgain).mockReset();
+  vi.mocked(changeList).mockReset();
   useRoom.getState().leave();
   usePlacement.getState().start(items, criterion);
   useScreen.setState({ screen: 'room-result' });
@@ -251,6 +273,107 @@ describe('RoomResultScreen', () => {
 
     expect(useRoom.getState().status).toBe('idle');
     expect(useScreen.getState().screen).toBe('list-input');
+  });
+
+  it('asks the creator before closing, saying everyone keeps the result', async () => {
+    reveal(rotating);
+    renderApp();
+
+    await userEvent.click(screen.getByRole('button', { name: en.room.lobby.close }));
+
+    expect(
+      screen.getByRole('group', { name: en.room.lobby.confirmCloseRevealed }),
+    ).toBeInTheDocument();
+  });
+
+  describe('another round', () => {
+    const field = () => screen.getByRole('textbox', { name: en.roomResult.nextCriterion });
+
+    it('plays the same items again under the criterion the creator leaves in the field', async () => {
+      reveal(rotating);
+      renderApp();
+
+      expect(field()).toHaveValue(criterion);
+      await userEvent.clear(field());
+      await userEvent.type(field(), 'Best broth');
+      await userEvent.click(screen.getByRole('button', { name: en.roomResult.sameItems }));
+
+      expect(playAgain).toHaveBeenCalledWith({ criterion: 'Best broth' });
+    });
+
+    it('needs a criterion, and someone else connected, to start one', async () => {
+      reveal(rotating);
+      renderApp();
+      const same = screen.getByRole('button', { name: en.roomResult.sameItems });
+
+      await userEvent.clear(field());
+      expect(same).toBeDisabled();
+
+      await userEvent.type(field(), 'Best broth');
+      act(() =>
+        useRoom.setState({
+          participants: rotating.map(([p]) => ({ ...p, connected: p.isCreator })),
+        }),
+      );
+      expect(same).toBeDisabled();
+      expect(same).toHaveAccessibleDescription(en.room.alone);
+    });
+
+    it('takes the creator to the form for a new list, holding the criterion', async () => {
+      reveal(rotating);
+      renderApp();
+
+      await userEvent.clear(field());
+      await userEvent.type(field(), 'Best broth');
+      await userEvent.click(screen.getByRole('button', { name: en.roomResult.changeList }));
+
+      expect(changeList).toHaveBeenCalled();
+      expect(useScreen.getState().screen).toBe('list-input');
+      expect(useListDraft.getState().criterion).toBe('Best broth');
+      expect(screen.getByRole('button', { name: en.form.startRound })).toBeInTheDocument();
+    });
+
+    it('tells a guest the creator decides, with nothing to press for it', () => {
+      reveal(rotating, 'guest');
+      renderApp();
+
+      expect(screen.getByText(en.roomResult.creatorDecides)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: en.roomResult.sameItems }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    });
+
+    it('takes a guest to wait for the new list, back to the result, and on to sort', () => {
+      const result = reveal(rotating, 'guest');
+      renderApp();
+
+      act(() => useRoom.getState().prepare());
+      expect(useScreen.getState().screen).toBe('lobby');
+      expect(screen.getByText(en.room.lobby.preparing)).toHaveFocus();
+
+      act(() => useRoom.getState().reveal(result));
+      expect(useScreen.getState().screen).toBe('room-result');
+      expect(screen.getByRole('heading', { name: criterion })).toHaveFocus();
+
+      act(() => {
+        usePlacement.getState().start(items, 'Best broth');
+        useRoom.getState().startSorting(items, 'Best broth');
+      });
+      expect(useScreen.getState().screen).toBe('sorting');
+      expect(screen.getByRole('heading', { name: 'Best broth' })).toHaveFocus();
+    });
+  });
+
+  it('keeps the result for a guest the room moved on from, and says why', () => {
+    reveal(rotating, 'guest');
+    renderApp();
+
+    act(() => useRoom.getState().miss());
+
+    expect(screen.getByRole('status')).toHaveTextContent(en.room.lobby.missed);
+    expect(screen.queryByText(en.roomResult.creatorDecides)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en.room.back })).toBeInTheDocument();
   });
 
   it('keeps the result once the room is closed, and says so', () => {
