@@ -223,7 +223,7 @@ describe('LobbyScreen', () => {
     inRoom('guest', 'j');
     renderLobby();
 
-    act(() => useRoom.getState().startSorting([]));
+    act(() => useRoom.getState().startSorting([], 'Best noodle'));
 
     expect(useScreen.getState().screen).toBe('sorting');
   });
