@@ -18,7 +18,6 @@
 .cancel {
   padding: 0.5rem 1.2rem;
   border-radius: 6px;
-  font: inherit;
   cursor: pointer;
 }
 

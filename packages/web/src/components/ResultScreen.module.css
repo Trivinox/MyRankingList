@@ -52,7 +52,7 @@
   background: #f0cf6e;
   color: #4a4a55;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .row {
@@ -66,6 +66,7 @@
   width: 1.8rem;
   color: #6b6b76;
   font-size: 0.95rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -86,7 +87,6 @@
 .newList {
   padding: 0.55rem 1.4rem;
   border-radius: 6px;
-  font: inherit;
   cursor: pointer;
 }
 

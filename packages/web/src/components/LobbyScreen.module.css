@@ -38,7 +38,6 @@
   border: 1px solid #b8b8c2;
   border-radius: 6px;
   background: none;
-  font: inherit;
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -111,7 +110,6 @@
   border: 1px solid #b8b8c2;
   border-radius: 6px;
   background: #fff;
-  font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -133,7 +131,6 @@
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
   border-radius: 6px;
-  font: inherit;
   cursor: pointer;
 }
 

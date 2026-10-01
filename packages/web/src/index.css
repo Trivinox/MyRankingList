@@ -12,3 +12,15 @@ body {
   color: var(--color-text);
   font-family: var(--font-body);
 }
+
+/* Browsers give controls a typeface of their own. Two weights for the whole
+   interface: regular for text, bold for headings, ranks and buttons. */
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  font-weight: 700;
+}

@@ -85,7 +85,6 @@
   border: 1px solid #b8b8c2;
   border-radius: 6px;
   background: #fff;
-  font: inherit;
 }
 
 .sideBySide {
@@ -104,7 +103,7 @@
 .sideBySide thead th {
   color: #6b6b76;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sideBySide tbody th {
@@ -151,7 +150,6 @@
   padding: 0.5rem 0.65rem;
   border: 1px solid #d5d5de;
   border-radius: 6px;
-  font: inherit;
 }
 
 .againActions {
@@ -166,7 +164,6 @@
   border-radius: 6px;
   background: #33333f;
   color: #fff;
-  font: inherit;
   cursor: pointer;
 }
 
@@ -185,7 +182,6 @@
   border: 1px solid #b8b8c2;
   border-radius: 6px;
   background: none;
-  font: inherit;
   cursor: pointer;
 }
 

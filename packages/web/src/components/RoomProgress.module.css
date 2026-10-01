@@ -33,7 +33,6 @@
   border-radius: 50%;
   background: #fff;
   color: #4a4a55;
-  font: inherit;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
@@ -84,6 +83,5 @@
   border-radius: 6px;
   background: none;
   color: #b3261e;
-  font: inherit;
   cursor: pointer;
 }

@@ -55,7 +55,6 @@
   border: 0;
   background: none;
   color: #6b6b76;
-  font-family: inherit;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -100,7 +99,6 @@
   border-radius: 999px;
   background: #fff;
   color: #4a4a55;
-  font-family: inherit;
   font-size: 0.8rem;
   cursor: pointer;
 }
