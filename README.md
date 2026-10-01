@@ -16,12 +16,13 @@ There are no user accounts. Rooms run peer to peer over WebRTC, with the creator
 - Once the last list is in, everyone sees the result at the same moment: the room's combined ranking, how alike each pair of lists is (a grid up to 8 people, and above that who is most and least like you), the items the room split on most, and your own list next to anyone else's. Lists of people who dropped after finishing still count; people the creator removed do not.
 - From the result the creator can play another round in the same room: the same items under the same or a new criterion, or a new list written on the form while the others wait in the lobby. Everyone connected starts over with a shuffle of their own. Anyone away at that moment is left out of the new round, and nobody new can join it.
 
-Collaborative mode is complete and covered end to end: since Phase 14 the Playwright suite runs a room of three people with lists known in advance and checks the reveal to the number, and a room of nine that gets the summary instead of the grid. The visual design comes next, then the final sounds and the deployment.
+Collaborative mode is complete and covered end to end: since Phase 14 the Playwright suite runs a room of three people with lists known in advance and checks the reveal to the number, and a room of nine that gets the summary instead of the grid. Phase 15.1 gave the interface its look: pastel colours, the Nunito typeface, pill-shaped buttons, rounded cards with soft shadows and filled icons, all read from one file of design tokens. The loader, the popups and the illustrations come next, then the final sounds and the deployment.
 
 ## Stack
 
 - TypeScript in both packages
 - Frontend: React + Vite, dnd-kit, Zustand, Framer Motion, Howler.js, react-i18next
+- Look: CSS Modules over design tokens, Nunito through Fontsource, Phosphor Icons
 - P2P and signaling: PeerJS (`peerjs` on the client, `peer` on the server)
 - Testing: Vitest, React Testing Library, Playwright
 
@@ -32,6 +33,7 @@ packages/
   web/                React + Vite frontend
     api/              Vercel functions (image validation)
     src/lists/        Preset list catalog, one JSON file per list
+    src/styles/       Design tokens: colours, radii, shadows, typeface
   signaling-server/   Node signaling server (PeerJS and room codes)
 ```
 

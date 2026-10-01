@@ -121,21 +121,22 @@ function Listings({ categories, query, picker }: ListingsProps) {
   }
 
   if (query === '') {
-    return categories.map((category) => (
-      <section key={category.id} className={styles.category}>
-        <h3 className={styles.categoryName}>
-          <span aria-hidden="true" className={styles.icon}>
-            {iconFor(category.id)}
-          </span>
-          {category.name}
-        </h3>
-        <ul className={styles.lists}>
-          {category.lists.map((list) => (
-            <ListRow key={list.id} list={list} picker={picker} />
-          ))}
-        </ul>
-      </section>
-    ));
+    return categories.map((category) => {
+      const Icon = iconFor(category.id);
+      return (
+        <section key={category.id} className={styles.category}>
+          <h3 className={styles.categoryName}>
+            <Icon className={styles.icon} aria-hidden="true" />
+            {category.name}
+          </h3>
+          <ul className={styles.lists}>
+            {category.lists.map((list) => (
+              <ListRow key={list.id} list={list} picker={picker} />
+            ))}
+          </ul>
+        </section>
+      );
+    });
   }
 
   // Searching drops the tree: a word found inside the items reads as "these

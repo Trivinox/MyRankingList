@@ -1,3 +1,4 @@
+import { XCircleIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { INACTIVITY_TIMEOUT_MS } from '../room/hostRoom.ts';
 import { usePlacement } from '../state/placementStore.ts';
@@ -44,7 +45,7 @@ export function RoomProgress() {
                 title={t('room.remove.label', { nickname: participant.nickname })}
                 onClick={() => removal.ask(participant.id)}
               >
-                <span aria-hidden="true">×</span>
+                <XCircleIcon aria-hidden="true" />
               </button>
             )}
           </li>

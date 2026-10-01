@@ -29,8 +29,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 0 0.75rem;
-  /* Placeholder until the design system lands. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .controls {
@@ -49,10 +48,9 @@
 
 .join {
   padding: 0.4rem 0.8rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -66,5 +64,13 @@
 @media (max-width: 767px) {
   .wide {
     padding-inline: 1rem;
+  }
+}
+
+/* The width at which the language selector drops its globe. Without it the
+   header is still a few pixels too wide for a 320px screen. */
+@media (max-width: 359px) {
+  .controls {
+    gap: 0.5rem;
   }
 }

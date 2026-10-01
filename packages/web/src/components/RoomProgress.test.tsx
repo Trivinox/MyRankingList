@@ -119,6 +119,18 @@ describe('RoomProgress', () => {
     expect(removeParticipant).toHaveBeenCalledWith('j');
   });
 
+  it('draws the cross as an icon its name speaks for', () => {
+    inRoom('sorting', 'host');
+    const i18n = renderStrip();
+
+    const cross = screen.getByRole('button', {
+      name: i18n.t('room.remove.label', { nickname: 'Juan' }),
+    });
+
+    expect(cross.textContent).toBe('');
+    expect(cross.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('leaves the focus on the strip once the only guest is removed', async () => {
     vi.mocked(removeParticipant).mockImplementation(() =>
       useRoom.getState().setParticipants([ana]),

@@ -568,8 +568,8 @@ export function SortingScreen() {
           {carried && !mobile ? (
             <motion.div
               className={styles.carried}
-              initial={{ scale: 1, boxShadow: '0 1px 3px rgba(120, 100, 190, 0)' }}
-              animate={{ scale: 1.04, boxShadow: '0 12px 28px rgba(120, 100, 190, 0.3)' }}
+              initial={{ scale: 1 }}
+              animate={{ scale: 1.04 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
             >
               <ItemCard item={carried} />

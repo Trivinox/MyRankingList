@@ -1,3 +1,4 @@
+import { SpeakerHighIcon, SpeakerSlashIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useSound } from '../state/soundStore.ts';
 import styles from './MuteButton.module.css';
@@ -8,6 +9,7 @@ import styles from './MuteButton.module.css';
 export function MuteButton() {
   const { t } = useTranslation();
   const { muted, toggleMuted } = useSound();
+  const Speaker = muted ? SpeakerSlashIcon : SpeakerHighIcon;
 
   return (
     <button
@@ -17,14 +19,7 @@ export function MuteButton() {
       aria-pressed={muted}
       onClick={toggleMuted}
     >
-      <svg className={styles.icon} viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 10a1.5 1.5 0 0 1 1.5-1.5H7l4.4-3.6c.7-.5 1.6 0 1.6.8v12.6c0 .8-.9 1.3-1.6.8L7 15.5H4.5A1.5 1.5 0 0 1 3 14z" />
-        {muted ? (
-          <path className={styles.stroke} d="m16.5 9.5 5 5m0-5-5 5" />
-        ) : (
-          <path className={styles.stroke} d="M16 9a4.2 4.2 0 0 1 0 6m2.8-8.8a8 8 0 0 1 0 11.6" />
-        )}
-      </svg>
+      <Speaker className={styles.icon} aria-hidden="true" />
     </button>
   );
 }

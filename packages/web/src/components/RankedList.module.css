@@ -6,9 +6,9 @@
 
 .gap {
   height: 0.9rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   /* Faint on its own; the drag preview is what lights it up. */
-  background: #eaeaf1;
+  background: var(--color-soft);
 }
 
 /* The button is the whole strip, so it carries no look of its own and the
@@ -29,14 +29,6 @@
   cursor: default;
 }
 
-/* Placeholder ring until the design system decides focus. */
-.gapButton:focus-visible,
-.rank:focus-visible,
-.move:focus-visible {
-  outline: 2px solid #6b6bd6;
-  outline-offset: 2px;
-}
-
 .slot {
   display: flex;
   align-items: center;
@@ -54,8 +46,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #6b6b76;
-  font-family: inherit;
+  color: var(--color-text-muted);
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -69,8 +60,8 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
-  border-radius: 10px;
-  background: #e6e6ee;
+  border-radius: var(--radius-card);
+  background: var(--color-soft);
 }
 
 .placed {
@@ -91,42 +82,43 @@
   touch-action: none;
 }
 
-/* A plain text button until the icon set lands. */
+/* The icon alone, in a circle. Its label names the item, which the card next
+   to it shows on screen. */
 .move {
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
   margin-right: 0.3rem;
-  padding: 0.3rem 0.55rem;
-  border: 1px solid #c9c9d6;
-  border-radius: 999px;
-  background: #fff;
-  color: #4a4a55;
-  font-family: inherit;
-  font-size: 0.8rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1.15rem;
   cursor: pointer;
 }
 
 .move[aria-pressed='true'] {
-  border-color: #6b6bd6;
-  background: #6b6bd6;
-  color: #fff;
+  background: var(--color-primary);
 }
 
 .lifted {
   opacity: 0.4;
 }
 
-/* Pastels are placeholders until the design system lands. Whatever replaces
-   them, these keep meaning insert, tie and refused, and nothing else on screen
+/* These three keep meaning insert, tie and refused, and nothing else on screen
    borrows them. Only a position is ever refused: every gap the list renders is
    one the resolver accepts. */
 .gap[data-outcome='insert'] {
-  background: #9fdcb8;
+  background: var(--color-insert);
 }
 
 .slot[data-outcome='tie'] .cards {
-  box-shadow: 0 0 0 3px #f0cf6e;
+  box-shadow: 0 0 0 3px var(--color-tie);
 }
 
 .slot[data-outcome='rejected'] .cards {
-  box-shadow: 0 0 0 3px #f4a59c;
+  box-shadow: 0 0 0 3px var(--color-refused);
 }

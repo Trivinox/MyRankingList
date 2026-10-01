@@ -1,4 +1,3 @@
-/* Literal values here too, waiting on the design system. */
 .screen {
   display: flex;
   flex-direction: column;
@@ -17,13 +16,13 @@
   align-items: baseline;
   gap: 0.4rem 0.75rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e6e6ee;
+  border-bottom: 1px solid var(--color-line);
   /* Painted, or the participants would show through it on their way up. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .codeLabel {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -34,17 +33,19 @@
 }
 
 .copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.35rem 0.8rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .copied {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -55,7 +56,7 @@
 
 .criterionLabel {
   display: block;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -81,7 +82,7 @@
 }
 
 .count {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
@@ -101,17 +102,17 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0.7rem;
-  border-radius: 8px;
-  background: #f3f3f7;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .remove {
   flex-shrink: 0;
   padding: 0.3rem 0.7rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: #fff;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -124,7 +125,7 @@
 
 .notice {
   margin: 0;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -132,25 +133,23 @@
 .secondary {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
-  border-radius: 6px;
-  font: inherit;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 
 .primary {
   border: none;
-  background: #33333f;
-  color: #fff;
+  background: var(--color-primary);
 }
 
 .primary:disabled {
-  background: #c9c9d1;
+  opacity: 0.5;
   cursor: default;
 }
 
 .secondary {
-  border: 1px solid #b8b8c2;
-  background: none;
+  border: none;
+  background: var(--color-soft);
 }
 
 .closed {

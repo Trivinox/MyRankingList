@@ -1,4 +1,3 @@
-/* Spacing and colours are literals until the design system lands. */
 .form {
   display: flex;
   flex-direction: column;
@@ -16,14 +15,13 @@
   /* Clears the sticky header when the focus scrolls the field into view. */
   scroll-margin-top: calc(var(--header-height) + 2.5rem);
   padding: 0.5rem 0.65rem;
-  border: 1px solid #d5d5de;
-  border-radius: 6px;
-  font: inherit;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-small);
 }
 
 .label {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .itemsHeader {
@@ -38,21 +36,15 @@
 }
 
 .count {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
 .warning {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: #f2c14e;
-  color: #4a3a05;
-  font-size: 0.8rem;
-  font-weight: 700;
+  align-self: center;
+  color: var(--color-warning);
+  font-size: 1.3rem;
   cursor: help;
 }
 
@@ -74,9 +66,8 @@
 
 .row input {
   padding: 0.4rem 0.55rem;
-  border: 1px solid #d5d5de;
-  border-radius: 6px;
-  font: inherit;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-small);
 }
 
 .text {
@@ -89,22 +80,35 @@
 }
 
 .remove {
+  display: grid;
+  place-items: center;
+  padding: 0.2rem;
   border: none;
   background: none;
-  color: #8a8a95;
-  font-size: 1.1rem;
-  line-height: 1;
+  color: var(--color-text-muted);
+  font-size: 1.4rem;
   cursor: pointer;
 }
 
 .remove:hover {
-  color: #b3261e;
+  color: var(--color-danger);
 }
 
 .flag {
   flex-basis: 100%;
-  color: #8a5b00;
   font-size: 0.78rem;
+}
+
+/* The colour goes on a mark beside the notice. Text in it would be too faint
+   to read. */
+.flag::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-warning);
 }
 
 .rowActions {
@@ -115,27 +119,25 @@
 
 .add {
   padding: 0.4rem 0.8rem;
-  border: 1px dashed #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .browse {
   padding: 0.4rem 0.8rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .notice {
   margin: 0;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -154,28 +156,25 @@
 .continue {
   padding: 0.55rem 1.4rem;
   border: none;
-  border-radius: 6px;
-  background: #33333f;
-  color: #fff;
-  font: inherit;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
   cursor: pointer;
 }
 
 .continue:disabled {
-  background: #c9c9d1;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .room {
   padding: 0.55rem 1.4rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   cursor: pointer;
 }
 
 .room:disabled {
-  color: #9a9aa5;
+  opacity: 0.5;
   cursor: not-allowed;
 }

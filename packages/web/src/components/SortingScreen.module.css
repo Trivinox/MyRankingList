@@ -17,7 +17,7 @@
   gap: 0.6rem;
   padding-bottom: 0.75rem;
   /* Matches the header: content has to be hidden as it passes underneath. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .question {
@@ -27,7 +27,7 @@
 
 .reconnecting {
   margin: 0;
-  color: #6a5ab8;
+  color: var(--color-primary-strong);
   font-size: 0.9rem;
 }
 
@@ -55,7 +55,7 @@
    measures it because a long question wraps; the fallback fits one line. */
 .pool {
   position: sticky;
-  top: calc(var(--header-height) + var(--headline-height, 5.3rem) + 0.6rem);
+  top: calc(var(--header-height) + var(--headline-height, 5.35rem) + 0.6rem);
 }
 
 .list {
@@ -70,7 +70,8 @@
   width: max-content;
   max-width: 20rem;
   /* The card's own, so the lifted shadow follows its corners. */
-  border-radius: 10px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lifted);
 }
 
 /* The breakpoint has to match useIsMobile.ts. On a phone the hierarchy flips:
@@ -85,9 +86,9 @@
   /* Tucked a little into the headline's bottom padding: a seam there would
      show the list scrolling past between the two. */
   .pool {
-    top: calc(var(--header-height) + var(--headline-height, 5.3rem) - 0.15rem);
+    top: calc(var(--header-height) + var(--headline-height, 5.35rem) - 0.15rem);
     z-index: 1;
     /* Hides the list as it scrolls up behind the strip. */
-    background: #fff;
+    background: var(--color-background);
   }
 }

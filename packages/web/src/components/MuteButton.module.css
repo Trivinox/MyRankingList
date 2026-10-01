@@ -1,33 +1,21 @@
-/* Sized and bordered like the language pills beside it. Palette placeholders
-   until the design system lands. */
+/* Sized and coloured like the language pills beside it. */
 .button {
   display: grid;
   place-items: center;
   width: 2rem;
   height: 2rem;
   padding: 0;
-  border: 1px solid #d5d5de;
-  border-radius: 999px;
-  background: none;
-  color: #33333f;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .button[aria-pressed='true'] {
-  border-color: #33333f;
-  background: #33333f;
-  color: #fff;
+  background: var(--color-primary);
 }
 
 .icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  fill: currentColor;
-}
-
-.stroke {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
+  font-size: 1.2rem;
 }

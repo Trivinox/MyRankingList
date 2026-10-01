@@ -8,10 +8,10 @@ interface Dot {
   color: string;
 }
 
-// Placeholder pastels: the lilac, pink and peach of the palette for a
-// placement, and the yellow the tie preview already uses for a tie.
-const palette = ['#b7a8e8', '#f6b8c4', '#ffd6a5'];
-const tieYellow = '#f0cf6e';
+// The palette's three pastels for a placement, and the yellow that marks a tie
+// in the list for a tie.
+const palette = ['var(--color-primary)', 'var(--color-secondary)', 'var(--color-accent)'];
+const tieYellow = 'var(--color-tie)';
 
 // Wider than tall, like the row it bursts out of.
 const ring: Dot[] = Array.from({ length: 10 }, (_, i) => {

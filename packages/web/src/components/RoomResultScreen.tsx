@@ -14,6 +14,7 @@ import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { isOver, useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
+import { confettiColors } from '../styles/confetti.ts';
 import { AffinityMatrix } from './AffinityMatrix.tsx';
 import { AffinitySummary } from './AffinitySummary.tsx';
 import { CloseRoom } from './CloseRoom.tsx';
@@ -23,9 +24,6 @@ import { ParticipantAvatar } from './ParticipantAvatar.tsx';
 import { ResultList } from './ResultScreen.tsx';
 import { formatCoefficient, useListName } from './useListName.ts';
 import styles from './RoomResultScreen.module.css';
-
-// The same pastels as the solo result's burst.
-const colors = ['#b7a8e8', '#f6b8c4', '#ffd6a5'];
 
 // Enough to read at a glance. The rest of the order is in the comparison.
 const DIVISIVE_SHOWN = 3;
@@ -70,7 +68,7 @@ export function RoomResultScreen() {
       particleCount: 140,
       spread: 90,
       origin: { y: 0.6 },
-      colors,
+      colors: confettiColors,
       disableForReducedMotion: true,
     });
     return () => {

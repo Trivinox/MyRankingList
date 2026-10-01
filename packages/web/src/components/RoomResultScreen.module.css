@@ -1,5 +1,4 @@
-/* Colours and spacing are literals until the design system lands. The title
-   and the question match the solo result. */
+/* The title and the question match the solo result. */
 .screen {
   display: flex;
   flex-direction: column;
@@ -9,7 +8,7 @@
 
 .title {
   margin: 0 0 -0.6rem;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -25,8 +24,8 @@
 .over {
   margin: 0;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: #f3f3f7;
+  border-radius: var(--radius-card);
+  background: var(--color-soft);
 }
 
 .sections {
@@ -42,7 +41,7 @@
 
 .note {
   margin: 0 0 0.6rem;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -62,7 +61,7 @@
 }
 
 .spread {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -74,7 +73,7 @@
 }
 
 .pickerLabel {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -82,10 +81,9 @@
   align-self: flex-start;
   max-width: 100%;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: #fff;
-  font: inherit;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
 }
 
 .sideBySide {
@@ -97,14 +95,14 @@
 .sideBySide th,
 .sideBySide td {
   padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid #e6e6ee;
+  border-bottom: 1px solid var(--color-line);
   text-align: left;
 }
 
 .sideBySide thead th {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sideBySide tbody th {
@@ -123,7 +121,7 @@
   gap: 0.6rem;
   margin-top: 0.75rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #e6e6ee;
+  border-top: 1px solid var(--color-line);
 }
 
 .again .heading {
@@ -149,9 +147,8 @@
 
 .next input {
   padding: 0.5rem 0.65rem;
-  border: 1px solid #d5d5de;
-  border-radius: 6px;
-  font: inherit;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-small);
 }
 
 .againActions {
@@ -163,15 +160,13 @@
 .same {
   padding: 0.55rem 1.4rem;
   border: none;
-  border-radius: 6px;
-  background: #33333f;
-  color: #fff;
-  font: inherit;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
   cursor: pointer;
 }
 
 .same:disabled {
-  background: #c9c9d1;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -182,16 +177,8 @@
 .leave {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
-  border: 1px solid #b8b8c2;
-  border-radius: 6px;
-  background: none;
-  font: inherit;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-soft);
   cursor: pointer;
-}
-
-.picker:focus-visible,
-.same:focus-visible,
-.leave:focus-visible {
-  outline: 2px solid #6b6bd6;
-  outline-offset: 2px;
 }

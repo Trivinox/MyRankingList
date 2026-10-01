@@ -221,6 +221,17 @@ describe('the move button', () => {
     }
   });
 
+  // There is no word on it any more, so the label is all it says.
+  it('shows only an icon, and gives a pointer its name as a tooltip', () => {
+    renderList();
+
+    const button = moveButton('Sushi');
+
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(button).toHaveAttribute('title', 'Move Sushi');
+  });
+
   // The card it belongs to is also the row a tap ties the pool item with, so
   // the click has to stop at the button.
   it('picks its own card up without also selecting the row', async () => {

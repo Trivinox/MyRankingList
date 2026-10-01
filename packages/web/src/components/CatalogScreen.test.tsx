@@ -91,22 +91,22 @@ describe('CatalogScreen', () => {
     }
   });
 
+  // Found by its exact name, so the icon has added nothing to what is read.
   it('puts an icon next to each category name and keeps it out of the name', () => {
     renderCatalog();
 
     for (const category of english) {
       const heading = screen.getByRole('heading', { name: category.name });
-      const icon = within(heading).getByText(iconFor(category.id));
 
-      expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(heading.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     }
   });
 
-  // Where a category added later, before anyone draws it an icon, ends up.
+  // Where a category added later, before anyone picks it an icon, ends up.
   it('has an icon left for a category nobody mapped', () => {
     const icon = iconFor('board-games');
 
-    expect(icon).not.toBe('');
+    expect(icon).toBeDefined();
     expect(icon).not.toBe(iconFor(english[0].id));
   });
 

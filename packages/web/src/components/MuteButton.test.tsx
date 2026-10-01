@@ -38,6 +38,19 @@ describe('MuteButton', () => {
     expect(useSound.getState().muted).toBe(false);
   });
 
+  it('shows a different speaker once muted, out of reach of screen readers', async () => {
+    renderButton();
+
+    const button = screen.getByRole('button', { name: 'Mute sounds' });
+    const playing = button.innerHTML;
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+
+    await userEvent.click(button);
+
+    expect(button.innerHTML).not.toBe(playing);
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('keeps its name and its state across a language switch', async () => {
     const i18n = renderButton();
 

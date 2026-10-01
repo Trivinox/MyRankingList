@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
+import { WarningIcon, XCircleIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { findDuplicates } from '../core/duplicates.ts';
 import { isAllowedImageUrl } from '../core/images.ts';
@@ -106,7 +107,7 @@ export function ListInputForm() {
             title={t('form.longListWarning')}
             className={styles.warning}
           >
-            !
+            <WarningIcon aria-hidden="true" />
           </span>
         )}
       </div>
@@ -148,7 +149,7 @@ export function ListInputForm() {
                 aria-label={t('form.removeItem', { number })}
                 onClick={() => removeItem(item.id)}
               >
-                &times;
+                <XCircleIcon aria-hidden="true" />
               </button>
               {duplicated && (
                 <span id={duplicateNoticeId} className={styles.flag}>

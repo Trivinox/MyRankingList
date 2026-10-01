@@ -24,6 +24,14 @@ describe('LanguageSelector', () => {
     expect(screen.getByRole('button', { name: 'Spanish' })).toHaveTextContent('ES');
   });
 
+  it('sets a globe beside the languages and leaves it out of what is read', () => {
+    renderSelector();
+
+    const group = screen.getByRole('group', { name: 'Language' });
+
+    expect(group.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('marks English as the active language on first render', () => {
     renderSelector();
 
