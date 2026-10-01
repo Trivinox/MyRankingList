@@ -158,9 +158,11 @@ test('the creator starts the room and everyone sees how far along the others are
   await late.goto(`/?room=${code}`);
   await late.getByLabel('Your nickname').fill('Lucía');
   await late.getByRole('button', { name: 'Join', exact: true }).click();
-  await expect(late.getByRole('alert')).toHaveText(
-    'That room has already started sorting. Nobody else can join it now.',
-  );
+  await expect(
+    late.getByRole('alertdialog', {
+      name: 'That room has already started sorting. Nobody else can join it now.',
+    }),
+  ).toBeVisible();
 
   for (const page of [juan, late]) {
     await expectNoViolations(page);
@@ -197,7 +199,9 @@ test('the creator removes someone mid-sort, who is told so and drops out of the 
   }
   await ana.getByRole('button', { name: 'Yes, remove' }).click();
 
-  await expect(juan.getByRole('alert')).toHaveText('The creator removed you from the room.');
+  await expect(
+    juan.getByRole('alertdialog', { name: 'The creator removed you from the room.' }),
+  ).toBeVisible();
   for (const page of [ana, lucia]) {
     await expect(page.getByRole('img', { name: /^Juan,/ })).toHaveCount(0);
     await expect(page.getByRole('img', { name: 'Lucía, 1 of 3 placed' })).toBeVisible();
@@ -605,7 +609,9 @@ test('the creator closes the room mid-sort and the guest is told so at once', as
   await ana.getByRole('button', { name: 'Close it' }).click();
 
   await expect(ana.getByLabel('What are you comparing them by?')).toBeVisible();
-  await expect(juan.getByRole('alert')).toHaveText('The creator closed the room.');
+  await expect(
+    juan.getByRole('alertdialog', { name: 'The creator closed the room.' }),
+  ).toBeVisible();
   await expectNoViolations(juan);
   await juan.context().close();
 });
@@ -628,7 +634,9 @@ test('the creator closes their tab mid-sort and the guest is told so at once', a
 
   await ana.close();
 
-  await expect(juan.getByRole('alert')).toHaveText('The creator closed the room.');
+  await expect(
+    juan.getByRole('alertdialog', { name: 'The creator closed the room.' }),
+  ).toBeVisible();
   await expect(juan.getByText('Reconnecting... You can keep sorting.')).toHaveCount(0);
   await juan.getByRole('button', { name: 'Back to my list' }).click();
   await expect(juan).toHaveURL('/');

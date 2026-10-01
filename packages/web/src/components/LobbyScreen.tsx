@@ -9,6 +9,7 @@ import { useScreen } from '../state/screenStore.ts';
 import { Announcer } from './Announcer.tsx';
 import { CloseRoom } from './CloseRoom.tsx';
 import { ParticipantAvatar } from './ParticipantAvatar.tsx';
+import { Popup } from './Popup.tsx';
 import { RemovalPrompt } from './RemovalPrompt.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import { useRemoval } from './useRemoval.ts';
@@ -65,15 +66,16 @@ export function LobbyScreen() {
   if (isOver(status)) {
     // The effect above is on its way to the result, which says it there.
     if (result) return null;
+    // Nothing is left behind it, so closing it in any way is going back.
+    // Being put out, or a room ending without a word from the creator, is a
+    // warning. The rest is how a room ordinarily comes to an end.
     return (
-      <div className={styles.screen}>
-        <p className={styles.closed} role="alert">
-          {t(`room.lobby.${status}`)}
-        </p>
-        <button type="button" className={styles.secondary} onClick={backToForm}>
-          {t('room.back')}
-        </button>
-      </div>
+      <Popup
+        severity={status === 'removed' || status === 'ended' ? 'warning' : 'info'}
+        message={t(`room.lobby.${status}`)}
+        action={t('room.back')}
+        onClose={backToForm}
+      />
     );
   }
 

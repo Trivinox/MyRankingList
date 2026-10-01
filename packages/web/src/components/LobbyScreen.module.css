@@ -151,8 +151,3 @@
   border: none;
   background: var(--color-soft);
 }
-
-.closed {
-  margin: 0;
-  font-size: 1.1rem;
-}

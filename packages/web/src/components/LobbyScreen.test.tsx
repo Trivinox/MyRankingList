@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n/index.ts';
@@ -69,6 +69,10 @@ function inRoom(role: Role, you: string, participants = [ana, juan]) {
 
 const row = (nickname: string) => screen.getByText(nickname, { exact: true }).closest('li')!;
 const announcer = () => document.querySelector('[data-announcer]')!;
+
+const popup = (message: string) => screen.getByRole('alertdialog', { name: message });
+// The class decides both the colour and the shape of the icon.
+const severityOf = (dialog: HTMLElement) => dialog.className.match(/info|warning|error/)?.[0];
 
 beforeEach(() => {
   vi.mocked(leaveRoom).mockReset();
@@ -174,7 +178,8 @@ describe('LobbyScreen', () => {
 
       act(() => useRoom.getState().close());
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.closed);
+      expect(severityOf(popup(en.room.lobby.closed))).toBe('info');
+      expect(screen.getByRole('button', { name: en.room.back })).toHaveFocus();
       await userEvent.click(screen.getByRole('button', { name: en.room.back }));
       expect(leaveRoom).toHaveBeenCalled();
       expect(window.location.search).toBe('');
@@ -188,8 +193,10 @@ describe('LobbyScreen', () => {
 
       act(() => useRoom.getState().end());
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.ended);
-      expect(screen.getByRole('alert')).not.toHaveTextContent(en.room.lobby.closed);
+      expect(severityOf(popup(en.room.lobby.ended))).toBe('warning');
+      expect(
+        screen.queryByRole('alertdialog', { name: en.room.lobby.closed }),
+      ).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: en.room.back }));
       expect(leaveRoom).toHaveBeenCalled();
       expect(window.location.search).toBe('');
@@ -203,8 +210,32 @@ describe('LobbyScreen', () => {
 
       act(() => useRoom.getState().remove());
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.removed);
+      expect(severityOf(popup(en.room.lobby.removed))).toBe('warning');
       await userEvent.click(screen.getByRole('button', { name: en.room.back }));
+      expect(leaveRoom).toHaveBeenCalled();
+      expect(window.location.search).toBe('');
+      expect(useScreen.getState().screen).toBe('list-input');
+    });
+
+    it('is told another tab took the place over', () => {
+      inRoom('guest', 'j');
+      renderLobby();
+
+      act(() => useRoom.getState().replace());
+
+      expect(severityOf(popup(en.room.lobby.replaced))).toBe('info');
+    });
+
+    // There is nothing left of the room to stay on.
+    it('goes back to the form on Escape too', () => {
+      window.history.replaceState(null, '', '/?room=AB3K');
+      inRoom('guest', 'j');
+      renderLobby();
+      act(() => useRoom.getState().close());
+
+      // What Chrome sends the dialog for Escape.
+      fireEvent(popup(en.room.lobby.closed), new Event('cancel', { cancelable: true }));
+
       expect(leaveRoom).toHaveBeenCalled();
       expect(window.location.search).toBe('');
       expect(useScreen.getState().screen).toBe('list-input');
@@ -235,7 +266,7 @@ describe('LobbyScreen', () => {
 
       act(() => useRoom.getState().miss());
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.lobby.missed);
+      expect(severityOf(popup(en.room.lobby.missed))).toBe('info');
       expect(screen.getByRole('button', { name: en.room.back })).toBeInTheDocument();
     });
 
@@ -275,7 +306,7 @@ describe('LobbyScreen', () => {
         act(() => useRoom.getState().close());
 
         expect(useScreen.getState().screen).toBe('room-result');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       });
     });
   });
