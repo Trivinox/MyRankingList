@@ -43,11 +43,13 @@ import { CloseRoom } from './CloseRoom.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import { useIsMobile } from './useIsMobile.ts';
 import { ItemCard } from './ItemCard.tsx';
+import { Loader } from './Loader.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
 import type { DropPreview, Feedback } from './RankedList.tsx';
 import { RoomProgress } from './RoomProgress.tsx';
+import { ScrollEdges } from './ScrollEdges.tsx';
 import styles from './SortingScreen.module.css';
 
 // dnd-kit's stock instructions explain a keyboard drag, and only the pointer
@@ -70,6 +72,12 @@ const noAnnouncements: Announcements = {
 // Carried at that size the card covered the very target whose preview it was
 // meant to show, so the sizing is dropped and the card inside decides.
 const unsized = { width: 'auto', height: 'auto' };
+
+// dnd-kit scrolls faster the closer the pointer gets to the edge of the window.
+// Left at its own pace, ten pixels every 5ms there, a 30-item list went by at
+// up to 29 rows a second, far too fast to stop where the item belongs. This
+// is about five rows a second at the very edge, and slower further in.
+const autoScroll = { acceleration: 2.7, interval: 10 };
 
 const soundOf: Record<DropOutcome, SoundName> = {
   insert: 'drop',
@@ -504,7 +512,12 @@ export function SortingScreen() {
         {/* Always in the tree, so a screen reader hears it arrive and go.
             Sorting goes on underneath: the list is this tab's own. */}
         <p className={styles.reconnecting} role="status">
-          {reconnecting && t('room.reconnecting')}
+          {reconnecting && (
+            <>
+              <Loader />
+              {t('room.reconnecting')}
+            </>
+          )}
         </p>
       </div>
 
@@ -515,6 +528,7 @@ export function SortingScreen() {
         // The gaps are thin strips between the cards, so the drop has to follow
         // the cursor rather than snap to the nearest centre.
         collisionDetection={pointerWithin}
+        autoScroll={autoScroll}
         accessibility={{
           announcements: noAnnouncements,
           screenReaderInstructions: noInstructions,
@@ -577,6 +591,8 @@ export function SortingScreen() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {dragged && <ScrollEdges />}
 
       {/* Last on the page, out of the way of the sorting: closing is rare,
           and it ends the room for everyone. */}

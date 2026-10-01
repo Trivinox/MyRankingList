@@ -6,6 +6,7 @@ import type { CatalogCategory, PresetList } from '../catalog/types.ts';
 import { normalizeItemText } from '../core/duplicates.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { useScreen } from '../state/screenStore.ts';
+import { EmptyState } from './EmptyState.tsx';
 import styles from './CatalogScreen.module.css';
 
 // The duplicate check keeps accents apart on purpose, since two spellings are
@@ -117,7 +118,7 @@ function Listings({ categories, query, picker }: ListingsProps) {
   // entries builds nothing, and a bare search box over an empty page reads as
   // a catalog that broke rather than as one with no lists.
   if (categories.length === 0) {
-    return <p className={styles.empty}>{t('catalog.empty')}</p>;
+    return <EmptyState message={t('catalog.empty')} />;
   }
 
   if (query === '') {
@@ -148,7 +149,7 @@ function Listings({ categories, query, picker }: ListingsProps) {
   );
 
   if (found.length === 0) {
-    return <p className={styles.empty}>{t('catalog.noResults')}</p>;
+    return <EmptyState message={t('catalog.noResults')} />;
   }
 
   return (

@@ -26,6 +26,9 @@
 }
 
 .reconnecting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
   color: var(--color-primary-strong);
   font-size: 0.9rem;
@@ -58,8 +61,10 @@
   top: calc(var(--header-height) + var(--headline-height, 5.35rem) + 0.6rem);
 }
 
+/* Named for the auto-scroll arrows, which centre on it. */
 .list {
   padding-bottom: 30vh;
+  anchor-name: --sorting-list;
 }
 
 /* The item in the air, at the size of the row it is about to become. It takes

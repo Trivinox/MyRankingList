@@ -1,0 +1,70 @@
+/* Sized in em, so it matches whatever line of text it sits beside. */
+.loader {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: middle;
+}
+
+/* Three dots spaced evenly round a circle, each lighting up a third of a turn
+   after the one before. */
+.dot {
+  position: absolute;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dot:nth-child(1) {
+  top: 1%;
+  left: 33%;
+  background: var(--color-primary);
+}
+
+.dot:nth-child(2) {
+  top: 49%;
+  left: 61%;
+  background: var(--color-secondary);
+  animation-delay: 0.4s;
+}
+
+.dot:nth-child(3) {
+  top: 49%;
+  left: 5%;
+  background: var(--color-accent);
+  animation-delay: 0.8s;
+}
+
+@keyframes pulse {
+  0%,
+  66%,
+  100% {
+    scale: 0.65;
+    opacity: 0.6;
+  }
+  33% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+/* A fade moves nothing, so it is what stays. */
+@keyframes fade {
+  0%,
+  66%,
+  100% {
+    opacity: 0.5;
+  }
+  33% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation-name: fade;
+  }
+}

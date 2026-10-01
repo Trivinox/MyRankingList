@@ -39,11 +39,8 @@
   font-size: 0.8rem;
 }
 
-/* As on the form, the colour goes on a mark beside the words. The error line
-   is always there, empty, for screen readers, so it only gets one with
-   something in it. */
-.flag::before,
-.error:not(:empty)::before {
+/* As on the form, the colour goes on a mark beside the words. */
+.flag::before {
   content: '';
   display: inline-block;
   width: 0.5rem;
@@ -81,22 +78,11 @@
   background: var(--color-soft);
 }
 
-.messages {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.status,
-.error {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
 .status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
   color: var(--color-text-muted);
-}
-
-.error:not(:empty)::before {
-  background: var(--color-danger);
+  font-size: 0.9rem;
 }

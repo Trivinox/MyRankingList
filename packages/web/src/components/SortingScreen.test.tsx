@@ -14,6 +14,7 @@ import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { SortingScreen } from './SortingScreen.tsx';
+import edges from './ScrollEdges.module.css';
 
 // jsdom gives dnd-kit neither layout nor pointer events, so no real drag ever
 // starts here. The context is still the real one, wrapped only to keep hold of
@@ -1557,6 +1558,94 @@ describe('what the list shows once something is put down', () => {
   });
 });
 
+describe('the arrows at the edges of the window', () => {
+  const page = document.documentElement;
+
+  beforeEach(() => {
+    usePlacement.getState().start(items, 'Which one do you like more?');
+  });
+
+  afterEach(() => {
+    // Back to what jsdom gives every other test: nothing laid out, nothing to
+    // scroll.
+    delete (page as { scrollHeight?: number }).scrollHeight;
+    page.scrollTop = 0;
+  });
+
+  // jsdom lays nothing out, so the page is given the height of a list longer
+  // than the window, and scrolled by hand.
+  const pageOf = (height: number) =>
+    Object.defineProperty(page, 'scrollHeight', { configurable: true, value: height });
+  const scrollTo = (top: number) => {
+    page.scrollTop = top;
+    act(() => window.dispatchEvent(new Event('scroll')));
+  };
+  const bottom = () => 3000 - window.innerHeight;
+
+  const arrows = () => ({
+    up: document.querySelector(`.${edges.up}`) !== null,
+    down: document.querySelector(`.${edges.down}`) !== null,
+  });
+
+  it('shows none until something is picked up, and none once it lands', () => {
+    pageOf(3000);
+    page.scrollTop = 600;
+    renderScreen();
+    expect(arrows()).toEqual({ up: false, down: false });
+
+    pickUp('pool');
+    expect(arrows()).toEqual({ up: true, down: true });
+
+    letGo('pool', 'gap:0');
+    expect(arrows()).toEqual({ up: false, down: false });
+  });
+
+  it('marks only the edge the page can still scroll towards', () => {
+    pageOf(3000);
+    renderScreen();
+    pickUp('pool');
+    expect(arrows()).toEqual({ up: false, down: true });
+
+    scrollTo(bottom());
+    expect(arrows()).toEqual({ up: true, down: false });
+
+    scrollTo(bottom() - 1);
+    expect(arrows()).toEqual({ up: true, down: true });
+  });
+
+  it('shows none for a list that fits the window', () => {
+    pageOf(window.innerHeight);
+    renderScreen();
+
+    pickUp('pool');
+
+    expect(arrows()).toEqual({ up: false, down: false });
+  });
+
+  it('keeps them from screen readers', () => {
+    pageOf(3000);
+    page.scrollTop = 600;
+    renderScreen();
+
+    pickUp('pool');
+
+    for (const arrow of document.querySelectorAll(`.${edges.arrow}`)) {
+      expect(arrow).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  it('takes them away when the drag is cancelled', () => {
+    pageOf(3000);
+    page.scrollTop = 600;
+    renderScreen();
+
+    pickUp('pool');
+    cancel('pool');
+
+    expect(arrows()).toEqual({ up: false, down: false });
+  });
+});
+
 describe('what it sounds like', () => {
   beforeEach(() => {
     usePlacement.getState().start(items, 'Which one do you like more?');
@@ -2033,6 +2122,19 @@ describe('in a room', () => {
 
     act(() => useRoom.setState({ status: 'sorting' }));
     expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
+  });
+
+  it('shows the loader beside the reconnecting line, and takes it away with the line', () => {
+    renderScreen();
+    const loader = () => document.querySelector('[class*="loader"]');
+    expect(loader()).toBeNull();
+
+    act(() => useRoom.getState().reconnect());
+    expect(screen.getByText(en.room.reconnecting)).toContainElement(loader() as HTMLElement);
+    expect(loader()).toHaveAttribute('aria-hidden', 'true');
+
+    act(() => useRoom.setState({ status: 'sorting' }));
+    expect(loader()).toBeNull();
   });
 
   it('offers only the creator a way to close the room', () => {

@@ -146,6 +146,7 @@ export const en = {
     started: 'That room has already started sorting. Nobody else can join it now.',
     unreachable: 'The room could not be reached. Check your connection and try again.',
     notOpened: 'The room could not be opened. Check your connection and try again.',
+    dismiss: 'OK',
     placed: '{{nickname}}, {{placed}} of {{total}} placed',
     placedAway: '{{nickname}}, away, {{placed}} of {{total}} placed',
     finished: '{{nickname}}, finished',

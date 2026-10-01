@@ -70,6 +70,10 @@ const asFile = (list: { items: { text: string; imageUrl?: string }[] }) =>
 const typeSearch = (text: string) =>
   userEvent.type(screen.getByRole('searchbox', { name: en.catalog.searchLabel }), text);
 
+// The drawing that goes with an empty state, found next to its message.
+const drawingBeside = (message: string) =>
+  screen.getByText(message).parentElement?.querySelector('svg');
+
 beforeEach(() => {
   useScreen.setState({ screen: 'catalog' });
   useListDraft.setState({ items: blankRows(3), criterion: '' });
@@ -169,6 +173,7 @@ describe('CatalogScreen', () => {
     await typeSearch('qwertyuiop');
 
     expect(screen.getByText(en.catalog.noResults)).toBeInTheDocument();
+    expect(drawingBeside(en.catalog.noResults)).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
@@ -197,6 +202,7 @@ describe('CatalogScreen', () => {
     renderCatalog();
 
     expect(screen.getByText(en.catalog.empty)).toBeInTheDocument();
+    expect(drawingBeside(en.catalog.empty)).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
