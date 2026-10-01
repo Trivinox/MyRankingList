@@ -1,0 +1,25 @@
+/* At the very edge of the window, where the page scrolls fastest, and over
+   the middle of the list rather than of the window: on the sorting screen
+   the middle of the window falls near the edge of the pool. Above the sticky
+   header, which the top one sits on. */
+.arrow {
+  position: fixed;
+  z-index: 3;
+  position-anchor: --sorting-list;
+  left: anchor(center);
+  translate: -50% 0;
+  font-size: 2.25rem;
+  border-radius: 50%;
+  /* Shows through the caret cut out of the icon. */
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-primary-strong);
+}
+
+.up {
+  top: 0.5rem;
+}
+
+.down {
+  bottom: 0.5rem;
+}
