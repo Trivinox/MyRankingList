@@ -35,7 +35,7 @@
 .copy {
   padding: 0.35rem 0.8rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
@@ -99,15 +99,16 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0.7rem;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .remove {
   flex-shrink: 0;
   padding: 0.3rem 0.7rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   font-size: 0.85rem;
   cursor: pointer;
@@ -129,7 +130,7 @@
 .secondary {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 

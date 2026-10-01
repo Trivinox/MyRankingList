@@ -8,7 +8,7 @@
 .pair {
   flex: 1 1 12rem;
   padding: 0.6rem 0.8rem;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--color-soft);
 }
 

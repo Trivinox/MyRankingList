@@ -24,7 +24,7 @@
 .over {
   margin: 0;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--color-soft);
 }
 
@@ -82,7 +82,7 @@
   max-width: 100%;
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--color-line);
-  border-radius: 6px;
+  border-radius: var(--radius-small);
   background: var(--color-surface);
 }
 
@@ -148,7 +148,7 @@
 .next input {
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--color-line);
-  border-radius: 6px;
+  border-radius: var(--radius-small);
 }
 
 .againActions {
@@ -160,7 +160,7 @@
 .same {
   padding: 0.55rem 1.4rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-primary);
   cursor: pointer;
 }
@@ -178,7 +178,7 @@
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   cursor: pointer;
 }

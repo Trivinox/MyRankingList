@@ -21,7 +21,7 @@
   right: 0;
   height: 0.5rem;
   transform: translateY(-50%);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   overflow: hidden;
 }

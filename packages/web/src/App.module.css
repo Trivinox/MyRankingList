@@ -49,7 +49,7 @@
 .join {
   padding: 0.4rem 0.8rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;

@@ -6,7 +6,7 @@
 .option {
   padding: 0.2rem 0.65rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   font-size: 0.8rem;
   letter-spacing: 0.04em;

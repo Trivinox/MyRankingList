@@ -1,7 +1,7 @@
 .scroller {
   max-width: 100%;
   overflow-x: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
 }
 
 .matrix {
@@ -37,7 +37,7 @@
 .self {
   min-width: 3.2rem;
   height: 2.4rem;
-  border-radius: 6px;
+  border-radius: var(--radius-small);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }

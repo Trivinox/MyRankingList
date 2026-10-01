@@ -6,7 +6,7 @@
   height: 2rem;
   padding: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   color: var(--color-text);
   cursor: pointer;

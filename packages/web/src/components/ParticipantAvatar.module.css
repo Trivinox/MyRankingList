@@ -90,7 +90,7 @@
 
 .tag {
   padding: 0.05rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-soft);
   color: var(--color-text);
   font-size: 0.75rem;

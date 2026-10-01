@@ -18,7 +18,7 @@
 .confirm {
   align-self: flex-start;
   padding: 0.55rem 1.4rem;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 

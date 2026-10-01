@@ -80,7 +80,7 @@
 .finish {
   padding: 0.4rem 1rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-danger);
   cursor: pointer;
 }

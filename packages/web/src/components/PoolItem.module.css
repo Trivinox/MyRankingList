@@ -6,7 +6,7 @@
   gap: 1rem;
   min-height: 60vh;
   padding: 2rem 1.5rem;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: var(--color-soft);
 }
 
@@ -22,7 +22,7 @@
 .finish {
   padding: 0.7rem 1.6rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-primary);
   font-size: 1.1rem;
   cursor: pointer;
@@ -56,7 +56,7 @@
 .keep {
   padding: 0.7rem 1.6rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   /* The area itself is the soft fill, which would swallow a secondary
      button's own. */
   background: var(--color-surface);
