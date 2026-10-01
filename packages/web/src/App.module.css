@@ -66,3 +66,11 @@
     padding-inline: 1rem;
   }
 }
+
+/* The width at which the language selector drops its globe. Without it the
+   header is still a few pixels too wide for a 320px screen. */
+@media (max-width: 359px) {
+  .controls {
+    gap: 0.5rem;
+  }
+}
