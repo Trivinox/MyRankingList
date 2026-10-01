@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { CheckCircleIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Participant } from '../room/hostRoom.ts';
 import styles from './ParticipantAvatar.module.css';
@@ -81,11 +82,7 @@ export function ParticipantAvatar({
           />
         </svg>
         <span className={styles.initial}>{initial}</span>
-        {finished && (
-          <span className={styles.check} aria-hidden="true">
-            ✓
-          </span>
-        )}
+        {finished && <CheckCircleIcon className={styles.check} aria-hidden="true" />}
       </span>
       <span className={styles.nickname} aria-hidden={labelled || undefined}>
         {nickname}

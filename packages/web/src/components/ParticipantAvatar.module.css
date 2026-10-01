@@ -58,18 +58,14 @@
 
 .check {
   position: absolute;
-  right: -0.2rem;
-  bottom: -0.2rem;
-  display: grid;
-  place-items: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 2px solid var(--color-surface);
+  right: -0.25rem;
+  bottom: -0.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
-  background: var(--color-primary);
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
+  /* Shows through the tick cut out of the icon, and rims it off the ring. */
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
 }
 
 /* Someone whose connection dropped mid-sort. Their count is kept, so the ring

@@ -82,16 +82,21 @@
   touch-action: none;
 }
 
-/* A plain text button until the icon set lands. */
+/* The icon alone, in a circle. Its label names the item, which the card next
+   to it shows on screen. */
 .move {
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
   margin-right: 0.3rem;
-  padding: 0.3rem 0.55rem;
+  padding: 0;
   border: none;
   border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 0.8rem;
+  font-size: 1.15rem;
   cursor: pointer;
 }
 

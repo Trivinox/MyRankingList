@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { LinkIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { ROOM_LIMIT, START_MINIMUM } from '../room/hostRoom.ts';
 import { forgetRoomLink, roomLink } from '../room/link.ts';
@@ -104,6 +105,7 @@ export function LobbyScreen() {
             <strong className={styles.code}>{code}</strong>
             {canCopy && (
               <button type="button" className={styles.copy} onClick={copy}>
+                <LinkIcon aria-hidden="true" />
                 {t('room.lobby.copyLink')}
               </button>
             )}

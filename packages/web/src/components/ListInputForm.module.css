@@ -42,14 +42,9 @@
 
 .warning {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: var(--color-warning);
-  font-size: 0.8rem;
-  font-weight: 700;
+  align-self: center;
+  color: var(--color-warning);
+  font-size: 1.3rem;
   cursor: help;
 }
 
@@ -85,11 +80,13 @@
 }
 
 .remove {
+  display: grid;
+  place-items: center;
+  padding: 0.2rem;
   border: none;
   background: none;
   color: var(--color-text-muted);
-  font-size: 1.1rem;
-  line-height: 1;
+  font-size: 1.4rem;
   cursor: pointer;
 }
 

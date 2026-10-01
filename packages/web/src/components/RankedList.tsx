@@ -1,6 +1,7 @@
 import { Fragment, useEffect } from 'react';
 import type { MouseEvent, PointerEvent } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { HandGrabbingIcon } from '@phosphor-icons/react';
 import { useAnimate } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { dragSourceId, dropTargetId } from '../core/dropTargets.ts';
@@ -323,11 +324,12 @@ function Placed({ item, held, onPickUp, draggable, hover }: PlacedProps) {
           type="button"
           className={styles.move}
           aria-label={t('sorting.select.moveItem', { item: item.text })}
+          title={t('sorting.select.moveItem', { item: item.text })}
           aria-pressed={held}
           onClick={pickUp}
           {...hover}
         >
-          {t('sorting.select.move')}
+          <HandGrabbingIcon aria-hidden="true" />
         </button>
       )}
     </div>

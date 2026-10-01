@@ -33,6 +33,9 @@
 }
 
 .copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.35rem 0.8rem;
   border: none;
   border-radius: var(--radius-pill);

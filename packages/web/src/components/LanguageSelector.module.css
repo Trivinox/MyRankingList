@@ -1,6 +1,13 @@
 .selector {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
+}
+
+.globe {
+  margin-right: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 1.3rem;
 }
 
 .option {

@@ -225,6 +225,15 @@ describe('ListInputForm', () => {
     expect(screen.queryByLabelText('Item 4')).not.toBeInTheDocument();
   });
 
+  it('draws the remove button as a cross that its name speaks for', () => {
+    renderForm();
+
+    const remove = screen.getByRole('button', { name: 'Remove item 1' });
+
+    expect(remove.textContent).toBe('');
+    expect(remove.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('counts filled rows rather than rows', async () => {
     renderForm();
 

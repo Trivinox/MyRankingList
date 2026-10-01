@@ -129,6 +129,15 @@ describe('LobbyScreen', () => {
     expect(screen.getByText(en.room.lobby.copied)).toBeInTheDocument();
   });
 
+  it('puts an icon on the copy button without changing its name', () => {
+    inRoom('host', 'a');
+    renderLobby();
+
+    const copy = screen.getByRole('button', { name: en.room.lobby.copyLink });
+
+    expect(copy.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it.each(['host', 'guest'] as const)(
     'shows the new code, and copies it, once the room goes by one (%s)',
     async (role) => {
