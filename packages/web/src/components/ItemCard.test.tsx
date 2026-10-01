@@ -1,14 +1,19 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render } from '@testing-library/react';
+import type { Item } from '../core/types.ts';
 import { IMAGE_TIMEOUT, ItemCard } from './ItemCard.tsx';
 
-const item = { id: 'a', text: 'Mango', imageUrl: 'https://example.com/mango.jpg' };
+// The card remembers a failed address for as long as the page lives, so each
+// test starts from one nobody has asked for yet.
+const freshUrl = () => `https://example.com/${crypto.randomUUID()}.jpg`;
+let item: Item;
 
 const placeholder = (container: HTMLElement) => container.querySelector('[class*="placeholder"]');
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  item = { id: 'a', text: 'Mango', imageUrl: freshUrl() };
 });
 
 afterEach(() => {
@@ -79,6 +84,42 @@ describe('ItemCard', () => {
       expect(placeholder(container)).not.toBeNull();
     },
   );
+
+  describe('a card for an image that already failed', () => {
+    it('shows the placeholder at once after an error', () => {
+      const first = render(<ItemCard item={item} />);
+      fireEvent.error(first.container.querySelector('img')!);
+      first.unmount();
+
+      const { container } = render(<ItemCard item={item} />);
+
+      expect(container.querySelector('img')).toBeNull();
+      expect(placeholder(container)).not.toBeNull();
+    });
+
+    it('shows it at once after a timeout as well', () => {
+      const first = render(<ItemCard item={item} />);
+      act(() => vi.advanceTimersByTime(IMAGE_TIMEOUT));
+      first.unmount();
+
+      const { container } = render(<ItemCard item={item} />);
+
+      expect(container.querySelector('img')).toBeNull();
+      expect(placeholder(container)).not.toBeNull();
+    });
+
+    it('still asks for an image that loaded, and for any other address', () => {
+      const loaded = render(<ItemCard item={item} />);
+      fireEvent.load(loaded.container.querySelector('img')!);
+      loaded.unmount();
+      const broken = { ...item, imageUrl: freshUrl() };
+      fireEvent.error(render(<ItemCard item={broken} />).container.querySelector('img')!);
+
+      const { container } = render(<ItemCard item={item} />);
+
+      expect(container.querySelector('img')).toHaveAttribute('src', item.imageUrl);
+    });
+  });
 
   it('shows just the text for an item with no image', () => {
     const { container } = render(<ItemCard item={{ id: 'b', text: 'Kiwi' }} />);
