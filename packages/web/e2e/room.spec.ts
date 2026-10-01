@@ -549,19 +549,15 @@ test('a room of nine shows each person who is most and least like them instead o
   await createRoom(ana, 'Ana');
   const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
 
-  const guests = await Promise.all(
-    Object.entries(crowd).map(async ([nickname, order]) => ({
-      nickname,
-      intended: order.map((fruit) => [fruit]),
-      page: await openPerson(browser, testInfo),
-    })),
-  );
-  await Promise.all(
-    guests.map(async ({ nickname, page }) => {
-      await page.goto(`/?room=${code}`);
-      await join(page, nickname);
-    }),
-  );
+  // One after another. With eight joins at once on a busy machine, one of
+  // them took longer than the five seconds an assertion waits.
+  const guests = [];
+  for (const [nickname, order] of Object.entries(crowd)) {
+    const page = await openPerson(browser, testInfo);
+    await page.goto(`/?room=${code}`);
+    await join(page, nickname);
+    guests.push({ nickname, page, intended: order.map((fruit) => [fruit]) });
+  }
   await expect(ana.getByText('9 of 20')).toBeVisible();
   await ana.getByRole('button', { name: 'Start' }).click();
 
@@ -583,10 +579,8 @@ test('a room of nine shows each person who is most and least like them instead o
   await expect(ana.getByRole('definition')).toHaveText(['Juan 1.00', 'Lucía -1.00']);
   await expect(juan.getByRole('definition')).toHaveText(['Ana 1.00', 'Lucía -1.00']);
 
-  // The room's order is the order they got in, and joining all at once leaves
-  // that to chance.
-  const others = ana.getByRole('combobox', { name: 'Compare your list with' }).getByRole('option');
-  expect((await others.allTextContents()).sort()).toEqual(Object.keys(crowd).sort());
+  const picker = ana.getByRole('combobox', { name: 'Compare your list with' });
+  await expect(picker.getByRole('option')).toHaveText(Object.keys(crowd));
 
   for (const { page } of guests) {
     await expectNoViolations(page);
