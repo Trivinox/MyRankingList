@@ -3,9 +3,16 @@ import { useTranslation } from 'react-i18next';
 import type { Participant } from '../room/hostRoom.ts';
 import styles from './ParticipantAvatar.module.css';
 
-// Literal pastels until the design system gives them names. Handed out by
-// place in the room, so two people next to each other never share one.
-const tints = ['#b7a8e8', '#f6b8c4', '#ffd6a5', '#a8dcc8', '#a9c8ee', '#f3d98b'];
+// The palette's three pastels and two more, a blue and an orchid, none of
+// them the green, yellow or red of a drop in the list. Handed out by place in
+// the room, so two people next to each other never share one.
+const tints = [
+  'var(--color-primary)',
+  'var(--color-secondary)',
+  'var(--color-accent)',
+  '#a9c8ee',
+  '#e2b6e3',
+];
 
 interface ParticipantAvatarProps {
   participant: Participant;

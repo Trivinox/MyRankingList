@@ -1,4 +1,3 @@
-/* Colours are literals until the design system lands. */
 .summary {
   display: flex;
   flex-wrap: wrap;
@@ -10,11 +9,11 @@
   flex: 1 1 12rem;
   padding: 0.6rem 0.8rem;
   border-radius: 8px;
-  background: #f1eefb;
+  background: var(--color-soft);
 }
 
 .pair dt {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -24,7 +23,7 @@
 }
 
 .value {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }

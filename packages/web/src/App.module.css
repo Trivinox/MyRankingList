@@ -48,9 +48,9 @@
 
 .join {
   padding: 0.4rem 0.8rem;
-  border: 1px solid #b8b8c2;
+  border: none;
   border-radius: 6px;
-  background: none;
+  background: var(--color-soft);
   font-size: 0.9rem;
   cursor: pointer;
 }

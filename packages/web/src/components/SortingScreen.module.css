@@ -27,7 +27,7 @@
 
 .reconnecting {
   margin: 0;
-  color: #6a5ab8;
+  color: var(--color-primary-strong);
   font-size: 0.9rem;
 }
 

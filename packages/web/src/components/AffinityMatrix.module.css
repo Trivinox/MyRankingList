@@ -1,13 +1,7 @@
-/* Colours are literals until the design system lands. */
 .scroller {
   max-width: 100%;
   overflow-x: auto;
   border-radius: 8px;
-}
-
-.scroller:focus-visible {
-  outline: 2px solid #6b6bd6;
-  outline-offset: 2px;
 }
 
 .matrix {
@@ -20,7 +14,7 @@
   max-width: 7rem;
   padding: 0.3rem 0.4rem;
   overflow: hidden;
-  color: #4a4a55;
+  color: var(--color-text);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -31,9 +25,9 @@
 }
 
 .you {
-  color: #33333f;
+  color: var(--color-text);
   text-decoration: underline;
-  text-decoration-color: #b7a8e8;
+  text-decoration-color: var(--color-primary);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
@@ -50,16 +44,20 @@
 
 .cell {
   background: var(--shade);
-  color: #33333f;
+  color: var(--color-text);
 }
 
 .none {
-  background: #ececf1;
-  color: #6b6b76;
+  background: var(--color-soft);
+  color: var(--color-text-muted);
 }
 
 .self {
-  background: repeating-linear-gradient(45deg, #f4f4f8 0 4px, #e9e9ef 4px 8px);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-surface) 0 4px,
+    var(--color-soft) 4px 8px
+  );
 }
 
 @media (max-width: 767px) {

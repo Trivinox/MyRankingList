@@ -7,38 +7,30 @@
   min-height: 60vh;
   padding: 2rem 1.5rem;
   border-radius: 14px;
-  /* Placeholder background until the pastel palette lands. */
-  background: #f4f4f9;
+  background: var(--color-soft);
 }
 
 .hint {
   margin: 0;
   max-width: 22rem;
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   text-align: center;
 }
 
-/* Same dark button as the form's Continue until the design system lands. */
+/* The form's Continue, a size up to go with the card it replaces. */
 .finish {
   padding: 0.7rem 1.6rem;
   border: none;
   border-radius: 6px;
-  background: #33333f;
-  color: #fff;
+  background: var(--color-primary);
   font-size: 1.1rem;
   cursor: pointer;
 }
 
 .finish[aria-disabled='true'] {
-  background: #c9c9d1;
+  opacity: 0.5;
   cursor: default;
-}
-
-.finish:focus-visible,
-.keep:focus-visible {
-  outline: 2px solid #6b6bd6;
-  outline-offset: 2px;
 }
 
 .prompt {
@@ -63,9 +55,11 @@
 
 .keep {
   padding: 0.7rem 1.6rem;
-  border: 1px solid #b8b8c2;
+  border: none;
   border-radius: 6px;
-  background: none;
+  /* The area itself is the soft fill, which would swallow a secondary
+     button's own. */
+  background: var(--color-surface);
   font-size: 1.1rem;
   cursor: pointer;
 }

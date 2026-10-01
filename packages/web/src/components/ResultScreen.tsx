@@ -5,11 +5,9 @@ import { useTranslation } from 'react-i18next';
 import type { Item } from '../core/types.ts';
 import { usePlacement } from '../state/placementStore.ts';
 import { useScreen } from '../state/screenStore.ts';
+import { confettiColors } from '../styles/confetti.ts';
 import { ItemCard } from './ItemCard.tsx';
 import styles from './ResultScreen.module.css';
-
-// Placeholder pastels: the lilac, pink and peach the bursts use.
-const colors = ['#b7a8e8', '#f6b8c4', '#ffd6a5'];
 
 export function ResultScreen() {
   const { t } = useTranslation();
@@ -30,7 +28,7 @@ export function ResultScreen() {
       particleCount: 140,
       spread: 90,
       origin: { y: 0.6 },
-      colors,
+      colors: confettiColors,
       disableForReducedMotion: true,
     });
     return () => {

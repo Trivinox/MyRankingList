@@ -23,12 +23,11 @@
 }
 
 .close {
-  border: 1px solid #b8b8c2;
-  background: none;
+  border: none;
+  background: var(--color-soft);
 }
 
 .confirm {
   border: none;
-  background: #b3261e;
-  color: #fff;
+  background: var(--color-danger);
 }

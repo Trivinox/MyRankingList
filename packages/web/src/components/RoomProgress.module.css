@@ -29,10 +29,10 @@
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border: 1px solid #b8b8c2;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #fff;
-  color: #4a4a55;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
@@ -79,9 +79,8 @@
 
 .finish {
   padding: 0.4rem 1rem;
-  border: 1px solid #b3261e;
+  border: none;
   border-radius: 6px;
-  background: none;
-  color: #b3261e;
+  background: var(--color-danger);
   cursor: pointer;
 }

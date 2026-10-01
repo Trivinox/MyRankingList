@@ -22,7 +22,7 @@
   height: 0.5rem;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: #e6e6ee;
+  background: var(--color-soft);
   overflow: hidden;
 }
 
@@ -32,7 +32,7 @@
   height: 100%;
   width: calc(var(--progress) * (100% - var(--icon)) + var(--icon) / 2);
   border-radius: inherit;
-  background: #b7a8e8;
+  background: var(--color-primary);
   transition: width 0.35s ease-out;
 }
 
@@ -44,16 +44,16 @@
   left: calc(var(--progress) * (100% - var(--icon)));
   width: var(--icon);
   height: var(--icon);
-  fill: #9a86dc;
+  fill: var(--color-primary-strong);
   transition: left 0.35s ease-out;
 }
 
 .flame {
-  fill: #ffb870;
+  fill: var(--color-accent);
 }
 
 .window {
-  fill: #fff;
+  fill: var(--color-surface);
 }
 
 /* Outside the track, so the rocket never covers it. Pulled in so the pole,
@@ -63,11 +63,11 @@
   width: 1.75rem;
   height: 1.75rem;
   margin-left: -0.95rem;
-  fill: #f09aad;
+  fill: var(--color-secondary);
 }
 
 .count {
-  color: #6b6b76;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   white-space: nowrap;
 }

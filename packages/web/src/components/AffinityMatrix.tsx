@@ -6,11 +6,13 @@ import { formatCoefficient, useListName } from './useListName.ts';
 import hidden from './visuallyHidden.module.css';
 import styles from './AffinityMatrix.module.css';
 
-// A lilac that deepens with the coefficient, palest at -1 and most saturated
-// at 1. Literal until the design system gives the gradient a name.
+// The primary lilac's hue, copied from tokens.css, deepening with the
+// coefficient: palest at -1 and most saturated at 1.
+const PRIMARY_HUE = 254;
+
 function shade(coefficient: number) {
   const share = (coefficient + 1) / 2;
-  return `hsl(258 ${Math.round(15 + 55 * share)}% ${Math.round(95 - 17 * share)}%)`;
+  return `hsl(${PRIMARY_HUE} ${Math.round(15 + 55 * share)}% ${Math.round(95 - 17 * share)}%)`;
 }
 
 interface AffinityMatrixProps {

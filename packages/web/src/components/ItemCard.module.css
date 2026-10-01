@@ -1,10 +1,9 @@
-/* Colours and radii are literals until the design system lands. */
 .card {
   display: flex;
   align-items: center;
   gap: 0.7rem;
   border-radius: 10px;
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 1px 3px rgb(20 20 35 / 18%);
 }
 
@@ -41,7 +40,7 @@
 }
 
 .placeholder {
-  background: #e6e6ee;
+  background: var(--color-soft);
 }
 
 .text {

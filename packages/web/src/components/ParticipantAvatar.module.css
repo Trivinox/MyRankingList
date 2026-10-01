@@ -31,11 +31,11 @@
 }
 
 .track {
-  stroke: #e6e6ee;
+  stroke: var(--color-soft);
 }
 
 .fill {
-  stroke: #7e6bcc;
+  stroke: var(--color-primary);
   transition: stroke-dasharray 0.35s ease-out;
 }
 
@@ -46,14 +46,14 @@
   place-items: center;
   border-radius: 50%;
   background: var(--tint);
-  color: #33333f;
+  color: var(--color-text);
   font-weight: 700;
 }
 
-/* A list handed in: the ring turns green and a tick sits on its corner, the
-   one opposite the creator's cross. */
+/* A list handed in: the ring deepens and a tick sits on its corner, the one
+   opposite the creator's cross. */
 .finished .fill {
-  stroke: #3f9a78;
+  stroke: var(--color-primary-strong);
 }
 
 .check {
@@ -64,10 +64,9 @@
   place-items: center;
   width: 1.1rem;
   height: 1.1rem;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
   border-radius: 50%;
-  background: #3f9a78;
-  color: #fff;
+  background: var(--color-primary);
   font-size: 0.65rem;
   font-weight: 700;
   line-height: 1;
@@ -92,8 +91,8 @@
 .tag {
   padding: 0.05rem 0.5rem;
   border-radius: 999px;
-  background: #e0dcf5;
-  color: #4a4a55;
+  background: var(--color-soft);
+  color: var(--color-text);
   font-size: 0.75rem;
 }
 

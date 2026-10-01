@@ -13,14 +13,23 @@ body {
   font-family: var(--font-body);
 }
 
-/* Browsers give controls a typeface of their own. Two weights for the whole
-   interface: regular for text, bold for headings, ranks and buttons. */
+/* Browsers give controls a typeface of their own, and black text where the
+   page has a dark grey. Two weights for the whole interface: regular for
+   text, bold for headings, ranks and buttons. */
 button,
 input,
 select {
+  color: inherit;
   font: inherit;
 }
 
 button {
   font-weight: 700;
+}
+
+/* One ring for everything the keyboard reaches, in the lilac dark enough to
+   stand out against the page and against any pastel. */
+:focus-visible {
+  outline: 2px solid var(--color-primary-strong);
+  outline-offset: 2px;
 }
