@@ -3,8 +3,11 @@ import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findDuplicates } from '../core/duplicates.ts';
 import { isAllowedImageUrl } from '../core/images.ts';
+import { START_MINIMUM } from '../room/hostRoom.ts';
+import { backToResult, playAgain } from '../room/session.ts';
 import { useListDraft } from '../state/listDraftStore.ts';
 import { usePlacement } from '../state/placementStore.ts';
+import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
 import styles from './ListInputForm.module.css';
 import { useRejectedImages } from './useRejectedImages.ts';
@@ -12,9 +15,10 @@ import { useRejectedImages } from './useRejectedImages.ts';
 // Adjustable: past this many rows the warning shows up, without blocking.
 export const LONG_LIST_THRESHOLD = 30;
 
+export const CRITERION_LIMIT = 100;
+
 const MIN_ITEMS = 3;
 const TEXT_LIMIT = 80;
-const CRITERION_LIMIT = 100;
 
 export function ListInputForm() {
   const { t } = useTranslation();
@@ -29,6 +33,12 @@ export function ListInputForm() {
   } = useListDraft();
   const setScreen = useScreen((state) => state.setScreen);
   const start = usePlacement((state) => state.start);
+  // The creator writing the next round's list. The room is still open behind
+  // the form, with everyone waiting for it.
+  const forRoom = useRoom((state) => state.role === 'host' && state.status === 'revealed');
+  const alone = useRoom(
+    (state) => state.participants.filter((p) => p.connected).length < START_MINIMUM,
+  );
   const criterionField = useRef<HTMLInputElement>(null);
 
   // Rows that already hold text mean the user came from somewhere, a result
@@ -56,11 +66,20 @@ export function ListInputForm() {
   const filled = items.filter((item) => item.text.trim() !== '');
   const itemCount = filled.length;
   const ready = itemCount >= MIN_ITEMS && criterion.trim() !== '';
+  const blocked = !ready || (forRoom && alone);
 
+  // In a room the session starts the placement, the same way it does for
+  // every guest, and sends the list out with it.
   const startSorting = (event: FormEvent) => {
     event.preventDefault();
-    start(filled, criterion.trim());
+    if (forRoom) playAgain({ items: filled, criterion: criterion.trim() });
+    else start(filled, criterion.trim());
     setScreen('sorting');
+  };
+
+  const returnToResult = () => {
+    backToResult();
+    setScreen('room-result');
   };
 
   return (
@@ -159,25 +178,33 @@ export function ListInputForm() {
 
       <div className={styles.footer}>
         <div className={styles.buttons}>
-          <button type="submit" className={styles.continue} disabled={!ready}>
-            {t('form.continue')}
+          <button type="submit" className={styles.continue} disabled={blocked}>
+            {t(forRoom ? 'form.startRound' : 'form.continue')}
           </button>
-          {/* A room sorts the same list, so it asks for the same things. */}
-          <button
-            type="button"
-            className={styles.room}
-            disabled={!ready}
-            onClick={() => setScreen('room-create')}
-          >
-            {t('room.create')}
-          </button>
+          {forRoom ? (
+            <button type="button" className={styles.room} onClick={returnToResult}>
+              {t('form.backToResult')}
+            </button>
+          ) : (
+            // A room sorts the same list, so it asks for the same things.
+            <button
+              type="button"
+              className={styles.room}
+              disabled={!ready}
+              onClick={() => setScreen('room-create')}
+            >
+              {t('room.create')}
+            </button>
+          )}
         </div>
-        {!ready && (
+        {!ready ? (
           <p className={styles.notice}>
             {itemCount < MIN_ITEMS
               ? t('form.minimumNotice', { count: MIN_ITEMS })
               : t('form.criterionNotice')}
           </p>
+        ) : (
+          blocked && <p className={styles.notice}>{t('room.alone')}</p>
         )}
       </div>
     </form>

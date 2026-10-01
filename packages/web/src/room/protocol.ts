@@ -26,7 +26,9 @@ export type GuestMessage =
 // purpose, and `code` the new code of a room whose creator came back to the
 // signaling server too late to keep the old one. `result` is the reveal, the
 // same for everyone, sent once when the last list is in and again to anyone
-// who comes back after it.
+// who comes back after it. `lobby` sends everyone to wait while the creator
+// writes the list for another round, and a `result` after it brings them back
+// to the reveal if the creator changes their mind.
 export type HostMessage =
   | { type: 'welcome'; you: string; seat: string; criterion: string; participants: Participant[] }
   | {
@@ -45,7 +47,8 @@ export type HostMessage =
   | { type: 'replaced' }
   | { type: 'closed' }
   | { type: 'code'; code: string }
-  | { type: 'result'; result: RoomResult };
+  | { type: 'result'; result: RoomResult }
+  | { type: 'lobby' };
 
 // Everything below arrives from another person's browser, which may run
 // anything at all. A message that is not exactly one of ours is dropped, and
@@ -238,6 +241,7 @@ export function parseHostMessage(data: unknown): HostMessage | null {
     case 'removed':
     case 'replaced':
     case 'closed':
+    case 'lobby':
       return { type: data.type };
     case 'code': {
       // Checked for exactly what the server hands out, not read leniently:

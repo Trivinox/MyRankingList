@@ -14,8 +14,9 @@ There are no user accounts. Rooms run peer to peer over WebRTC, with the creator
 - Reconnection: a guest who drops or reloads mid-sort gets their place and their list back, and a creator who drops gets the room back, under a new code if it took too long.
 - In a room, each person hands their list in with Finish once everything is placed. After that it is locked, the others see a tick on their avatar, and a reload comes back to the waiting screen.
 - Once the last list is in, everyone sees the result at the same moment: the room's combined ranking, how alike each pair of lists is (a grid up to 8 people, and above that who is most and least like you), the items the room split on most, and your own list next to anyone else's. Lists of people who dropped after finishing still count; people the creator removed do not.
+- From the result the creator can play another round in the same room: the same items under the same or a new criterion, or a new list written on the form while the others wait in the lobby. Everyone connected starts over with a shuffle of their own. Anyone away at that moment is left out of the new round, and nobody new can join it.
 
-Playing another round in the same room comes with Phase 13.3.
+Phase 13 completes the room, from joining to playing again. Phase 14 extends the end-to-end tests over the whole of it, and the visual design, the final sounds and the deployment come after that.
 
 ## Stack
 

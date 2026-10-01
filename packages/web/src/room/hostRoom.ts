@@ -70,6 +70,13 @@ export function startAll(participants: Participant[]): Participant[] {
   return participants.map((p) => ({ ...p, progress: 1, finished: false }));
 }
 
+// Another round goes ahead with whoever is connected when it starts. Someone
+// away is let go rather than waited for: their tab still holds the round
+// before, and coming back into this one would put them on the wrong list.
+export function newRound(participants: Participant[]): Participant[] {
+  return startAll(participants.filter((p) => p.connected));
+}
+
 export function setProgress(participants: Participant[], id: string, placed: number) {
   return participants.map((p) => (p.id === id ? { ...p, progress: placed } : p));
 }

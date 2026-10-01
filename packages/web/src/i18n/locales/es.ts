@@ -36,6 +36,8 @@ export const es: typeof en = {
     minimumNotice: 'Escribe al menos {{count}} elementos para empezar a ordenar.',
     criterionNotice: 'Di con qué criterio los comparas para empezar a ordenar.',
     continue: 'Continuar',
+    startRound: 'Empezar la nueva ronda',
+    backToResult: 'Volver al resultado',
   },
   catalog: {
     heading: 'Listas preparadas',
@@ -123,6 +125,13 @@ export const es: typeof en = {
     item: 'Elemento',
     you: 'Tú',
     leftName: '{{nickname}} (se fue)',
+    again: 'Otra ronda',
+    awayLeftOut:
+      'Quien no esté conectado cuando empiece la próxima ronda se quedará fuera de ella.',
+    nextCriterion: '¿Con qué criterio se comparan en la próxima ronda?',
+    sameItems: 'Los mismos elementos',
+    changeList: 'Cambiar la lista',
+    creatorDecides: 'Quien creó la sala decide si hay otra ronda.',
   },
   room: {
     create: 'Crear sala',
@@ -150,6 +159,7 @@ export const es: typeof en = {
     finishedAway: '{{nickname}}, ausente, terminó',
     reconnecting: 'Reconectando... Puedes seguir ordenando.',
     everyone: 'Todos los de la sala',
+    alone: 'Ahora mismo no hay nadie más conectado, así que no puede empezar otra ronda.',
     remove: {
       button: 'Quitar',
       label: 'Quitar a {{nickname}}',
@@ -179,15 +189,19 @@ export const es: typeof en = {
       close: 'Cerrar la sala',
       confirmClose: '¿Cerrar la sala? Todos los que están dentro saldrán.',
       confirmCloseLists: 'Se perderán las listas entregadas hasta ahora.',
+      confirmCloseRevealed:
+        '¿Cerrar la sala? Todos conservan el resultado en pantalla, pero no habrá más rondas.',
       confirmYes: 'Cerrarla',
       confirmNo: 'Quedarme',
       closed: 'Quien creó la sala la cerró.',
       ended: 'La sala terminó. Puede que quien la creó se haya quedado sin conexión.',
       removed: 'Quien creó la sala te sacó de ella.',
       replaced: 'La sala se abrió en otra pestaña, así que esta salió de ella.',
+      missed: 'La sala empezó otra ronda mientras no estabas.',
       start: 'Empezar',
       needsSomeone: 'Tiene que entrar alguien más antes de poder empezar.',
       waiting: 'Esperando a que quien creó la sala empiece.',
+      preparing: 'Quien creó la sala está preparando otra lista.',
     },
   },
 };

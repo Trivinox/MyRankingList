@@ -7,10 +7,13 @@ import type { Participant } from './hostRoom.ts';
 import type { RoomList, RoomResult } from './result.ts';
 import { linkedCode } from './link.ts';
 import {
+  backToResult,
+  changeList,
   createRoom,
   finishRoom,
   joinRoom,
   leaveRoom,
+  playAgain,
   removeParticipant,
   resumeRoom,
   startRoom,
@@ -1319,6 +1322,189 @@ describe('createRoom', () => {
       expect(resultsIn(juan)).toHaveLength(1);
     });
   });
+
+  describe('another round', () => {
+    const juanList = [{ itemIds: ['a'] }, { itemIds: ['b', 'c'] }];
+    const luciaList = [{ itemIds: ['c'] }, { itemIds: ['b'] }, { itemIds: ['a'] }];
+    const soups: Item[] = [
+      { id: 'd', text: 'Pho' },
+      { id: 'e', text: 'Laksa' },
+      { id: 'f', text: 'Tonkotsu' },
+    ];
+    const finish = (slots: unknown) => ({ type: 'finish', slots });
+    const entryOf = (nickname: string) =>
+      useRoom.getState().participants.find((p) => p.nickname === nickname)!;
+    const seatOf = (channel: { sent: unknown[] }) => (channel.sent[0] as { seat: string }).seat;
+    const typesIn = (channel: { sent: unknown[] }) =>
+      channel.sent.map((m) => (m as { type: string }).type);
+    const resultsIn = (channel: { sent: unknown[] }) =>
+      typesIn(channel).filter((type) => type === 'result');
+
+    const anaFinishes = () => {
+      placeAll();
+      finishRoom();
+    };
+
+    // Ana, Juan and Lucía, all three lists in and the result out.
+    async function revealed() {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      const lucia = guestJoins(host, 'Lucía');
+      startRoom();
+      juan.emit('data', finish(juanList));
+      lucia.emit('data', finish(luciaList));
+      anaFinishes();
+      return { host, juan, lucia };
+    }
+
+    it('starts everyone on the same items, under the criterion the creator gave', async () => {
+      const { juan, lucia } = await revealed();
+
+      playAgain({ criterion: 'Best broth' });
+
+      for (const channel of [juan, lucia]) {
+        expect(channel.sent).toContainEqual({ type: 'start', items, criterion: 'Best broth' });
+      }
+      expect(useRoom.getState()).toMatchObject({
+        status: 'sorting',
+        result: null,
+        items,
+        criterion: 'Best broth',
+      });
+      const { participants } = useRoom.getState();
+      expect(participants.map((p) => [p.progress, p.finished])).toEqual([
+        [1, false],
+        [1, false],
+        [1, false],
+      ]);
+      expect(juan.sent.at(-1)).toEqual({ type: 'participants', participants });
+      expect(usePlacement.getState()).toMatchObject({ criterion: 'Best broth', finished: false });
+      expect(usePlacement.getState().placement?.pendingPool).toHaveLength(2);
+    });
+
+    it('deals the creator a new shuffle', async () => {
+      const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      await revealed();
+      const before = usePlacement.getState().placement!.shuffledOrder;
+
+      random.mockReturnValue(0);
+      playAgain({ criterion: 'Best noodle' });
+      const after = usePlacement.getState().placement!.shuffledOrder;
+      vi.restoreAllMocks();
+
+      expect(before).toEqual(['a', 'b', 'c']);
+      expect(after).toEqual(['b', 'c', 'a']);
+    });
+
+    it('takes the list the creator wrote for it', async () => {
+      const { juan } = await revealed();
+
+      changeList();
+      playAgain({ items: soups, criterion: 'Best soup' });
+
+      expect(juan.sent).toContainEqual({ type: 'start', items: soups, criterion: 'Best soup' });
+      expect(useRoom.getState()).toMatchObject({ status: 'sorting', items: soups });
+      expect(usePlacement.getState()).toMatchObject({ items: soups, criterion: 'Best soup' });
+    });
+
+    it('leaves out whoever is away, and tells them it has started when they are back', async () => {
+      const { host, juan } = await revealed();
+      const seat = seatOf(juan);
+      juan.close();
+
+      playAgain({ criterion: 'Best noodle' });
+      const back = host.receive();
+      back.emit('data', { type: 'join', nickname: 'Juan', seat });
+
+      expect(back.sent).toEqual([{ type: 'started' }]);
+      expect(useRoom.getState().participants.map((p) => p.nickname)).toEqual(['Ana', 'Lucía']);
+    });
+
+    it('is refused before the reveal, and with nobody else connected', async () => {
+      const host = await openRoom();
+      const juan = guestJoins(host, 'Juan');
+      startRoom();
+
+      playAgain({ criterion: 'Best noodle' });
+      expect(typesIn(juan).filter((type) => type === 'start')).toHaveLength(1);
+
+      juan.emit('data', finish(juanList));
+      anaFinishes();
+      juan.close();
+      playAgain({ criterion: 'Best noodle' });
+
+      expect(useRoom.getState().status).toBe('revealed');
+    });
+
+    it('ignores a list from the round before, sent after its reveal', async () => {
+      const { juan } = await revealed();
+      const before = useRoom.getState().participants;
+
+      juan.emit('data', finish(luciaList));
+      changeList();
+      juan.emit('data', finish(luciaList));
+      expect(useRoom.getState().participants).toBe(before);
+
+      playAgain({ criterion: 'Best noodle' });
+      expect(entryOf('Juan').finished).toBe(false);
+    });
+
+    it('counts what the creator places in the new round, once each', async () => {
+      const { juan } = await revealed();
+      playAgain({ criterion: 'Best noodle' });
+      const sent = juan.sent.length;
+
+      placeOne();
+
+      expect(entryOf('Ana').progress).toBe(2);
+      expect(juan.sent).toHaveLength(sent + 1);
+    });
+
+    it('reveals the new round from its own lists once they are all in', async () => {
+      const { juan, lucia } = await revealed();
+      playAgain({ criterion: 'Best broth' });
+
+      juan.emit('data', finish(luciaList));
+      lucia.emit('data', finish(juanList));
+      expect(useRoom.getState().status).toBe('sorting');
+      anaFinishes();
+
+      const { status, result } = useRoom.getState();
+      expect(status).toBe('revealed');
+      expect(result?.lists.map((list) => list.slots).slice(1)).toEqual([luciaList, juanList]);
+      expect(resultsIn(juan)).toHaveLength(2);
+      expect(resultsIn(lucia)).toHaveLength(2);
+    });
+
+    it('sends everyone to wait while the creator writes the next list, and back without it', async () => {
+      const { juan, lucia } = await revealed();
+      const { result } = useRoom.getState();
+
+      changeList();
+      for (const channel of [juan, lucia]) expect(channel.sent.at(-1)).toEqual({ type: 'lobby' });
+      expect(useRoom.getState()).toMatchObject({ status: 'revealed', result });
+
+      backToResult();
+      for (const channel of [juan, lucia]) {
+        expect(channel.sent.at(-1)).toEqual({ type: 'result', result });
+      }
+    });
+
+    it('sends someone back while the creator writes to the lobby, and keeps newcomers out', async () => {
+      const { host, juan } = await revealed();
+      const seat = seatOf(juan);
+      juan.close();
+      changeList();
+
+      const back = host.receive();
+      back.emit('data', { type: 'join', nickname: 'Juan', seat });
+      const late = guestJoins(host, 'Late');
+
+      expect(typesIn(back)).toEqual(['resume', 'lobby']);
+      expect(late.sent).toEqual([{ type: 'started' }]);
+      expect(entryOf('Juan').connected).toBe(true);
+    });
+  });
 });
 
 describe('joinRoom', () => {
@@ -1855,6 +2041,166 @@ describe('joinRoom', () => {
     });
   });
 
+  describe('another round', () => {
+    const start = { type: 'start', items, criterion: 'Best noodle' };
+    const soups: Item[] = [
+      { id: 'd', text: 'Pho' },
+      { id: 'e', text: 'Laksa' },
+      { id: 'f', text: 'Tonkotsu' },
+    ];
+    const participants = [ana, { ...juan, progress: 3, finished: true }];
+    const resume = {
+      type: 'resume',
+      you: 'j',
+      seat: 's1',
+      criterion: 'Best noodle',
+      participants,
+      items,
+    };
+    const typesIn = (channel: { sent: unknown[] }) =>
+      channel.sent.map((m) => (m as { type: string }).type);
+
+    // The list handed in and a result about it, with this tab's list alone.
+    async function revealed() {
+      const reached = await reachLobby();
+      reached.channel.emit('data', start);
+      placeAll();
+      finishRoom();
+      const result: RoomResult = {
+        consensus: items.map(({ id }, place) => ({
+          itemId: id,
+          averagePosition: place + 1,
+          rank: place + 1,
+          tied: false,
+        })),
+        discrepancies: items.map(({ id }) => ({ itemId: id, dispersion: 0 })),
+        lists: [
+          {
+            id: 'j',
+            nickname: 'Juan',
+            left: false,
+            slots: usePlacement.getState().placement!.rankedSlots,
+          },
+        ],
+        affinity: [],
+      };
+      reached.channel.emit('data', { type: 'result', result });
+      return { ...reached, result };
+    }
+
+    // Lets the wait before the next try run out, as far as an open channel.
+    async function nextTry() {
+      await vi.advanceTimersByTimeAsync(2_000);
+      const guest = lastPeer();
+      guest.open('guest-peer');
+      await vi.advanceTimersByTimeAsync(0);
+      const channel = guest.channels[0];
+      channel.open();
+      return { guest, channel };
+    }
+
+    it('starts sorting the new list from the result, and keeps that round in its record', async () => {
+      const { channel } = await revealed();
+
+      channel.emit('data', { type: 'start', items: soups, criterion: 'Best soup' });
+
+      expect(useRoom.getState()).toMatchObject({
+        status: 'sorting',
+        result: null,
+        items: soups,
+        criterion: 'Best soup',
+      });
+      expect(usePlacement.getState()).toMatchObject({
+        items: soups,
+        criterion: 'Best soup',
+        finished: false,
+      });
+      expect(usePlacement.getState().placement?.pendingPool).toHaveLength(2);
+      expect(readTabRecord()).toMatchObject({
+        items: soups,
+        criterion: 'Best soup',
+        finished: false,
+        result: null,
+      });
+    });
+
+    it('reports each item it places in the new round, once', async () => {
+      const { channel } = await revealed();
+      channel.emit('data', start);
+      const sent = channel.sent.length;
+
+      placeOne();
+
+      expect(channel.sent).toHaveLength(sent + 1);
+      expect(channel.sent.at(-1)).toEqual({ type: 'progress', placed: 2 });
+    });
+
+    it('waits while the creator writes the next list, and goes back to the result with them', async () => {
+      const { channel, result } = await revealed();
+
+      channel.emit('data', { type: 'lobby' });
+      expect(useRoom.getState()).toMatchObject({ status: 'preparing', result });
+
+      channel.emit('data', { type: 'result', result });
+      expect(useRoom.getState()).toMatchObject({ status: 'revealed', result });
+    });
+
+    it('starts the new round from the lobby', async () => {
+      const { channel } = await revealed();
+      channel.emit('data', { type: 'lobby' });
+
+      channel.emit('data', { type: 'start', items: soups, criterion: 'Best soup' });
+
+      expect(useRoom.getState()).toMatchObject({ status: 'sorting', items: soups });
+    });
+
+    it('keeps waiting through a drop, and is waiting again once back', async () => {
+      vi.useFakeTimers();
+      const { channel, result } = await revealed();
+      channel.emit('data', { type: 'lobby' });
+
+      channel.close();
+      expect(useRoom.getState().status).toBe('preparing');
+
+      const back = await nextTry();
+      back.channel.emit('data', resume);
+      back.channel.emit('data', { type: 'lobby' });
+
+      expect(useRoom.getState()).toMatchObject({ status: 'preparing', result, participants });
+      expect(typesIn(back.channel)).toEqual(['join']);
+    });
+
+    it('waits in the lobby when back from a drop before the reveal to a creator writing the next list', async () => {
+      vi.useFakeTimers();
+      const { channel } = await reachLobby();
+      channel.emit('data', start);
+      placeAll();
+      finishRoom();
+      channel.close();
+
+      const back = await nextTry();
+      back.channel.emit('data', resume);
+      back.channel.emit('data', { type: 'lobby' });
+
+      expect(useRoom.getState()).toMatchObject({ status: 'preparing', result: null });
+    });
+
+    it('is told it missed the round when the room started another while it was away', async () => {
+      vi.useFakeTimers();
+      const { channel, result } = await revealed();
+      channel.close();
+
+      const back = await nextTry();
+      back.channel.emit('data', { type: 'started' });
+
+      expect(useRoom.getState()).toMatchObject({ status: 'missed', result });
+      expect(back.guest.destroyed).toBe(true);
+      expect(readTabRecord()).toBeNull();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(peers).toHaveLength(2);
+    });
+  });
+
   describe('losing the host mid-sort', () => {
     const start = { type: 'start', items, criterion: 'Best noodle' };
 
@@ -2152,9 +2498,9 @@ describe('resumeRoom', () => {
     return record;
   }
 
-  async function reconnect() {
+  async function reconnect(kept: Partial<TabRecord> = {}) {
     signaling.findRoom.mockResolvedValue({ kind: 'found', peerId: 'host-peer' });
-    const record = reloadedTab();
+    const record = { ...reloadedTab(), ...kept };
     resumeRoom(record);
     await vi.waitFor(() => expect(peers).toHaveLength(1));
     const guest = lastPeer();
@@ -2224,6 +2570,42 @@ describe('resumeRoom', () => {
     resumeRoom({ ...record, finished: true, result });
 
     expect(useRoom.getState()).toMatchObject({ status: 'revealed', result, code: 'AB3K' });
+  });
+
+  it('follows the creator back to the result after a reload between rounds', async () => {
+    const result: RoomResult = {
+      consensus: items.map(({ id }, place) => ({
+        itemId: id,
+        averagePosition: place + 1,
+        rank: place + 1,
+        tied: false,
+      })),
+      discrepancies: items.map(({ id }) => ({ itemId: id, dispersion: 0 })),
+      lists: [
+        {
+          id: 'j',
+          nickname: 'Juan',
+          left: false,
+          slots: items.map(({ id }) => ({ itemIds: [id] })),
+        },
+      ],
+      affinity: [],
+    };
+    const { channel } = await reconnect({ finished: true, result });
+
+    channel.emit('data', {
+      type: 'resume',
+      you: 'j',
+      seat: 's1',
+      criterion: 'Best noodle',
+      participants: [ana, juan],
+      items,
+    });
+    channel.emit('data', { type: 'lobby' });
+    expect(useRoom.getState().status).toBe('preparing');
+
+    channel.emit('data', { type: 'result', result });
+    expect(useRoom.getState()).toMatchObject({ status: 'revealed', result });
   });
 
   it('keeps the result from the record when the room turns out to be gone', async () => {

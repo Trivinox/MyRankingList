@@ -176,6 +176,10 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage({ type: 'closed', by: 'x' })).toEqual({ type: 'closed' });
   });
 
+  it('reads the creator going off to write another list', () => {
+    expect(parseHostMessage({ type: 'lobby', items: [] })).toEqual({ type: 'lobby' });
+  });
+
   it('reads a new room code, and only one the server could have handed out', () => {
     expect(parseHostMessage({ type: 'code', code: 'XY7Q', extra: 1 })).toEqual({
       type: 'code',

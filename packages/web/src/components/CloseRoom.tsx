@@ -6,13 +6,16 @@ interface CloseRoomProps {
   onClose: () => void;
   // Once anyone has handed a list in, closing also throws those away.
   listsIn?: boolean;
+  // After the reveal nobody is sent out: the others keep the result on
+  // screen, and what closing takes away is another round.
+  revealed?: boolean;
 }
 
-// The creator's way out, in the waiting room and while sorting. Leaving takes
-// the room with them, and everyone in it, so it asks first. Like the removal
-// prompt, the question opens on the choice that keeps the room, and declining
-// puts the focus back on the button.
-export function CloseRoom({ onClose, listsIn = false }: CloseRoomProps) {
+// The creator's way out, in the waiting room, while sorting and on the result.
+// Leaving takes the room with them, and everyone in it, so it asks first. Like
+// the removal prompt, the question opens on the choice that keeps the room,
+// and declining puts the focus back on the button.
+export function CloseRoom({ onClose, listsIn = false, revealed = false }: CloseRoomProps) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
   const promptId = useId();
@@ -54,7 +57,7 @@ export function CloseRoom({ onClose, listsIn = false }: CloseRoomProps) {
       aria-describedby={listsIn ? warningId : undefined}
     >
       <p id={promptId} className={styles.question}>
-        {t('room.lobby.confirmClose')}
+        {t(revealed ? 'room.lobby.confirmCloseRevealed' : 'room.lobby.confirmClose')}
       </p>
       {listsIn && (
         <p id={warningId} className={styles.question}>

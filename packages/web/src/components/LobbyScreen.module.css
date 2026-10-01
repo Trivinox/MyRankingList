@@ -59,6 +59,16 @@
   font-size: 0.85rem;
 }
 
+.preparing {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Focused by code when the result gives way to it, so no ring. */
+.preparing:focus {
+  outline: none;
+}
+
 .listHeader {
   display: flex;
   align-items: baseline;

@@ -13,6 +13,7 @@ import {
   exclude,
   leave,
   markFinished,
+  newRound,
   setConnected,
   setProgress,
   startAll,
@@ -64,6 +65,8 @@ let peer: Peer | null = null;
 let attempt = 0;
 // Set by createRoom once the lobby is open, for the host's buttons to call.
 let startHere: (() => void) | null = null;
+let againHere: ((items: Item[], criterion: string) => void) | null = null;
+let prepareHere: ((preparing: boolean) => void) | null = null;
 let removeHere: ((id: string) => void) | null = null;
 let closeHere: (() => void) | null = null;
 // A guest's is set once sorting starts, with the channel it sends on.
@@ -93,6 +96,8 @@ function letGo() {
   peer = null;
   leaving?.destroy();
   startHere = null;
+  againHere = null;
+  prepareHere = null;
   removeHere = null;
   closeHere = null;
   finishHere = null;
@@ -186,6 +191,9 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   // Finished lists by participant id. Kept here and not in the store, like
   // the seats: nobody sees anyone else's list before the reveal.
   const lists = new Map<string, RankedSlot[]>();
+  // The creator is off writing the list for another round, and the guests are
+  // waiting for it.
+  let preparing = false;
 
   // Past the timeout the creator is offered to finish without them. Nothing
   // happens on its own: they may still come back, and it is the creator's call.
@@ -272,7 +280,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         stopWaiting(id);
         setParticipants(setConnected(room.participants, id, true));
         channels.set(id, channel);
-        const { participants, items, result } = useRoom.getState();
+        const { participants, items, criterion, result } = useRoom.getState();
         send(
           channel,
           room.status === 'lobby'
@@ -280,8 +288,10 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
             : { type: 'resume', you: id, seat, criterion, participants, items },
         );
         // Whoever comes back after the reveal missed it, and it is still the
-        // same for everyone.
-        if (result) send(channel, { type: 'result', result });
+        // same for everyone. Unless the creator has moved on to the next
+        // list, and then the lobby is where everyone else is.
+        if (preparing) send(channel, { type: 'lobby' });
+        else if (result) send(channel, { type: 'result', result });
         return;
       }
 
@@ -307,7 +317,7 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
         type: 'welcome',
         you: id,
         seat,
-        criterion,
+        criterion: room.criterion,
         participants: admission.participants,
       });
       channels.set(id, channel);
@@ -333,17 +343,52 @@ export async function createRoom(nickname: string, items: Item[], criterion: str
   });
 
   const you = creator.participant.id;
-  startHere = () => {
+
+  // The first round and every one after it. Each placement draws its own
+  // shuffle, this one here and each guest's on their side, so every round's
+  // order is drawn again for each person.
+  const startRound = (participants: Participant[], items: Item[], criterion: string) => {
     // A copy, as when the room opened, so the placement never holds the
     // room's own rows.
-    const list = useRoom.getState().items.map((item) => ({ ...item }));
+    const list = items.map((item) => ({ ...item }));
     for (const channel of channels.values()) {
       send(channel, { type: 'start', items: list, criterion });
     }
-    setParticipants(startAll(useRoom.getState().participants));
+    setParticipants(participants);
+    // Before the new placement goes in, or the last round's count would be
+    // taken for progress in this one.
+    stopFollowing();
     usePlacement.getState().start(list, criterion);
-    useRoom.getState().startSorting(list);
+    useRoom.getState().startSorting(list, criterion);
     follow((placed) => setParticipants(setProgress(useRoom.getState().participants, you, placed)));
+  };
+
+  startHere = () => {
+    const { participants, items, criterion } = useRoom.getState();
+    startRound(startAll(participants), items, criterion);
+  };
+
+  againHere = (items, criterion) => {
+    const staying = newRound(useRoom.getState().participants);
+    // Whoever is let go loses their seat with them. Coming back, they get
+    // what anyone new gets once a room has started.
+    for (const [seat, owner] of seats) {
+      if (!staying.some((p) => p.id === owner)) seats.delete(seat);
+    }
+    lists.clear();
+    preparing = false;
+    startRound(staying, items, criterion);
+  };
+
+  // Going back to the result without starting anything takes everyone back
+  // to it too.
+  prepareHere = (now) => {
+    preparing = now;
+    // Only a revealed room gets here, and it has its result.
+    const result = useRoom.getState().result!;
+    for (const channel of channels.values()) {
+      send(channel, now ? { type: 'lobby' } : { type: 'result', result });
+    }
   };
 
   // The creator has no seat, so they are never found here. Someone who is
@@ -462,7 +507,7 @@ function followAsGuest(guest: Guest) {
 
 // The room is over for this tab, whatever the reason, and a reload must not
 // try to get back into it.
-function endHere(how: 'close' | 'end' | 'remove' | 'replace') {
+function endHere(how: 'close' | 'end' | 'remove' | 'replace' | 'miss') {
   letGo();
   clearTabRecord();
   useRoom.getState()[how]();
@@ -533,8 +578,9 @@ async function reach(mine: number, guest: Guest, tries: number) {
     if (mine !== attempt) return;
     if (!returning) useRoom.getState().fail({ kind });
     else if (kind === 'unreachable') later(mine, guest, tries);
-    // The seat means nothing to the host any more.
-    else endHere('end');
+    // The seat means nothing to the host any more. Once sorting has started
+    // the host only forgets one when another round starts without its owner.
+    else endHere(kind === 'started' ? 'miss' : 'end');
   };
   const timer = setTimeout(() => giveUp('unreachable'), WELCOME_TIMEOUT_MS);
 
@@ -571,9 +617,10 @@ async function reach(mine: number, guest: Guest, tries: number) {
       admitted = true;
       clearTimeout(timer);
       Object.assign(guest, { seat: message.seat, you: message.you, channel });
-      // Back after the reveal, which is already on screen. There is nothing
-      // left to report, and the result the host sends next is the same one.
-      if (room.status === 'revealed') {
+      // Back after the reveal, which is already on screen, or to the lobby
+      // after it. There is nothing left to report, and whatever the host sends
+      // next says where the room is now.
+      if (room.status === 'revealed' || room.status === 'preparing') {
         room.setParticipants(message.participants);
         return;
       }
@@ -592,12 +639,24 @@ async function reach(mine: number, guest: Guest, tries: number) {
       if (!message.participants.find((p) => p.id === message.you)?.finished) handIn(guest);
     } else if (message.type === 'participants' && admitted) {
       room.setParticipants(message.participants);
-    } else if (message.type === 'start' && admitted && room.status === 'lobby') {
-      // The placement draws its own shuffle, so each person gets an order of
-      // their own.
+    } else if (
+      message.type === 'start' &&
+      admitted &&
+      (room.status === 'lobby' || room.status === 'revealed' || room.status === 'preparing')
+    ) {
+      // The first round from the lobby, any other from the result or the
+      // lobby after it. The placement draws its own shuffle, so each person
+      // gets an order of their own, and a new one every round. The last
+      // round's following goes first, or it would report the new list's
+      // opening item as progress.
+      stopFollowing();
       usePlacement.getState().start(message.items, message.criterion);
-      room.startSorting(message.items);
+      room.startSorting(message.items, message.criterion);
       followAsGuest(guest);
+    } else if (message.type === 'lobby' && admitted) {
+      // Straight from the result, or from sorting when this tab dropped
+      // before the reveal and came back after the creator moved on.
+      if (room.status === 'revealed' || room.status === 'sorting') room.prepare();
     } else if (message.type === 'removed' && (admitted || returning)) {
       // Stopped before letting go: destroying the Peer closes the channel,
       // and its close handler would take it for a drop.
@@ -609,7 +668,13 @@ async function reach(mine: number, guest: Guest, tries: number) {
     } else if (message.type === 'closed' && admitted) {
       stop();
       endHere('close');
-    } else if (message.type === 'result' && admitted && room.status === 'sorting') {
+    } else if (
+      message.type === 'result' &&
+      admitted &&
+      (room.status === 'sorting' || room.status === 'preparing')
+    ) {
+      // The reveal, or the creator going back to it instead of writing
+      // another list.
       if (!fitsItems(message.result, room.items)) return;
       room.reveal(message.result);
       save(guest);
@@ -633,14 +698,14 @@ async function reach(mine: number, guest: Guest, tries: number) {
     }
     stop();
     // Mid-sort the guest keeps going while the way back is found. After the
-    // reveal they keep looking at it, and the way back is found all the same,
-    // without a word. In the lobby there is nothing to keep, and the host has
-    // already let them go.
+    // reveal they keep looking at it, or waiting for the next round, and the
+    // way back is found all the same, without a word. In the first lobby
+    // there is nothing to keep, and the host has already let them go.
     const { status } = useRoom.getState();
     if (status === 'sorting') {
       useRoom.getState().reconnect();
       later(mine, guest, 0);
-    } else if (status === 'revealed') {
+    } else if (status === 'revealed' || status === 'preparing') {
       later(mine, guest, 0);
     } else {
       endHere('end');
@@ -659,7 +724,9 @@ export function resumeRoom(record: TabRecord) {
   const mine = begin('guest');
   const { code, seat, you, nickname, items, criterion, placement, finished, result } = record;
   usePlacement.setState({ items, criterion, placement, finished });
-  useRoom.getState().reconnect({ code, you });
+  // The room's copy of the list too, which every result is checked against. A
+  // resume mid-sort brings it again, but one after the reveal leaves it alone.
+  useRoom.getState().reconnect({ code, you, items });
   if (result) useRoom.getState().reveal(result);
   const guest: Guest = { code, nickname, seat, you, channel: null };
   followAsGuest(guest);
@@ -681,6 +748,27 @@ export function startRoom() {
   const { status, participants } = useRoom.getState();
   if (status !== 'lobby' || participants.length < START_MINIMUM) return;
   startHere?.();
+}
+
+// Another round, from the result: with the same items unless new ones come,
+// and the criterion the creator gave it. Everyone connected starts at once,
+// and anyone away is left out of it. Registration stays closed.
+export function playAgain({ items, criterion }: { items?: Item[]; criterion: string }) {
+  const room = useRoom.getState();
+  if (room.status !== 'revealed') return;
+  if (room.participants.filter((p) => p.connected).length < START_MINIMUM) return;
+  againHere?.(items ?? room.items, criterion);
+}
+
+// The creator goes to write the next list, and everyone else waits for it in
+// the lobby. Nothing is reset until the round starts, so going back to the
+// result leaves the room as it was.
+export function changeList() {
+  if (useRoom.getState().status === 'revealed') prepareHere?.(true);
+}
+
+export function backToResult() {
+  if (useRoom.getState().status === 'revealed') prepareHere?.(false);
 }
 
 // Hands this person's list in: only in a room, only with nothing left in the

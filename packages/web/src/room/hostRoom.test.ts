@@ -7,6 +7,7 @@ import {
   exclude,
   leave,
   markFinished,
+  newRound,
   setConnected,
   setProgress,
   startAll,
@@ -150,6 +151,25 @@ describe('startAll', () => {
     const done = markFinished(ana.participants, ana.participant.id);
 
     expect(startAll(done)[0].finished).toBe(false);
+  });
+});
+
+describe('newRound', () => {
+  it('starts everyone connected over at 1, unfinished, and lets go of whoever is away', () => {
+    const ana = seat([], 'Ana', true);
+    const juan = seat(ana.participants, 'Juan');
+    const luis = seat(juan.participants, 'Luis');
+    let done = startAll(luis.participants);
+    for (const { id } of done) done = markFinished(setProgress(done, id, 3), id);
+    done = setConnected(done, juan.participant.id, false);
+
+    const next = newRound(done);
+
+    expect(next.map((p) => [p.nickname, p.progress, p.finished])).toEqual([
+      ['Ana', 1, false],
+      ['Luis', 1, false],
+    ]);
+    expect(next.map((p) => p.id)).toEqual([ana.participant.id, luis.participant.id]);
   });
 });
 
