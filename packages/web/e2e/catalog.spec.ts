@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from './fixtures.ts';
-import type { Locator } from '@playwright/test';
+import { sortInto } from './sorting.ts';
 
 // Read from the file the catalog ships, so the test follows the content when
 // it is rewritten. Desserts because it carries no images: nothing here should
@@ -16,17 +16,6 @@ const edited = 'Carrot cake';
 const intended = desserts.items.map((item, index) => (index === 1 ? edited : item.text));
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-// The shuffle picks what is on screen, so it is read back rather than known.
-// The longest name wins, in case one item's text sits inside another's.
-async function nameIn(locator: Locator) {
-  const text = await locator.innerText();
-  const name = [...intended]
-    .sort((a, b) => b.length - a.length)
-    .find((candidate) => text.includes(candidate));
-  expect(name, `no item name in "${text}"`).toBeDefined();
-  return name!;
-}
 
 test('picks a preset list, edits it and sorts it', async ({ page, isMobile }) => {
   await page.goto('/');
@@ -48,27 +37,9 @@ test('picks a preset list, edits it and sorts it', async ({ page, isMobile }) =>
   await criterionField.fill(criterion);
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  const progress = page.getByRole('progressbar');
-  const listRegion = page.getByRole('region', { name: 'Your list so far' });
-  // Every item goes into the gap after the ones placed so far that come before
-  // it, which keeps the list in the intended order the whole way through.
-  const placed = [await nameIn(listRegion)];
-
-  for (let count = 1; count < intended.length; count++) {
-    await expect(progress).toHaveAttribute('aria-valuenow', String(count));
-    const name = await nameIn(page.locator('aside'));
-    const gap = placed.filter((other) => intended.indexOf(other) < intended.indexOf(name)).length;
-    const button = page.getByRole('button', { name: `Put it at position ${gap + 1}`, exact: true });
-
-    // tap() on the phone, for the same reason the solo test gives.
-    if (isMobile) {
-      await button.tap();
-    } else {
-      await button.click();
-    }
-    placed.splice(gap, 0, name);
-  }
-
+  // No ties: every dessert gets a position of its own.
+  const positions = intended.map((name) => [name]);
+  await sortInto(page, positions, isMobile);
   await page.getByRole('button', { name: 'See result' }).click();
 
   await expect(page.getByRole('heading', { name: criterion })).toBeFocused();
