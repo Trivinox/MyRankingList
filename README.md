@@ -16,7 +16,7 @@ There are no user accounts. Rooms run peer to peer over WebRTC, with the creator
 - Once the last list is in, everyone sees the result at the same moment: the room's combined ranking, how alike each pair of lists is (a grid up to 8 people, and above that who is most and least like you), the items the room split on most, and your own list next to anyone else's. Lists of people who dropped after finishing still count; people the creator removed do not.
 - From the result the creator can play another round in the same room: the same items under the same or a new criterion, or a new list written on the form while the others wait in the lobby. Everyone connected starts over with a shuffle of their own. Anyone away at that moment is left out of the new round, and nobody new can join it.
 
-Phase 13 completes the room, from joining to playing again. Phase 14 extends the end-to-end tests over the whole of it, and the visual design, the final sounds and the deployment come after that.
+Collaborative mode is complete and covered end to end: since Phase 14 the Playwright suite runs a room of three people with lists known in advance and checks the reveal to the number, and a room of nine that gets the summary instead of the grid. The visual design comes next, then the final sounds and the deployment.
 
 ## Stack
 
