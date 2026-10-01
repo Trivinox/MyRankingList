@@ -524,6 +524,76 @@ test('three people sort lists known in advance and every screen reveals what the
   }
 });
 
+// Ana sorts the three as typed and Juan does the same; Lucía turns it round.
+// The six others take the four orders left, two of them twice, and each of
+// those sits at 0.50 or -0.50 from Ana's list and Juan's. So for both of them
+// the nearest list is the other's and the furthest is Lucía's, with nobody
+// level.
+const crowd = {
+  Juan: ['Mango', 'Kiwi', 'Peach'],
+  Lucía: ['Peach', 'Kiwi', 'Mango'],
+  Bruno: ['Mango', 'Peach', 'Kiwi'],
+  Carla: ['Kiwi', 'Mango', 'Peach'],
+  Diego: ['Kiwi', 'Peach', 'Mango'],
+  Elena: ['Peach', 'Mango', 'Kiwi'],
+  Félix: ['Mango', 'Peach', 'Kiwi'],
+  Gala: ['Kiwi', 'Peach', 'Mango'],
+};
+
+test('a room of nine shows each person who is most and least like them instead of the grid', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  test.slow();
+  await createRoom(ana, 'Ana');
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+
+  const guests = await Promise.all(
+    Object.entries(crowd).map(async ([nickname, order]) => ({
+      nickname,
+      intended: order.map((fruit) => [fruit]),
+      page: await openPerson(browser, testInfo),
+    })),
+  );
+  await Promise.all(
+    guests.map(async ({ nickname, page }) => {
+      await page.goto(`/?room=${code}`);
+      await join(page, nickname);
+    }),
+  );
+  await expect(ana.getByText('9 of 20')).toBeVisible();
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  await Promise.all(guests.map(({ page, intended }) => handIn(page, intended, isMobile)));
+  for (const { nickname, page } of guests) {
+    await expect(ana.getByRole('img', { name: `${nickname}, finished` })).toBeVisible();
+    await expect(waiting(page)).toBeVisible();
+    await expect(page.getByRole('term')).toHaveCount(0);
+  }
+
+  await handIn(ana, [['Mango'], ['Kiwi'], ['Peach']], isMobile);
+
+  const juan = guests[0].page;
+  for (const page of [ana, ...guests.map((guest) => guest.page)]) {
+    await expect(page.getByRole('heading', { name: criterion })).toBeFocused();
+    await expect(page.getByRole('term')).toHaveText(['Most like you', 'Least like you']);
+    await expect(page.getByRole('table', { name: 'How alike the lists are' })).toHaveCount(0);
+  }
+  await expect(ana.getByRole('definition')).toHaveText(['Juan 1.00', 'Lucía -1.00']);
+  await expect(juan.getByRole('definition')).toHaveText(['Ana 1.00', 'Lucía -1.00']);
+
+  // The room's order is the order they got in, and joining all at once leaves
+  // that to chance.
+  const others = ana.getByRole('combobox', { name: 'Compare your list with' }).getByRole('option');
+  expect((await others.allTextContents()).sort()).toEqual(Object.keys(crowd).sort());
+
+  for (const { page } of guests) {
+    await expectNoViolations(page);
+    await page.context().close();
+  }
+});
+
 test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
