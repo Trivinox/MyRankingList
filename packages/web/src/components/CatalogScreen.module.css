@@ -17,12 +17,15 @@
   font-size: 1.2rem;
 }
 
+/* On a narrow phone the heading beside it wraps instead, which reads better
+   than a pill grown to two lines. */
 .back {
   padding: 0.4rem 0.8rem;
   border: none;
   border-radius: var(--radius-pill);
   background: var(--color-soft);
   font-size: 0.9rem;
+  white-space: nowrap;
   cursor: pointer;
 }
 
