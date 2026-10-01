@@ -23,3 +23,12 @@
 .option[aria-pressed='true'] {
   background: var(--color-primary);
 }
+
+/* Under 360px the header runs out of room for the title, the mute button and
+   all of this. The globe goes first, since the two pills already say what the
+   group is for. */
+@media (max-width: 359px) {
+  .globe {
+    display: none;
+  }
+}
