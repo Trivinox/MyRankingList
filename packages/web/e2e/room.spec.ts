@@ -401,6 +401,129 @@ test('the creator plays again with the same items, and then with a list of their
   await juan.context().close();
 });
 
+// Four fruits and three lists known in advance, Lucía's with a tie. Worked out
+// by hand over average positions, where her tie counts as 3.5 for both:
+//
+// - Mango averages (1 + 2 + 3.5) / 3 and Kiwi (2 + 1 + 3.5) / 3, level at the
+//   top, so there is no second: Peach is third at 8 / 3 and Plum fourth at 3.
+// - Spearman over the same positions: 3 / 5 = 0.60 for Ana and Juan,
+//   -3.5 / sqrt(22.5) = -0.74 for Ana and Lucía, -4.5 / sqrt(22.5) = -0.95 for
+//   Juan and Lucía.
+// - Peach is the one placed furthest apart, at 3, 4 and 1. Mango (1, 2, 3) and
+//   Kiwi (2, 1, 3) come next, spread exactly as wide, and Plum (4, 3, 2) is
+//   left out of the three shown. These are the lists' own numbers, so her tie
+//   reads 3.
+//
+// Literals on purpose: worked out by the app's own code they would only check
+// it against itself.
+const bowl = ['Mango', 'Kiwi', 'Peach', 'Plum'];
+const lists = {
+  ana: [['Mango'], ['Kiwi'], ['Peach'], ['Plum']],
+  juan: [['Kiwi'], ['Mango'], ['Plum'], ['Peach']],
+  lucia: [['Peach'], ['Plum'], ['Mango', 'Kiwi']],
+};
+
+test('three people sort lists known in advance and every screen reveals what they add up to', async ({
+  page: ana,
+  browser,
+  isMobile,
+}, testInfo) => {
+  test.slow();
+  await createRoom(ana, 'Ana', bowl);
+  const code = await ana.locator('strong', { hasText: /^[A-Z2-9]{4}$/ }).innerText();
+
+  const juan = await openPerson(browser, testInfo);
+  await juan.goto('/');
+  await juan.getByRole('button', { name: 'Join a room' }).click();
+  await juan.getByLabel('Room code').fill(code);
+  await join(juan, 'Juan');
+  const lucia = await openPerson(browser, testInfo);
+  await lucia.goto(`/?room=${code}`);
+  await join(lucia, 'Lucía');
+
+  const everyone = [ana, juan, lucia];
+  for (const page of everyone) {
+    for (const nickname of ['Ana', 'Juan', 'Lucía']) {
+      await expect(person(page, nickname)).toBeVisible();
+    }
+    await expect(page.getByText('3 of 20')).toBeVisible();
+  }
+  await ana.getByRole('button', { name: 'Start' }).click();
+
+  // A whole list handed in leaves Lucía's as it was, with the one item she
+  // started with.
+  await handIn(juan, lists.juan, isMobile);
+  await expect(ana.getByRole('img', { name: 'Juan, finished' })).toBeVisible();
+  await expect(ana.getByRole('img', { name: 'Lucía, 1 of 4 placed' })).toBeVisible();
+  await expect(lucia.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+  const luciaList = lucia.getByRole('region', { name: 'Your list so far' });
+  await expect(luciaList.getByRole('button', { name: /^Move / })).toHaveCount(1);
+
+  // On a computer her first item goes in with a real drag, which no other room
+  // test makes.
+  await handIn(ana, lists.ana, isMobile, { dragFirst: true });
+  await expect(juan.getByRole('img', { name: 'Ana, finished' })).toBeVisible();
+  for (const page of [ana, juan]) {
+    await expect(waiting(page)).toBeVisible();
+    await expect(page.getByRole('table', { name: 'How alike the lists are' })).toHaveCount(0);
+  }
+
+  // The last list in is a guest's, and it reveals the room to all three.
+  await handIn(lucia, lists.lucia, isMobile);
+
+  for (const page of everyone) {
+    await expect(page.getByRole('heading', { name: criterion })).toBeFocused();
+
+    // Which of the two comes first inside the shared place is the app's
+    // business, so either passes.
+    const consensus = page.getByRole('region', { name: 'All the lists together' });
+    await expect(consensus.getByRole('listitem')).toHaveText([
+      /^Tied\s*1\s*(Mango\s*1\s*Kiwi|Kiwi\s*1\s*Mango)$/,
+      /^3\s*Peach$/,
+      /^4\s*Plum$/,
+    ]);
+
+    const grid = page.getByRole('table', { name: 'How alike the lists are' });
+    await expect(grid.getByRole('columnheader')).toHaveText(['Ana', 'Juan', 'Lucía']);
+    await expect(grid.getByRole('rowheader')).toHaveText(['Ana', 'Juan', 'Lucía']);
+    // After the header row, one row per list. Each pair shows up from both
+    // sides, and a list against itself is left blank.
+    const rows = grid.getByRole('row');
+    await expect(rows.nth(1).getByRole('cell')).toHaveText(['', '0.60', '-0.74']);
+    await expect(rows.nth(2).getByRole('cell')).toHaveText(['0.60', '', '-0.95']);
+    await expect(rows.nth(3).getByRole('cell')).toHaveText(['-0.74', '-0.95', '']);
+
+    // Mango and Kiwi tie here too, in whichever order.
+    const divisive = page.getByRole('region', { name: 'Where the room disagreed most' });
+    const split = divisive.getByRole('listitem');
+    await expect(split).toHaveCount(3);
+    await expect(split.first()).toHaveText(/^Peach\s*Placed anywhere from 1 to 4$/);
+    for (const fruit of ['Mango', 'Kiwi']) {
+      await expect(split.filter({ hasText: fruit })).toHaveText(/Placed anywhere from 1 to 3$/);
+    }
+  }
+
+  // Ana's own order down the side, with her place and Lucía's for each item.
+  const picker = ana.getByRole('combobox', { name: 'Compare your list with' });
+  await picker.selectOption({ label: 'Lucía' });
+  const yours = ana.getByRole('region', { name: 'Your list', exact: true });
+  await expect(yours.getByText('Affinity: -0.74')).toBeVisible();
+  const sideBySide = yours.getByRole('table');
+  await expect(sideBySide.getByRole('columnheader')).toHaveText(['Item', 'You', 'Lucía']);
+  await expect(sideBySide.getByRole('rowheader')).toHaveText(['Mango', 'Kiwi', 'Peach', 'Plum']);
+  await expect(sideBySide.getByRole('cell')).toHaveText(['1', '3', '2', '3', '3', '1', '4', '2']);
+
+  await juan
+    .getByRole('combobox', { name: 'Compare your list with' })
+    .selectOption({ label: 'Lucía' });
+  await expect(juan.getByText('Affinity: -0.95')).toBeVisible();
+
+  for (const page of [juan, lucia]) {
+    await expectNoViolations(page);
+    await page.context().close();
+  }
+});
+
 test('the creator closes the room mid-sort and the guest is told so at once', async ({
   page: ana,
   browser,
