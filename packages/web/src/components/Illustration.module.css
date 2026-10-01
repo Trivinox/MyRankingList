@@ -1,0 +1,54 @@
+/* The drawings carry only shapes. Every colour comes from the tokens, so a
+   change of palette reaches them too. */
+.frame {
+  fill: var(--color-primary);
+}
+
+.canvas,
+.shine {
+  fill: var(--color-surface);
+}
+
+.glass {
+  fill: var(--color-soft);
+}
+
+.hill,
+.cheek,
+.dot {
+  fill: var(--color-secondary);
+}
+
+.badge {
+  fill: var(--color-accent);
+  /* Sets the sticker off the corner of the frame it overlaps. */
+  stroke: var(--color-surface);
+  stroke-width: 3;
+}
+
+.sparkle {
+  fill: var(--color-accent);
+}
+
+.ink {
+  fill: var(--color-text);
+}
+
+.mark,
+.handle,
+.glint {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.mark {
+  stroke: var(--color-text);
+}
+
+.handle {
+  stroke: var(--color-primary);
+}
+
+.glint {
+  stroke: var(--color-surface);
+}
