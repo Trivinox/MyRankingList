@@ -61,7 +61,8 @@ async function drag(page: Page, target: Locator, outcome: 'insert' | 'tie') {
 
 // Places every item in the pool and stops there, with the list in the
 // intended order and the button that comes next (See result, Finish) left to
-// the caller. The first placement can be a drag; the rest are clicks.
+// the caller. On a computer the first placement can be a drag and the rest
+// are clicks; on a phone every one is a tap.
 export async function sortInto(
   page: Page,
   intended: string[][],
