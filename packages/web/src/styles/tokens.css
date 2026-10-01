@@ -27,6 +27,11 @@
   --color-warning: #f5b94a;
   --color-danger: #f08a86;
 
+  /* The avatars take the palette's three pastels first and then these two, a
+     blue and an orchid, kept off the green, yellow and red above. */
+  --color-avatar-4: #a9c8ee;
+  --color-avatar-5: #e2b6e3;
+
   --radius-card: 18px;
   /* Fields and the small pieces inside a card. A field rounded like a card
      reads as a button. */

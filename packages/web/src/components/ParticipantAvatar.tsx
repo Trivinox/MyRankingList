@@ -4,15 +4,15 @@ import { useTranslation } from 'react-i18next';
 import type { Participant } from '../room/hostRoom.ts';
 import styles from './ParticipantAvatar.module.css';
 
-// The palette's three pastels and two more, a blue and an orchid, none of
-// them the green, yellow or red of a drop in the list. Handed out by place in
-// the room, so two people next to each other never share one.
+// The palette's three pastels, then the two tokens.css keeps for avatars.
+// Handed out by place in the room, so two people next to each other never
+// share one.
 const tints = [
   'var(--color-primary)',
   'var(--color-secondary)',
   'var(--color-accent)',
-  '#a9c8ee',
-  '#e2b6e3',
+  'var(--color-avatar-4)',
+  'var(--color-avatar-5)',
 ];
 
 interface ParticipantAvatarProps {
