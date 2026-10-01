@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n/index.ts';
@@ -44,6 +44,16 @@ const failWith = (error: RoomError) => async () => {
   useRoom.getState().connect('guest');
   useRoom.getState().fail(error);
 };
+
+const popup = (message: string) => screen.getByRole('alertdialog', { name: message });
+// The severity shows in the colour and the shape of the icon, and the class
+// is what decides both.
+const severityOf = (dialog: HTMLElement) => dialog.className.match(/info|warning|error/)?.[0];
+const loader = () => screen.getByRole('status').querySelector('[class*="loader"]');
+
+// What Chrome sends a modal dialog when Escape is pressed.
+const pressEscape = (dialog: HTMLElement) =>
+  fireEvent(dialog, new Event('cancel', { cancelable: true }));
 
 beforeEach(() => {
   vi.mocked(createRoom).mockReset();
@@ -143,65 +153,139 @@ describe('RoomEntryScreen', () => {
     expect(screen.getByRole('button', { name: en.room.enter })).toBeDisabled();
   });
 
+  it('shows the loader beside that line, hidden from screen readers', async () => {
+    vi.mocked(joinRoom).mockImplementation(async () => useRoom.getState().connect('guest'));
+    renderEntry('join');
+    expect(loader()).toBeNull();
+
+    await tryToJoin('AB3K');
+
+    expect(loader()).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('drops the loader once the room lets the user in', async () => {
+    vi.mocked(joinRoom).mockImplementation(async () => useRoom.getState().connect('guest'));
+    renderEntry('join');
+    await tryToJoin('AB3K');
+
+    act(() =>
+      useRoom.getState().enterLobby({ code: 'AB3K', you: 'j', criterion: 'x', participants: [] }),
+    );
+
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
   describe('when the room cannot be joined', () => {
-    it('says there is no room with that code', async () => {
+    it('says there is no room with that code, as an error', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'not-found' }));
       renderEntry('join');
 
       await tryToJoin('AB3K');
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.notFound);
+      expect(severityOf(popup(en.room.notFound))).toBe('error');
     });
 
-    it('says how many minutes to wait, rounded up', async () => {
+    it('says how many minutes to wait, rounded up, as a warning', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'rate-limited', retryAfter: 241 }));
       const i18n = renderEntry('join');
 
       await tryToJoin('AB3K');
 
-      expect(screen.getByRole('alert')).toHaveTextContent(i18n.t('room.rateLimited', { count: 5 }));
+      expect(severityOf(popup(i18n.t('room.rateLimited', { count: 5 })))).toBe('warning');
     });
 
-    it('says the room is full', async () => {
+    it('says the room is full, as a warning', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'full' }));
       renderEntry('join');
 
       await tryToJoin('AB3K');
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.full);
+      expect(severityOf(popup(en.room.full))).toBe('warning');
     });
 
-    it('says the room has already started', async () => {
+    it('says the room has already started, as a warning', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'started' }));
       renderEntry('join');
 
       await tryToJoin('AB3K');
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.started);
+      expect(severityOf(popup(en.room.started))).toBe('warning');
     });
 
-    it('says the room could not be reached', async () => {
+    it('says the room could not be reached, as an error', async () => {
       vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'unreachable' }));
       renderEntry('join');
 
       await tryToJoin('AB3K');
 
-      expect(screen.getByRole('alert')).toHaveTextContent(en.room.unreachable);
+      expect(severityOf(popup(en.room.unreachable))).toBe('error');
       expect(screen.getByRole('button', { name: en.room.enter })).toBeEnabled();
+    });
+
+    it('opens on its button and gives the focus back to the code once closed', async () => {
+      vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'not-found' }));
+      renderEntry('join');
+      await tryToJoin('AB3K');
+      expect(screen.getByRole('button', { name: en.room.dismiss })).toHaveFocus();
+
+      await userEvent.click(screen.getByRole('button', { name: en.room.dismiss }));
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(useRoom.getState().error).toBeNull();
+      expect(codeField()).toHaveFocus();
+      expect(codeField()).toHaveValue('AB3K');
+    });
+
+    it('does the same on Escape', async () => {
+      vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'full' }));
+      renderEntry('join');
+      await tryToJoin('AB3K');
+
+      pressEscape(popup(en.room.full));
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(codeField()).toHaveFocus();
+    });
+
+    it('opens again when the next attempt fails too', async () => {
+      vi.mocked(joinRoom).mockImplementation(failWith({ kind: 'not-found' }));
+      renderEntry('join');
+      await tryToJoin('AB3K');
+      await userEvent.click(screen.getByRole('button', { name: en.room.dismiss }));
+
+      await userEvent.click(screen.getByRole('button', { name: en.room.enter }));
+
+      expect(popup(en.room.notFound)).toBeInTheDocument();
     });
   });
 
-  it('says the room could not be opened when creating one fails', async () => {
-    vi.mocked(createRoom).mockImplementation(async () => {
-      useRoom.getState().connect('host');
-      useRoom.getState().fail({ kind: 'unreachable' });
+  describe('when the room cannot be opened', () => {
+    beforeEach(() => {
+      vi.mocked(createRoom).mockImplementation(async () => {
+        useRoom.getState().connect('host');
+        useRoom.getState().fail({ kind: 'unreachable' });
+      });
     });
-    renderEntry('create');
 
-    await userEvent.type(nicknameField(), 'Ana');
-    await userEvent.click(screen.getByRole('button', { name: en.room.open }));
+    it('says so, as an error', async () => {
+      renderEntry('create');
 
-    expect(screen.getByRole('alert')).toHaveTextContent(en.room.notOpened);
+      await userEvent.type(nicknameField(), 'Ana');
+      await userEvent.click(screen.getByRole('button', { name: en.room.open }));
+
+      expect(severityOf(popup(en.room.notOpened))).toBe('error');
+    });
+
+    // There is no code to correct, so the focus goes back where the user left.
+    it('gives the focus back to the button that opens the room once closed', async () => {
+      renderEntry('create');
+      await userEvent.type(nicknameField(), 'Ana');
+      await userEvent.click(screen.getByRole('button', { name: en.room.open }));
+
+      await userEvent.click(screen.getByRole('button', { name: en.room.dismiss }));
+
+      expect(screen.getByRole('button', { name: en.room.open })).toHaveFocus();
+    });
   });
 
   it('moves on to the lobby once the room lets the user in', async () => {

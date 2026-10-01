@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { forgetRoomLink, linkedCode, rememberRoomLink } from '../room/link.ts';
@@ -9,6 +9,9 @@ import { useListDraft } from '../state/listDraftStore.ts';
 import type { RoomError } from '../state/roomStore.ts';
 import { useRoom } from '../state/roomStore.ts';
 import { useScreen } from '../state/screenStore.ts';
+import { Loader } from './Loader.tsx';
+import { Popup } from './Popup.tsx';
+import type { Severity } from './Popup.tsx';
 import styles from './RoomEntryScreen.module.css';
 
 interface Props {
@@ -28,6 +31,8 @@ export function RoomEntryScreen({ mode }: Props) {
   const [code, setCode] = useState(linked);
   const [nickname, setNickname] = useState('');
   const [badCode, setBadCode] = useState(false);
+  const codeField = useRef<HTMLInputElement>(null);
+  const submitButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (status !== 'lobby') return;
@@ -59,6 +64,13 @@ export function RoomEntryScreen({ mode }: Props) {
     setScreen('list-input');
   };
 
+  // Back to the code, the likeliest thing to correct, or to the button that
+  // sent the form when there is no code to type.
+  const dismiss = () => {
+    useRoom.getState().dismiss();
+    (joining ? codeField : submitButton).current?.focus();
+  };
+
   return (
     <form className={styles.screen} onSubmit={submit}>
       <h2 className={styles.heading}>{t(joining ? 'room.joinHeading' : 'room.createHeading')}</h2>
@@ -68,6 +80,7 @@ export function RoomEntryScreen({ mode }: Props) {
           <label className={styles.field}>
             <span className={styles.label}>{t('room.codeLabel')}</span>
             <input
+              ref={codeField}
               type="text"
               className={styles.code}
               value={code}
@@ -105,7 +118,7 @@ export function RoomEntryScreen({ mode }: Props) {
       </label>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.submit} disabled={!ready}>
+        <button ref={submitButton} type="submit" className={styles.submit} disabled={!ready}>
           {t(joining ? 'room.enter' : 'room.open')}
         </button>
         <button type="button" className={styles.back} onClick={back}>
@@ -113,18 +126,34 @@ export function RoomEntryScreen({ mode }: Props) {
         </button>
       </div>
 
-      {/* Both stay in the tree, empty, so the text lands in a region a screen
+      {/* Stays in the tree, empty, so the text lands in a region a screen
           reader already knows about. */}
-      <div className={styles.messages}>
-        <p className={styles.status} role="status">
-          {connecting && t('room.connecting')}
-        </p>
-        <p className={styles.error} role="alert">
-          {error && describe(error, joining, t)}
-        </p>
-      </div>
+      <p className={styles.status} role="status">
+        {connecting && (
+          <>
+            <Loader />
+            {t('room.connecting')}
+          </>
+        )}
+      </p>
+
+      {error && (
+        <Popup
+          severity={severityOf(error)}
+          message={describe(error, joining, t)}
+          action={t('room.dismiss')}
+          onClose={dismiss}
+        />
+      )}
     </form>
   );
+}
+
+// No room behind the code, or none that could be reached or opened, is an
+// error. A room that is there but takes nobody else, and an address that has
+// to wait before trying again, are warnings.
+function severityOf(error: RoomError): Severity {
+  return error.kind === 'not-found' || error.kind === 'unreachable' ? 'error' : 'warning';
 }
 
 type Translate = ReturnType<typeof useTranslation>['t'];

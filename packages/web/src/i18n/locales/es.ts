@@ -152,6 +152,7 @@ export const es: typeof en = {
     started: 'En esa sala ya han empezado a ordenar, así que no se puede entrar.',
     unreachable: 'No se pudo llegar a la sala. Revisa tu conexión y vuelve a intentarlo.',
     notOpened: 'No se pudo abrir la sala. Revisa tu conexión y vuelve a intentarlo.',
+    dismiss: 'Entendido',
     placed: '{{nickname}}, {{placed}} de {{total}} colocados',
     placedAway: '{{nickname}}, ausente, {{placed}} de {{total}} colocados',
     finished: '{{nickname}}, terminó',

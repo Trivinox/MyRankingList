@@ -84,6 +84,7 @@ interface Room {
     items: Item[];
   }) => void;
   fail: (error: RoomError) => void;
+  dismiss: () => void;
   close: () => void;
   end: () => void;
   remove: () => void;
@@ -137,6 +138,9 @@ export const useRoom = create<Room>((set) => ({
 
   // A failed attempt leaves no room behind, only the reason on the entry screen.
   fail: (error) => set({ ...empty, error }),
+
+  // The reason has been read, and the entry screen is ready for another try.
+  dismiss: () => set({ error: null }),
 
   close: () => set({ status: 'closed' }),
 
