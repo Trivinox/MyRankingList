@@ -1,6 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
+// Served from the app's own origin, which the policy already allows. Every
+// subset is declared, and the browser only fetches the ones a page uses.
+import '@fontsource-variable/nunito';
 import './index.css';
 import App from './App.tsx';
 import { createI18n } from './i18n/index.ts';

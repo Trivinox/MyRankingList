@@ -1,0 +1,42 @@
+/* Named by what each value is for rather than by what it looks like, so a
+   colour can change here without anything else being renamed. */
+:root {
+  /* The pastels are fills. White on any of them is too faint to read, so text
+     on a pastel is the dark text colour. */
+  --color-primary: #b7a8e8;
+  --color-secondary: #f6b8c4;
+  --color-accent: #ffd6a5;
+  /* The one lilac dark enough for text, focus rings and thin strokes. */
+  --color-primary-strong: #6e5cc4;
+
+  --color-background: #fdfaf7;
+  --color-surface: #fff;
+  --color-soft: #eee8f5;
+  --color-line: #e2dbe6;
+  --color-text: #3b3541;
+  --color-text-muted: #6d6672;
+
+  /* What letting go over a target in the list would do. Nothing else on
+     screen borrows these three, so they keep meaning only that. */
+  --color-insert: #9fdcb8;
+  --color-tie: #f0cf6e;
+  --color-refused: #f4a59c;
+
+  /* For warnings and errors, and the buttons that throw something away. A
+     shade apart from the tie yellow and the refused coral. */
+  --color-warning: #f5b94a;
+  --color-danger: #f08a86;
+
+  --radius-card: 18px;
+  /* Fields and the small pieces inside a card. A field rounded like a card
+     reads as a button. */
+  --radius-small: 10px;
+  --radius-pill: 999px;
+
+  /* Lilac rather than grey, wide and faint, so a card stands off the page
+     without an outline. The card being carried gets the stronger one. */
+  --shadow-card: 0 2px 14px rgb(110 90 180 / 14%);
+  --shadow-lifted: 0 12px 28px rgb(110 90 180 / 30%);
+
+  --font-body: 'Nunito Variable', system-ui, sans-serif;
+}

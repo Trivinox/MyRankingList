@@ -17,7 +17,7 @@
   gap: 0.6rem;
   padding-bottom: 0.75rem;
   /* Matches the header: content has to be hidden as it passes underneath. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .question {
@@ -88,6 +88,6 @@
     top: calc(var(--header-height) + var(--headline-height, 5.3rem) - 0.15rem);
     z-index: 1;
     /* Hides the list as it scrolls up behind the strip. */
-    background: #fff;
+    background: var(--color-background);
   }
 }

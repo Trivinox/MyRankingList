@@ -29,8 +29,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 0 0.75rem;
-  /* Placeholder until the design system lands. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .controls {

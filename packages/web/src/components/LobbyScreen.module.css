@@ -19,7 +19,7 @@
   padding: 0.75rem 0;
   border-bottom: 1px solid #e6e6ee;
   /* Painted, or the participants would show through it on their way up. */
-  background: #fff;
+  background: var(--color-background);
 }
 
 .codeLabel {
