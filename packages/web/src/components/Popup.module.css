@@ -1,0 +1,56 @@
+/* The browser centres a modal dialog and puts it above everything. The rest
+   is a card like the others, with the stronger shadow of something lifted
+   off the page. */
+.popup {
+  width: min(22rem, calc(100% - 2rem));
+  padding: 1.75rem 1.5rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lifted);
+  /* The browser gives a dialog colours of its own. */
+  color: var(--color-text);
+  text-align: center;
+}
+
+/* Only once open: a closed dialog has to stay hidden. */
+.popup[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.popup::backdrop {
+  background: color-mix(in srgb, var(--color-text) 35%, transparent);
+}
+
+.icon {
+  font-size: 3rem;
+}
+
+.info .icon {
+  color: var(--color-primary);
+}
+
+.warning .icon {
+  color: var(--color-warning);
+}
+
+.error .icon {
+  color: var(--color-danger);
+}
+
+.message {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.button {
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  cursor: pointer;
+}

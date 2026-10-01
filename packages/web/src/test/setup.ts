@@ -30,6 +30,16 @@ if (typeof window !== 'undefined') {
     disconnect() {}
   };
 
+  // jsdom has the element, and hides it while closed, but none of its methods.
+  // There is no top layer or inert page here, only the attribute that shows
+  // it. Escape is the browser's own, so a test sends the cancel event it would.
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
+
   // Every test starts desktop-wide. The phone tests put their own in place.
   beforeEach(() => {
     window.matchMedia = (query: string) =>
