@@ -43,6 +43,7 @@ import { CloseRoom } from './CloseRoom.tsx';
 import { useAnnouncer } from './useAnnouncer.ts';
 import { useIsMobile } from './useIsMobile.ts';
 import { ItemCard } from './ItemCard.tsx';
+import { Loader } from './Loader.tsx';
 import { PoolItem } from './PoolItem.tsx';
 import { ProgressBar } from './ProgressBar.tsx';
 import { RankedList } from './RankedList.tsx';
@@ -504,7 +505,12 @@ export function SortingScreen() {
         {/* Always in the tree, so a screen reader hears it arrive and go.
             Sorting goes on underneath: the list is this tab's own. */}
         <p className={styles.reconnecting} role="status">
-          {reconnecting && t('room.reconnecting')}
+          {reconnecting && (
+            <>
+              <Loader />
+              {t('room.reconnecting')}
+            </>
+          )}
         </p>
       </div>
 

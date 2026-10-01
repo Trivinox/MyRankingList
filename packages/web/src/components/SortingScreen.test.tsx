@@ -2035,6 +2035,19 @@ describe('in a room', () => {
     expect(screen.queryByText(en.room.reconnecting)).not.toBeInTheDocument();
   });
 
+  it('shows the loader beside the reconnecting line, and takes it away with the line', () => {
+    renderScreen();
+    const loader = () => document.querySelector('[class*="loader"]');
+    expect(loader()).toBeNull();
+
+    act(() => useRoom.getState().reconnect());
+    expect(screen.getByText(en.room.reconnecting)).toContainElement(loader() as HTMLElement);
+    expect(loader()).toHaveAttribute('aria-hidden', 'true');
+
+    act(() => useRoom.setState({ status: 'sorting' }));
+    expect(loader()).toBeNull();
+  });
+
   it('offers only the creator a way to close the room', () => {
     renderScreen();
     expect(screen.queryByRole('button', { name: en.room.lobby.close })).not.toBeInTheDocument();
